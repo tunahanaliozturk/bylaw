@@ -13,6 +13,7 @@ from bylaw.context import build_context
 from bylaw.github import GitHubClient, GitHubError, GitHubSource
 from bylaw.local_git import LocalGitSource
 from bylaw.model import ReviewContext, ReviewResult
+from bylaw.prompt import render_input, system_prompt
 from bylaw.publish import preview, publish
 from bylaw.source import SourceError
 from bylaw.validate import Validated, validate
@@ -44,6 +45,9 @@ def _parser() -> argparse.ArgumentParser:
     where.add_argument("--pr", type=int, help="pull request number")
     where.add_argument("--dry-run", action="store_true", help="print what would be posted instead")
     post.add_argument("--repo", help="owner/name; defaults to GITHUB_REPOSITORY")
+
+    show = commands.add_parser("prompt", help="print what a reviewer model would read, for host agents")
+    show.add_argument("--context", required=True, help="ReviewContext JSON from `bylaw context`")
     return parser
 
 
@@ -56,6 +60,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             checked = _validated(args)
             payload = {"result": checked.result.model_dump(mode="json"), "dropped": list(checked.dropped)}
             _write(json.dumps(payload, indent=2, ensure_ascii=False))
+        elif args.command == "prompt":
+            context = ReviewContext.model_validate_json(Path(args.context).read_text(encoding="utf-8"))
+            text, _ = render_input(context)
+            _write(f"{system_prompt()}\n---\n{text}")
         else:
             _post(args)
     except (SourceError, GitHubError, ConfigError, OSError, ValueError) as error:

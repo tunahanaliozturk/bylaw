@@ -1,4 +1,4 @@
-from bylaw.diff import parse_patch, parse_unified_diff
+from bylaw.diff import numbered_patch, parse_patch, parse_unified_diff
 
 PATCH = "\n".join(
     [
@@ -124,3 +124,16 @@ def test_c_quoted_paths_are_unquoted() -> None:
     )
 
     assert [f.path for f in parse_unified_diff(diff)] == [r"back\slash.py"]
+
+
+def test_a_numbered_patch_shows_new_line_numbers_and_marks() -> None:
+    text = numbered_patch("@@ -1,2 +1,2 @@\n keep\n-old\n+new\r\n")
+
+    assert text.splitlines() == ["@@ -1,2 +1,2 @@", "    1   keep", "      - old", "    2 + new"]
+
+
+def test_parsed_files_keep_their_patch() -> None:
+    files = parse_unified_diff(DIFF)
+
+    assert files[0].patch.startswith("@@ -1 +1,2 @@")
+    assert files[4].patch == ""
