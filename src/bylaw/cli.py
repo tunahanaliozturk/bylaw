@@ -13,7 +13,8 @@ from bylaw.context import build_context
 from bylaw.engine import PROVIDERS, ReviewError, api_key_for, make_reviewer
 from bylaw.github import GitHubClient, GitHubError, GitHubSource
 from bylaw.local_git import LocalGitSource
-from bylaw.model import ReviewContext, ReviewResult, Severity
+from bylaw.model import Finding, ReviewContext, ReviewResult, Severity
+from bylaw.plan import remaining
 from bylaw.prompt import render_input, system_prompt
 from bylaw.publish import preview, publish
 from bylaw.source import SourceError
@@ -57,7 +58,7 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("--repo", help="owner/name; defaults to GITHUB_REPOSITORY")
     run.add_argument("--provider", choices=PROVIDERS, default="anthropic")
     run.add_argument("--model", help="model name; defaults to claude-opus-5-5 for anthropic")
-    run.add_argument("--effort", default="high", help="reasoning effort passed to the model (default: high)")
+    run.add_argument("--effort", help="reasoning effort passed to the model (anthropic default: high)")
     run.add_argument("--post", action="store_true", help="publish to the pull request (needs --pr)")
     run.add_argument(
         "--fail-on",
@@ -86,7 +87,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         else:
             _post(args)
     except (SourceError, GitHubError, ConfigError, OSError, ValueError) as error:
-        print(f"bylaw: {error}", file=sys.stderr)
+        _say(str(error))
         return 2
     return 0
 
@@ -122,7 +123,7 @@ def _post(args: argparse.Namespace) -> None:
     context = ReviewContext.model_validate_json(Path(args.context).read_text(encoding="utf-8"))
     checked = _validated(args)
     for reason in checked.dropped:
-        print(f"bylaw: dropped {reason}", file=sys.stderr)
+        _say(f"dropped {reason}")
     if args.dry_run:
         _write(preview(context, checked.result, Config()))
         return
@@ -132,10 +133,9 @@ def _post(args: argparse.Namespace) -> None:
         # Read again rather than trusting the context file: the config must come from the base branch.
         config = load_config(GitHubSource(client, repo, args.pr).read_base(".bylaw.toml"))
         plan = publish(client, repo, args.pr, context=context, result=checked.result, config=config)
-    print(
-        f"bylaw: posted {len(plan.inline)} comment(s), resolved {len(plan.resolve)}, "
-        f"reopened {len(plan.unresolve)} thread(s), updated the summary.",
-        file=sys.stderr,
+    _say(
+        f"posted {len(plan.inline)} comment(s), resolved {len(plan.resolve)}, "
+        f"reopened {len(plan.unresolve)} thread(s), updated the summary."
     )
 
 
@@ -150,13 +150,21 @@ def _repo_and_token(repo_arg: str | None) -> tuple[str, str]:
 
 
 _RANK = {severity: rank for rank, severity in enumerate(Severity)}
+_NO_SECRETS_ACTORS = frozenset({"dependabot[bot]"})
+
+
+def _say(text: str) -> None:
+    """One line on stderr. Line breaks are flattened: in GitHub Actions a line that starts with `::` is a
+    workflow command, and text from a model or a pull request must not be able to start one."""
+    flat = " ".join(text.splitlines())
+    print(f"bylaw: {flat}", file=sys.stderr)
 
 
 def _review(args: argparse.Namespace) -> int:
-    if _fork_without_secrets():
+    if _without_secrets():
         print(
-            "::notice title=bylaw::Pull requests from forks get no secrets on the pull_request event. "
-            "Use the pull_request_target recipe to review them (docs/recipes)."
+            "::notice title=bylaw::This pull_request run has no secrets and a read-only token (a fork or "
+            "Dependabot), so bylaw skipped it. Use the pull_request_target recipe for these (docs/recipes)."
         )
         return 0
     if args.post and args.pr is None:
@@ -165,28 +173,29 @@ def _review(args: argparse.Namespace) -> int:
         context = ReviewContext.model_validate_json(Path(args.context).read_text(encoding="utf-8"))
         context, result = _with_model_review(context, args)
         checked = _check(context, result)
+        counted = checked.result.findings
     else:
-        checked = _review_pull_request(args)
+        checked, counted = _review_pull_request(args)
     if not args.post:
         payload = {"result": checked.result.model_dump(mode="json"), "dropped": list(checked.dropped)}
         _write(json.dumps(payload, indent=2, ensure_ascii=False))
-    return _exit_code(checked.result, args.fail_on)
+    return _exit_code(counted, args.fail_on)
 
 
-def _review_pull_request(args: argparse.Namespace) -> Validated:
+def _review_pull_request(args: argparse.Namespace) -> tuple[Validated, tuple[Finding, ...]]:
+    """Review a pull request; also return the findings `--fail-on` counts (muted ones excluded)."""
     repo, token = _repo_and_token(args.repo)
     api_url = os.environ.get("GITHUB_API_URL", "https://api.github.com")
     with GitHubClient(token, api_url, os.environ.get("GITHUB_GRAPHQL_URL")) as client:
         source = GitHubSource(client, repo, args.pr)
         context, result = _with_model_review(build_context(source), args)
         checked = _check(context, result)
-        if args.post:
-            config = load_config(source.read_base(".bylaw.toml"))
-            plan = publish(client, repo, args.pr, context=context, result=checked.result, config=config)
-            print(
-                f"bylaw: posted {len(plan.inline)} comment(s), resolved {len(plan.resolve)}.", file=sys.stderr
-            )
-    return checked
+        if not args.post:
+            return checked, checked.result.findings
+        config = load_config(source.read_base(".bylaw.toml"))
+        plan = publish(client, repo, args.pr, context=context, result=checked.result, config=config)
+        _say(f"posted {len(plan.inline)} comment(s), resolved {len(plan.resolve)}.")
+    return checked, remaining(plan)
 
 
 def _with_model_review(
@@ -207,7 +216,7 @@ def _with_model_review(
         except ReviewError as error:
             notes.append(f"The model review did not run: {error}.")
     for note in notes:
-        print(f"bylaw: {note}", file=sys.stderr)
+        _say(note)
     return context.model_copy(update={"notes": (*context.notes, *notes)}), result
 
 
@@ -215,27 +224,33 @@ def _check(context: ReviewContext, result: ReviewResult) -> Validated:
     merged = result.model_copy(update={"findings": (*context.findings, *result.findings)})
     checked = validate(context, merged)
     for reason in checked.dropped:
-        print(f"bylaw: dropped {reason}", file=sys.stderr)
+        _say(f"dropped {reason}")
     return checked
 
 
-def _exit_code(result: ReviewResult, fail_on: str) -> int:
+def _exit_code(findings: Sequence[Finding], fail_on: str) -> int:
     if fail_on == "none":
         return 0
     threshold = _RANK[Severity(fail_on)]
-    failing = [f for f in result.findings if _RANK[f.severity] <= threshold]
+    failing = [f for f in findings if _RANK[f.severity] <= threshold]
     if failing:
-        print(f"bylaw: {len(failing)} finding(s) at or above {fail_on}.", file=sys.stderr)
+        _say(f"{len(failing)} finding(s) at or above {fail_on}.")
         return 1
     return 0
 
 
-def _fork_without_secrets() -> bool:
+def _without_secrets() -> bool:
+    """A pull_request run that gets no secrets and a read-only token: a fork, a deleted fork or Dependabot."""
     if os.environ.get("GITHUB_EVENT_NAME") != "pull_request" or not os.environ.get("GITHUB_EVENT_PATH"):
         return False
+    if os.environ.get("GITHUB_ACTOR") in _NO_SECRETS_ACTORS:
+        return True
     try:
         event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text(encoding="utf-8"))
         pull = event["pull_request"]
-        return bool(pull["head"]["repo"]["full_name"] != pull["base"]["repo"]["full_name"])
+        head_repo = pull["head"]["repo"]
+        if head_repo is None:
+            return True
+        return bool(head_repo["full_name"] != pull["base"]["repo"]["full_name"])
     except (OSError, ValueError, KeyError, TypeError):
         return False

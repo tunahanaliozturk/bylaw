@@ -19,9 +19,9 @@ inputs:
     required: false
     default: ""
   effort:
-    description: Reasoning effort passed to the model.
+    description: Reasoning effort passed to the model. Empty uses the provider default (high for anthropic, none sent to openai).
     required: false
-    default: high
+    default: ""
   fail-on:
     description: Fail the check when a finding at or above this severity remains (critical, high, medium, low, suggestion or none).
     required: false
@@ -34,7 +34,8 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: astral-sh/setup-uv@v10.2.0
+    # Pinned by commit: this action holds an API key and a write token.
+    - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
     - name: Review the pull request
       shell: bash
       # Inputs travel as environment variables and are quoted below, so nothing a workflow passes in can
@@ -48,6 +49,7 @@ runs:
         BYLAW_FAIL_ON: ${{ inputs.fail-on }}
         BYLAW_PR: ${{ github.event.pull_request.number }}
       run: |
-        args=(review --pr "$BYLAW_PR" --post --provider "$BYLAW_PROVIDER" --effort "$BYLAW_EFFORT" --fail-on "$BYLAW_FAIL_ON")
+        args=(review --pr "$BYLAW_PR" --post --provider "$BYLAW_PROVIDER" --fail-on "$BYLAW_FAIL_ON")
         if [ -n "$BYLAW_MODEL" ]; then args+=(--model "$BYLAW_MODEL"); fi
+        if [ -n "$BYLAW_EFFORT" ]; then args+=(--effort "$BYLAW_EFFORT"); fi
         uv run --project "$GITHUB_ACTION_PATH" --locked --no-dev bylaw "${args[@]}"

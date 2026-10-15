@@ -61,9 +61,14 @@ class AnthropicReviewer:
                 fallbacks=fallbacks,
             )
         except anthropic.APIStatusError as error:
-            raise ReviewError(f"Anthropic API returned {error.status_code}: {error.message}") from error
+            # Status and error type only: the message can quote request details and the note is public.
+            raise ReviewError(
+                f"Anthropic API returned {error.status_code} ({_error_type(error.body)})"
+            ) from error
         except anthropic.APIConnectionError as error:
             raise ReviewError("could not reach the Anthropic API") from error
+        except (anthropic.AnthropicError, ValueError) as error:
+            raise ReviewError(f"the Anthropic SDK rejected the request ({type(error).__name__})") from error
         if response.stop_reason == "refusal":
             category = response.stop_details.category if response.stop_details else None
             raise ReviewError(f"the model declined to review this change ({category or 'no category'})")
@@ -74,3 +79,9 @@ class AnthropicReviewer:
             return OutReview.model_validate_json(text).to_result()
         except ValidationError as error:
             raise ReviewError("the model returned output that is not a valid review") from error
+
+
+def _error_type(body: object) -> str:
+    error = body.get("error") if isinstance(body, dict) else None
+    kind = error.get("type") if isinstance(error, dict) else None
+    return kind if isinstance(kind, str) else "unknown error"

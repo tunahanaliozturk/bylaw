@@ -8,6 +8,7 @@ from bylaw.plan import (
     fingerprint,
     group_findings,
     make_plan,
+    remaining,
 )
 
 
@@ -147,3 +148,13 @@ def test_the_pull_request_author_cannot_mute_their_own_finding() -> None:
     plan = make_plan([_group(FP)], [_ours(FP, "T1", False, reply)], NO_STATE, Severity.MEDIUM, 15)
 
     assert plan.muted == ()
+
+
+def test_muted_and_reviewer_resolved_findings_do_not_count_as_remaining() -> None:
+    muted = _ours(FP, "T1", False, ThreadComment("bylaw: ignore", trusted=True))
+    resolved = _ours("f" * 16, "T2", True)
+    groups = [_group(FP), _group("f" * 16, line=2), _group("e" * 16, line=3)]
+
+    plan = make_plan(groups, [muted, resolved], NO_STATE, Severity.MEDIUM, 15)
+
+    assert [f.line_start for f in remaining(plan)] == [3]

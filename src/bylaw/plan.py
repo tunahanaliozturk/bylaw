@@ -135,6 +135,12 @@ def make_plan(
     )
 
 
+def remaining(plan: Plan) -> tuple[Finding, ...]:
+    """Findings still standing after a run: a maintainer's mute or resolve takes a finding out."""
+    groups = (*plan.inline, *plan.open_threads, *plan.summary_only)
+    return tuple(finding for group in groups for finding in (group.finding, *group.others))
+
+
 def _mutes(reply: ThreadComment) -> bool:
     """A maintainer can mute a finding, but not on their own pull request (ADR 0008)."""
     return reply.trusted and not reply.by_pr_author and bool(_IGNORE.search(reply.body))

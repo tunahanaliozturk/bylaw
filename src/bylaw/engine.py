@@ -65,7 +65,8 @@ class Reviewer(Protocol):
 
 
 def api_key_for(provider: str) -> str | None:
-    return os.environ.get("BYLAW_API_KEY") or os.environ.get(_KEY_VARIABLES.get(provider, "")) or None
+    # The provider's own variable wins, so a key meant for one provider is never sent to another.
+    return os.environ.get(_KEY_VARIABLES.get(provider, "")) or os.environ.get("BYLAW_API_KEY") or None
 
 
 def make_reviewer(provider: str, model: str | None, effort: str | None, api_key: str | None) -> Reviewer:
