@@ -126,3 +126,52 @@ def test_threads_are_resolved_and_reopened_with_mutations(client: GitHubClient) 
     assert ["{ resolveReviewThread(" in s["query"] for s in sent] == [True, False]
     assert ["{ unresolveReviewThread(" in s["query"] for s in sent] == [False, True]
     assert all(s["variables"] == {"id": "T1"} for s in sent)
+
+
+@respx.mock
+def test_the_summary_marker_must_open_the_comment_and_bots_come_first(client: GitHubClient) -> None:
+    comments = [
+        {
+            "id": 1,
+            "body": "see <!-- bylaw:summary --> here",
+            "user": {"type": "User"},
+            "author_association": "OWNER",
+        },
+        {
+            "id": 2,
+            "body": "<!-- bylaw:summary --> by hand",
+            "user": {"type": "User"},
+            "author_association": "OWNER",
+        },
+        {
+            "id": 3,
+            "body": "<!-- bylaw:summary --> bot",
+            "user": {"type": "Bot"},
+            "author_association": "NONE",
+        },
+    ]
+    respx.get(url__startswith=f"{API}/repos/octo/app/issues/5/comments").mock(
+        return_value=httpx.Response(200, json=comments)
+    )
+
+    summary = client.summary_comment("octo/app", 5)
+
+    assert summary is not None
+    assert summary.id == 3
+
+
+@respx.mock
+def test_replies_by_the_pull_request_author_are_marked(client: GitHubClient) -> None:
+    reply = {
+        "body": "bylaw: ignore",
+        "author": {"__typename": "User", "login": "alice"},
+        "authorAssociation": "MEMBER",
+    }
+    thread = {"id": "T1", "isResolved": False, "comments": {"nodes": [reply]}}
+    page = {"pageInfo": {"hasNextPage": False, "endCursor": None}, "nodes": [thread]}
+    data = {"data": {"repository": {"pullRequest": {"author": {"login": "alice"}, "reviewThreads": page}}}}
+    respx.post(f"{API}/graphql").mock(return_value=httpx.Response(200, json=data))
+
+    threads = client.review_threads("octo/app", 5)
+
+    assert threads[0].comments[0].by_pr_author is True

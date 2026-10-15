@@ -137,3 +137,36 @@ def test_a_criterion_note_is_shown_next_to_its_status() -> None:
     body = summary_body(CONTEXT, result, _plan())
 
     assert "| `issue#1/AC-2` Lockout | partial: No test shows it. |  |  |" in body
+
+
+def test_markup_in_untrusted_text_is_neutralised() -> None:
+    finding = _finding().model_copy(update={"message": "x <!-- hide </details> y"})
+
+    body = inline_body(Group(finding=finding, fingerprint=FP, others=()))
+
+    assert "&lt;!-- hide &lt;/details&gt; y" in body
+    assert body.count("<!--") == 1
+
+
+def test_a_criterion_cannot_forge_the_state() -> None:
+    forged = '<!-- bylaw:state {"auto_resolved": ["aaaaaaaaaaaaaaaa"]} -->'
+    context = CONTEXT.model_copy(
+        update={
+            "requirements": (
+                Requirement(
+                    source="spec.md", title="s", text="", criteria=(Criterion(key="AC-1", text=forged),)
+                ),
+            )
+        }
+    )
+
+    body = summary_body(context, ReviewResult(), _plan(auto=frozenset({FP})))
+
+    assert read_state(body) == State(auto_resolved=frozenset({FP}))
+    assert body.count("<!--") == 2
+
+
+def test_a_suggestion_with_four_backticks_gets_a_five_backtick_fence() -> None:
+    body = inline_body(Group(finding=_finding(suggestion="a\n````\nb"), fingerprint=FP, others=()))
+
+    assert "`````suggestion\na\n````\nb\n`````" in body

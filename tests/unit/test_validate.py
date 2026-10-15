@@ -135,3 +135,23 @@ def test_scope_creep_must_point_at_an_added_line() -> None:
 
     assert [s.line for s in validated.result.scope_creep] == [5]
     assert validated.dropped == ("app.py:1 scope creep: not an added line",)
+
+
+def test_a_range_must_be_added_lines_all_the_way_through() -> None:
+    gap = CONTEXT.model_copy(
+        update={
+            "files": (
+                ChangedFile(
+                    path="app.py",
+                    status="modified",
+                    added_lines=tuple(AddedLine(number=n, text="x") for n in (10, 50)),
+                ),
+            )
+        }
+    )
+
+    kept = validate(CONTEXT, ReviewResult(findings=(_finding(start=3, end=5),)))
+    split = validate(gap, ReviewResult(findings=(_finding(start=10, end=50),)))
+
+    assert kept.dropped == ()
+    assert split.dropped == ("app.py:10 security: lines are not added by this change",)

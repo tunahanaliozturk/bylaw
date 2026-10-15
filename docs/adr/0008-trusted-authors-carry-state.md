@@ -19,7 +19,14 @@ only `bylaw: ignore` from a trusted author does.
 
 ## Consequences
 
-- A pull request author cannot hide a finding by planting markers or by resolving the thread.
+- A pull request author cannot hide a finding by planting markers or by resolving the thread, and a
+  `bylaw: ignore` from the pull request's own author never counts, because `MEMBER` covers every member
+  of an organisation, including people with read access only.
+- bylaw finds its own marker as the last one in a comment and its state as the block that ends the
+  summary, and it escapes markup in every string it did not write, so text in a finding, a spec or a
+  file name cannot stand in for either.
+- The summary is a trusted comment that opens with the marker, a bot's first; a comment that only
+  quotes the marker is never edited.
 - A finding whose thread a reviewer resolved while the problem is still present stays resolved but is
   listed in the summary under "Resolved by a reviewer but still present", so nothing disappears quietly.
 - bylaw tracks only the threads it resolved itself (`auto_resolved`), so a finding that comes back

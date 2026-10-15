@@ -1,4 +1,8 @@
-"""Markdown for the inline comments and the summary, and the hidden state the summary carries."""
+"""Markdown for the inline comments and the summary, and the hidden state the summary carries.
+
+Every string that came from a pull request, a spec or a model passes through `_text` or `_code` before
+it is rendered, so it cannot open an HTML comment, close a section or plant a bylaw marker.
+"""
 
 import json
 import re
@@ -10,23 +14,29 @@ from bylaw.plan import Group, Plan, State
 
 SUMMARY_MARKER = "<!-- bylaw:summary -->"
 MAX_BODY = 65_536
-_STATE = re.compile(r"<!-- bylaw:state (\{.*?\}) -->", re.DOTALL)
-_MAX_STATE_ENTRIES = 1000  # ponytail: about 20 KB of hashes; older entries drop off first.
+_STATE_OPEN = "<!-- bylaw:state "
+_STATE = re.compile(r"<!-- bylaw:state (\{.*\}) -->\s*", re.DOTALL)
+# ponytail: about 20 KB of hashes. Entries are already limited to threads that still exist; past the
+# ceiling the cut is by hash order, which only means a few fixed findings forget they were auto-resolved.
+_MAX_STATE_ENTRIES = 1000
 _MAX_PLACES = 5
 _TRIMMED = "\n\n_Summary trimmed to fit GitHub's comment size limit._"
 _MAX_CELL = 80
+_BACKTICKS = re.compile(r"`+")
 
 
 def inline_body(group: Group) -> str:
     finding = group.finding
-    parts = [f"**{finding.category} · {finding.severity}** {finding.message}"]
+    parts = [f"**{finding.category} · {finding.severity}** {_text(finding.message)}"]
     if finding.evidence:
-        parts.append(f"Evidence: `{finding.evidence}`")
+        parts.append(f"Evidence: {_code(finding.evidence)}")
     if finding.suggestion is not None:
-        fence = "````" if "```" in finding.suggestion else "```"
+        # The fence must be longer than any backtick run inside, or the suggestion closes it early.
+        longest = max((len(run) for run in _BACKTICKS.findall(finding.suggestion)), default=0)
+        fence = "`" * max(3, longest + 1)
         parts.append(f"{fence}suggestion\n{finding.suggestion}\n{fence}")
     if group.others:
-        places = ", ".join(f"`{other.file}:{other.line_start}`" for other in group.others[:_MAX_PLACES])
+        places = ", ".join(_code(f"{other.file}:{other.line_start}") for other in group.others[:_MAX_PLACES])
         more = f" and {len(group.others) - _MAX_PLACES} more" if len(group.others) > _MAX_PLACES else ""
         parts.append(f"Also at {places}{more}.")
     parts.append(f"<!-- bylaw:fp={group.fingerprint} -->")
@@ -55,7 +65,7 @@ def summary_body(context: ReviewContext, result: ReviewResult, plan: Plan) -> st
     ]
     body = "\n\n".join(section for section in sections if section)
     entries = sorted(plan.state.auto_resolved)[-_MAX_STATE_ENTRIES:]
-    state = "\n\n<!-- bylaw:state " + json.dumps({"auto_resolved": entries}) + " -->"
+    state = "\n\n" + _STATE_OPEN + json.dumps({"auto_resolved": entries}) + " -->"
     room = MAX_BODY - len(state)
     if len(body) > room:
         body = body[: room - len(_TRIMMED)] + _TRIMMED
@@ -63,14 +73,19 @@ def summary_body(context: ReviewContext, result: ReviewResult, plan: Plan) -> st
 
 
 def read_state(body: str) -> State:
-    """ADR 0005: unreadable state counts as empty, which is noisy but never loses a finding."""
-    match = _STATE.search(body)
+    """ADR 0005: unreadable state counts as empty, which is noisy but never loses a finding.
+
+    Only the state block that ends the comment counts; bylaw always writes it last.
+    """
+    empty = State(auto_resolved=frozenset())
+    start = body.rfind(_STATE_OPEN)
+    match = _STATE.fullmatch(body, start) if start != -1 else None
     if match is None:
-        return State(auto_resolved=frozenset())
+        return empty
     try:
         raw = json.loads(match[1])
     except ValueError:
-        return State(auto_resolved=frozenset())
+        return empty
     entries = raw.get("auto_resolved", []) if isinstance(raw, dict) else []
     return State(auto_resolved=frozenset(e for e in entries if isinstance(e, str)))
 
@@ -80,7 +95,7 @@ def _headline(context: ReviewContext, plan: Plan, current: list[Group]) -> str:
     by_severity = ", ".join(f"{counts[s]} {s}" for s in Severity if counts[s]) or "no findings"
     new = len(plan.inline)
     return (
-        f"Reviewed `{context.head_sha[:7]}` against `{context.base_sha[:7]}`: {by_severity}. "
+        f"Reviewed {_code(context.head_sha[:7])} against {_code(context.base_sha[:7])}: {by_severity}. "
         f"{new} new inline comment{'s' if new != 1 else ''} this run, {len(plan.resolve)} thread(s) resolved."
     )
 
@@ -99,45 +114,62 @@ def _requirements(context: ReviewContext, result: ReviewResult) -> str:
                 status = f"{status}: {_cell(item.note)}"
             code = _locations(item.code) if item else ""
             tests = _locations(item.tests) if item else ""
-            rows.append(f"| `{key}` {_cell(criterion.text)} | {status} | {code} | {tests} |")
+            rows.append(f"| {_code(key)} {_cell(criterion.text)} | {status} | {code} | {tests} |")
     return "### Requirements\n\n" + "\n".join(rows)
 
 
 def _scope_creep(result: ReviewResult) -> str:
     if not result.scope_creep:
         return ""
-    lines = [f"- `{entry.file}:{entry.line}` {entry.message}" for entry in result.scope_creep]
+    lines = [
+        f"- {_code(f'{entry.file}:{entry.line}')} {_text(entry.message)}" for entry in result.scope_creep
+    ]
     return "### Scope creep\n\n" + "\n".join(lines)
 
 
 def _details(title: str, groups: Iterable[Group]) -> str:
-    items = [
-        f"- **{g.finding.category} · {g.finding.severity}** `{g.finding.file}:{g.finding.line_start}` "
-        f"{g.finding.message}" + (f" ({g.finding.evidence})" if g.finding.evidence else "")
-        for g in groups
-    ]
+    items = [_detail_line(g) for g in groups]
     if not items:
         return ""
     return f"<details><summary>{title} ({len(items)})</summary>\n\n" + "\n".join(items) + "\n\n</details>"
 
 
+def _detail_line(group: Group) -> str:
+    finding = group.finding
+    where = _code(f"{finding.file}:{finding.line_start}")
+    evidence = f" ({_code(finding.evidence)})" if finding.evidence else ""
+    return f"- **{finding.category} · {finding.severity}** {where} {_text(finding.message)}{evidence}"
+
+
 def _rule_sources(context: ReviewContext) -> str:
     if not context.rules:
         return ""
-    paths = "\n".join(f"- `{rule.path}`" for rule in context.rules)
+    paths = "\n".join(f"- {_code(rule.path)}" for rule in context.rules)
     return f"<details><summary>Rule sources ({len(context.rules)})</summary>\n\n{paths}\n\n</details>"
 
 
 def _notes(context: ReviewContext) -> str:
     if not context.notes:
         return ""
-    return "### Notes\n\n" + "\n".join(f"- {note}" for note in context.notes)
+    return "### Notes\n\n" + "\n".join(f"- {_text(note)}" for note in context.notes)
 
 
 def _locations(locations: Iterable[Location]) -> str:
-    return ", ".join(f"`{location.file}:{location.line}`" for location in locations)
+    return ", ".join(_code(f"{location.file}:{location.line}") for location in locations)
 
 
 def _cell(text: str) -> str:
-    flat = " ".join(text.split()).replace("|", "\\|")
+    flat = _text(" ".join(text.split())).replace("|", "\\|")
     return flat if len(flat) <= _MAX_CELL else flat[: _MAX_CELL - 3] + "..."
+
+
+def _text(text: str) -> str:
+    """Prose from outside bylaw: angle brackets become entities, so no HTML or comment can open."""
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def _code(text: str) -> str:
+    """A path or reference in a code span; anything that could escape the span is rendered as prose."""
+    if "`" in text or "<" in text or "\n" in text:
+        return _text(text)
+    return f"`{text}`"

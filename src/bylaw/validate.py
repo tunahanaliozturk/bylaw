@@ -77,11 +77,10 @@ class _Checker:
             return "file is not part of the change"
         if finding.line_start > finding.line_end:
             return "line range is reversed"
-        if not (
-            self.on_added_line(finding.file, finding.line_start)
-            and self.on_added_line(finding.file, finding.line_end)
-        ):
-            # GitHub rejects the whole review when one comment is off the diff.
+        lines = range(finding.line_start, finding.line_end + 1)
+        if not all(self.on_added_line(finding.file, line) for line in lines):
+            # GitHub rejects the whole review when one comment is off the diff or spans two hunks. A run of
+            # consecutive added lines always sits inside one hunk.
             return "lines are not added by this change"
         if finding.evidence is None:
             return (
