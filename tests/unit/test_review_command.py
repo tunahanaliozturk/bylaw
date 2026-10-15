@@ -142,3 +142,64 @@ def test_a_fork_pull_request_without_secrets_exits_quietly(
 
     assert code == 0
     assert "::notice title=bylaw::" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(
+    ("actor", "head"),
+    [("dependabot[bot]", {"repo": {"full_name": "octo/app"}}), ("someone", {"repo": None})],
+)
+def test_pull_requests_without_secrets_exit_quietly(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    actor: str,
+    head: dict[str, object],
+) -> None:
+    event = tmp_path / "event.json"
+    event.write_text(
+        json.dumps({"pull_request": {"head": head, "base": {"repo": {"full_name": "octo/app"}}}}),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("GITHUB_EVENT_NAME", "pull_request")
+    monkeypatch.setenv("GITHUB_EVENT_PATH", str(event))
+    monkeypatch.setenv("GITHUB_ACTOR", actor)
+
+    assert cli.main(["review", "--pr", "5", "--repo", "octo/app", "--post"]) == 0
+    assert "::notice title=bylaw::" in capsys.readouterr().out
+
+
+def test_text_from_a_model_cannot_start_a_workflow_command(
+    context_file: Path, monkeypatch: pytest.MonkeyPatch, capsysbinary: pytest.CaptureFixture[bytes]
+) -> None:
+    planted = Finding(
+        file="x.py\n::error::planted",
+        line_start=1,
+        line_end=1,
+        category=Category.BUG,
+        severity=Severity.HIGH,
+        message="m",
+    )
+    monkeypatch.setenv("BYLAW_API_KEY", "k")
+    _use(monkeypatch, FakeReviewer(ReviewResult(findings=(planted,))))
+
+    cli.main(["review", "--context", str(context_file)])
+
+    lines = capsysbinary.readouterr().err.decode("utf-8").splitlines()
+    assert not any(line.startswith("::") for line in lines)
+
+
+def test_the_effort_is_left_to_the_engine_unless_given(
+    context_file: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    seen: list[object] = []
+
+    def capture(*args: object) -> FakeReviewer:
+        seen.append(args[2])
+        return FakeReviewer()
+
+    monkeypatch.setenv("BYLAW_API_KEY", "k")
+    monkeypatch.setattr(cli, "make_reviewer", capture)
+
+    cli.main(["review", "--context", str(context_file), "--provider", "openai", "--model", "m"])
+
+    assert seen == [None]

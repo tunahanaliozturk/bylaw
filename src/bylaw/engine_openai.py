@@ -34,12 +34,17 @@ class OpenAIReviewer:
                 reasoning=reasoning,
             )
         except openai.APIStatusError as error:
-            raise ReviewError(f"OpenAI API returned {error.status_code}: {error.message}") from error
+            # Status and error code only: OpenAI's message quotes part of a wrong key, and the note is public.
+            raise ReviewError(
+                f"OpenAI API returned {error.status_code} ({error.code or 'unknown error'})"
+            ) from error
         except openai.APIConnectionError as error:
             raise ReviewError("could not reach the OpenAI API") from error
         except ValidationError as error:
             # A truncated answer is not valid JSON; the SDK validates it before returning.
             raise ReviewError("the model returned output that is not a valid review") from error
+        except (openai.OpenAIError, ValueError) as error:
+            raise ReviewError(f"the OpenAI SDK rejected the request ({type(error).__name__})") from error
         if response.output_parsed is None:
             raise ReviewError("the model declined or returned no review")
         return response.output_parsed.to_result()

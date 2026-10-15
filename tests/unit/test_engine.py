@@ -6,7 +6,7 @@ import httpx2
 import openai
 import pytest
 
-from bylaw.engine import ReviewError, make_reviewer
+from bylaw.engine import ReviewError, api_key_for, make_reviewer
 from bylaw.engine_anthropic import AnthropicReviewer
 from bylaw.engine_openai import OpenAIReviewer
 
@@ -162,3 +162,52 @@ def test_openai_needs_a_model_name() -> None:
 def test_an_unknown_provider_is_a_review_error() -> None:
     with pytest.raises(ReviewError, match="provider"):
         make_reviewer("acme", None, "high", SECRET)
+
+
+def test_an_openai_error_names_the_status_and_type_but_not_the_message() -> None:
+    def handler(_request: httpx2.Request) -> httpx2.Response:
+        error = {
+            "message": "Incorrect API key provided: sk-ant-a***wxyz",
+            "type": "invalid_request_error",
+            "code": "invalid_api_key",
+        }
+        return httpx2.Response(401, json={"error": error})
+
+    client = openai.DefaultHttpxClient(transport=httpx2.MockTransport(handler))
+    reviewer = OpenAIReviewer(model="gpt-test", effort=None, api_key=SECRET, http_client=client)
+
+    with pytest.raises(ReviewError) as error:
+        reviewer.review("s", "u")
+
+    assert str(error.value) == "OpenAI API returned 401 (invalid_api_key)"
+
+
+def test_an_anthropic_error_names_the_status_and_type_only() -> None:
+    body = {"type": "error", "error": {"type": "authentication_error", "message": "invalid x-api-key"}}
+    reviewer = _anthropic(lambda _request: httpx2.Response(401, json=body))
+
+    with pytest.raises(ReviewError) as error:
+        reviewer.review("s", "u")
+
+    assert str(error.value) == "Anthropic API returned 401 (authentication_error)"
+
+
+def test_any_other_sdk_failure_is_a_review_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    reviewer = _anthropic(lambda _request: httpx2.Response(500))
+
+    def boom(**_kwargs: object) -> None:
+        raise ValueError("expected time exceeds the non-streaming limit")
+
+    monkeypatch.setattr(reviewer._client.beta.messages, "create", boom)
+
+    with pytest.raises(ReviewError, match="rejected the request"):
+        reviewer.review("s", "u")
+
+
+def test_the_provider_key_wins_over_the_shared_one(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("BYLAW_API_KEY", "shared")
+    monkeypatch.setenv("OPENAI_API_KEY", "openai-own")
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+
+    assert api_key_for("openai") == "openai-own"
+    assert api_key_for("anthropic") == "shared"
