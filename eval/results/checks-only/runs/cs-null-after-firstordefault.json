@@ -1,0 +1,14 @@
+{
+  "case_id": "cs-null-after-firstordefault",
+  "result": {
+    "findings": [],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 0,
+  "seconds": 0.005743400019127876,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null
+}

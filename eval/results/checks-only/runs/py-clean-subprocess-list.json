@@ -1,0 +1,14 @@
+{
+  "case_id": "py-clean-subprocess-list",
+  "result": {
+    "findings": [],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 0,
+  "seconds": 0.005720799992559478,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null
+}

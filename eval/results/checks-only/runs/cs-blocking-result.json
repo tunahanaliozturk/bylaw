@@ -1,0 +1,14 @@
+{
+  "case_id": "cs-blocking-result",
+  "result": {
+    "findings": [],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 0,
+  "seconds": 0.007366899983026087,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null
+}

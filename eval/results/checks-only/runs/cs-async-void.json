@@ -1,0 +1,14 @@
+{
+  "case_id": "cs-async-void",
+  "result": {
+    "findings": [],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 0,
+  "seconds": 0.018885299999965355,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null
+}

@@ -1,0 +1,14 @@
+{
+  "case_id": "ts-req-quantity-range",
+  "result": {
+    "findings": [],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 0,
+  "seconds": 0.006376000004820526,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null
+}
