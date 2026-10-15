@@ -134,10 +134,13 @@ cannot drift apart.
   code with its own lock file ([ADR 0009](adr/0009-action-runs-from-its-own-source.md)). Inputs:
   `api-key`, `provider`, `model`, `effort`, `fail-on`, `github-token`. Without a key it runs the
   deterministic checks only. Listed on the GitHub Marketplace and versioned by tags (`v1`, `v1.2.0`).
-- **Claude Code plugin.** `.claude-plugin/plugin.json` and `marketplace.json` in the same repository, with
-  `skills/bylaw-review/SKILL.md` and a `/bylaw-review [pr]` command.
-- **Codex.** The same `SKILL.md`, plus an `AGENTS.md` snippet. The exact install path is to be taken from
-  the Codex documentation at implementation time.
+- **Claude Code plugin.** `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` (plugin source
+  `.`), with `skills/bylaw-review/SKILL.md` and a `/bylaw-review` command. Install: `/plugin marketplace add
+  tunahanaliozturk/bylaw`, then `/plugin install bylaw@bylaw`.
+- **Codex.** The same skill, through `.codex-plugin/plugin.json` and `.agents/plugins/marketplace.json`.
+  Install: `codex plugin marketplace add tunahanaliozturk/bylaw`, then `/plugins`. The skill alone also
+  works from `~/.agents/skills/`. The host model reviews in both hosts; bylaw supplies the context, the
+  output schema (`bylaw schema`), the validation and the comments ([docs/hosts.md](hosts.md)).
 - **PyPI** release through trusted publishing; no stored token.
 
 ### Fork pull requests
