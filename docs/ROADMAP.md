@@ -65,3 +65,17 @@ Known gaps from reviews, small and not yet scheduled:
 - An invalid glob such as `[z-a]` in a base `.editorconfig` ends the run with a traceback.
 - The note about skipped lock, vendored and generated files gives a count, not the paths.
 - Nothing says so when GitHub's 3000-file listing cap cuts a pull request short.
+- If posting fails partway, the summary's saved state can disagree with the comments already posted.
+- Two findings on identical lines in one file share a fingerprint, so one can hide the other.
+- `bylaw post --dry-run` previews with the default config, not the base branch's `.bylaw.toml`.
+- Thread replies past the first 50 are not read, so a late mute or resolve can be missed.
+- The Anthropic call caps output at 20,000 tokens and does not stream.
+- The prompt budget counts characters, not tokens.
+- With the `pull_request_target` recipe, adding or removing a label re-runs the review.
+- Acceptance criteria are only read from checklists and headed sections; prose requirements are not inferred.
+- `/bylaw-review` reads `post` as a base branch name, does not accept `#12` or a PR URL, takes `owner/name`
+  from `origin` (wrong on a fork) and defaults to `main` even on `master` repositories.
+- `--base` reviews committed changes only, and the skill does not tell the user so.
+- In `--pr` mode the skill may open local files that differ from the pull request's head.
+- The Codex manifest's default prompt names pull request 12, and a public Codex listing needs fields it
+  does not have yet (`websiteURL`, `privacyPolicyURL`, `logo`, `composerIcon`).
