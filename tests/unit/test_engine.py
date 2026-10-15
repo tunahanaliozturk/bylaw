@@ -245,3 +245,24 @@ def test_openai_reports_the_tokens_it_used() -> None:
     reviewer.review("system text", "user text")
 
     assert reviewer.last_usage == Usage(input_tokens=900, output_tokens=250)
+
+
+def test_usage_from_an_earlier_review_is_not_reported_again() -> None:
+    with_usage = _response(json.dumps(REVIEW))
+    with_usage["usage"] = {
+        "input_tokens": 900,
+        "input_tokens_details": {"cached_tokens": 0},
+        "output_tokens": 250,
+        "output_tokens_details": {"reasoning_tokens": 100},
+        "total_tokens": 1150,
+    }
+    replies = iter([with_usage, _response(json.dumps(REVIEW))])
+    client = openai.DefaultHttpxClient(
+        transport=httpx2.MockTransport(lambda _: httpx2.Response(200, json=next(replies)))
+    )
+    reviewer = OpenAIReviewer(model="gpt-test", effort=None, api_key=SECRET, http_client=client)
+
+    reviewer.review("system text", "user text")
+    reviewer.review("system text", "user text")
+
+    assert reviewer.last_usage is None

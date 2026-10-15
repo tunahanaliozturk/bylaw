@@ -18,8 +18,11 @@
   },
   "dropped": [],
   "model_findings": 0,
-  "seconds": 0.0075505000131670386,
+  "seconds": null,
   "input_tokens": null,
   "output_tokens": null,
-  "error": null
+  "error": null,
+  "reviewer": "no-model",
+  "case_digest": "1a03ff51db7142ebc8ecbdc476d325a8b4d79d8c533c95da07b3c214678b71f6",
+  "dropped_findings": 0
 }

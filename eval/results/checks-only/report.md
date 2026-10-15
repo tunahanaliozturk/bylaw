@@ -2,6 +2,9 @@
 
 50 cases. Matching rules: docs/eval/README.md.
 
+False alarms count findings on clean pull requests and outside the code a case adds; remarks on
+planted code that are not the planted defect are listed separately, not counted.
+
 | Category | Hits | False alarms | Misses | Precision | Recall |
 | --- | --- | --- | --- | --- | --- |
 | security | 0 | 0 | 10 | n/a | 0% |
@@ -13,9 +16,9 @@
 - Clean pull requests with an inline comment (medium or above): 0 of 9.
 - Model findings the validator dropped: 0 of 0.
 - Duplicate findings: 0.
+- Other remarks on planted code, not scored: 0 (0 at medium or above).
 - Acceptance criteria judged correctly: 0 of 21.
 - Scope creep found: 0 of 4, with 0 extra.
-- Latency: 0.0 s median, 0.0 s p90.
 
 ## Misses
 

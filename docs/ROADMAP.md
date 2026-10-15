@@ -80,3 +80,12 @@ Known gaps from reviews, small and not yet scheduled:
 - In `--pr` mode the skill may open local files that differ from the pull request's head.
 - The Codex manifest's default prompt names pull request 12, and a public Codex listing needs fields it
   does not have yet (`websiteURL`, `privacyPolicyURL`, `logo`, `composerIcon`).
+- Evaluation: a failed paid attempt (refusal, truncated output) is billed but its tokens are not recorded.
+- `bylaw eval run` exits 0 when some cases failed, does not mention `BYLAW_API_KEY` when no key is set,
+  and starts all 50 cases without showing the count first.
+- An evaluation case directory without `case.toml` is skipped silently, and nothing checks that a case's
+  kind matches its labels.
+- Rule findings in the evaluation are matched by place and category, not by the rule line they cite.
+- `cs-async-void` accepts only the declaration, not the fire-and-forget call, as the place of the defect.
+- Throwaway evaluation repositories run the user's global git hooks; a failing hook ends the run with a
+  traceback.

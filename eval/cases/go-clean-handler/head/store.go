@@ -48,7 +48,7 @@ func (s *Store) List(ctx context.Context, limit int) ([]Widget, error) {
 		return nil, fmt.Errorf("list widgets: %w", err)
 	}
 	defer rows.Close()
-	var found []Widget
+	found := []Widget{}
 	for rows.Next() {
 		var w Widget
 		if err := rows.Scan(&w.ID, &w.Name); err != nil {

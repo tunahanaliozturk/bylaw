@@ -1,0 +1,17 @@
+{
+  "case_id": "py-clean-contained-path",
+  "result": {
+    "findings": [],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 0,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "no-model",
+  "case_digest": "0ce913d7ea7e2bd68d521b851f70dae8249d1cd62745a20bc350dca59bcafcc4",
+  "dropped_findings": 0
+}

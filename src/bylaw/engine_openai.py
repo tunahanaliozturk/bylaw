@@ -25,6 +25,7 @@ class OpenAIReviewer:
         self.last_usage: Usage | None = None
 
     def review(self, system: str, user: str) -> ReviewResult:
+        self.last_usage = None
         reasoning = cast(Reasoning, {"effort": self._effort}) if self._effort else openai.omit
         try:
             response = self._client.responses.parse(
