@@ -1,0 +1,18 @@
+{
+  "name": "bylaw",
+  "version": "0.0.1",
+  "description": "Review pull requests against your repository's own rules and the requirements they claim to implement.",
+  "author": { "name": "Tunahan Ali Ozturk" },
+  "repository": "https://github.com/tunahanaliozturk/bylaw",
+  "license": "MIT",
+  "keywords": ["code-review", "pull-requests", "editorconfig", "requirements", "github"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "bylaw",
+    "shortDescription": "Review a PR against the repository's own rules and linked requirements.",
+    "developerName": "Tunahan Ali Ozturk",
+    "category": "Coding",
+    "capabilities": ["Review"],
+    "defaultPrompt": ["Review this branch with bylaw.", "Review pull request 12 with bylaw."]
+  }
+}

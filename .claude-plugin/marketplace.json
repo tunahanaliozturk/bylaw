@@ -1,0 +1,14 @@
+{
+  "name": "bylaw",
+  "owner": {
+    "name": "Tunahan Ali Ozturk"
+  },
+  "description": "bylaw: pull request review against your repository's own rules and linked requirements.",
+  "plugins": [
+    {
+      "name": "bylaw",
+      "source": ".",
+      "description": "Review pull requests against your repository's own rules and the requirements they claim to implement."
+    }
+  ]
+}
