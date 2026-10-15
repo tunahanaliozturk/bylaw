@@ -4,6 +4,7 @@ import argparse
 import json
 import os
 import sys
+import tempfile
 from collections.abc import Sequence
 from importlib.metadata import version
 from pathlib import Path
@@ -13,6 +14,10 @@ from pydantic import BaseModel
 from bylaw.config import Config, ConfigError, load_config
 from bylaw.context import build_context
 from bylaw.engine import PROVIDERS, OutReview, ReviewError, api_key_for, make_reviewer
+from bylaw.evaluation.cases import load_cases
+from bylaw.evaluation.report import render
+from bylaw.evaluation.run import AnswerReviewer, CaseRun, NoModel, prepare, run_all
+from bylaw.evaluation.score import score
 from bylaw.github import GitHubClient, GitHubError, GitHubSource
 from bylaw.local_git import LocalGitSource
 from bylaw.model import Finding, ReviewContext, ReviewResult, Severity
@@ -72,7 +77,31 @@ def _parser() -> argparse.ArgumentParser:
         default="none",
         help="exit 1 when a finding at or above this severity remains",
     )
+    _add_eval(commands.add_parser("eval", help="review the labelled evaluation set and score the result"))
     return parser
+
+
+def _add_eval(evaluation: argparse.ArgumentParser) -> None:
+    steps = evaluation.add_subparsers(dest="eval_command", required=True)
+    ready = steps.add_parser("prepare", help="write each case's context and brief for a host model")
+    go = steps.add_parser("run", help="review every case and save the results")
+    mark = steps.add_parser("score", help="score saved results against the labels")
+    for step in (ready, go, mark):
+        step.add_argument("--set", default="eval", help="evaluation set directory (default: eval)")
+        step.add_argument("--only", default="", help="only cases whose id starts with this")
+    ready.add_argument("--out", required=True, help="directory for <id>.context.json and <id>.brief.txt")
+    go.add_argument("--out", required=True, help="directory for one result file per case; reruns resume")
+    answer = go.add_mutually_exclusive_group(required=True)
+    answer.add_argument("--answers", help="directory of <id>.json results a host model wrote")
+    answer.add_argument("--no-model", action="store_true", help="bylaw's own checks only, no reviewer")
+    answer.add_argument("--provider", choices=PROVIDERS)
+    go.add_argument("--model", help="model name; defaults to claude-opus-5-5 for anthropic")
+    go.add_argument("--effort", help="reasoning effort passed to the model")
+    mark.add_argument("--runs", required=True, help="directory `bylaw eval run` wrote")
+    mark.add_argument("--label", required=True, help="model or host and date, for the report title")
+    mark.add_argument("--input-price", type=float, help="USD per million input tokens")
+    mark.add_argument("--output-price", type=float, help="USD per million output tokens")
+    mark.add_argument("--output", help="write the report here instead of standard output")
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -93,11 +122,47 @@ def main(argv: Sequence[str] | None = None) -> int:
             if left_out:
                 _say(f"Left out of the review for size: {', '.join(left_out)}.")
             _write(f"{system_prompt()}\n---\n{text}", args.output)
+        elif args.command == "eval":
+            return _eval(args)
         else:
             _post(args)
-    except (SourceError, GitHubError, ConfigError, OSError, ValueError) as error:
+    except (SourceError, GitHubError, ConfigError, OSError, ValueError, ReviewError) as error:
         _say(str(error))
         return 2
+    return 0
+
+
+def _eval(args: argparse.Namespace) -> int:
+    root = Path(args.set)
+    cases = tuple(c for c in load_cases(root) if c.id.startswith(args.only))
+    if args.eval_command == "score":
+        saved = [
+            CaseRun.model_validate_json(p.read_text(encoding="utf-8")) for p in Path(args.runs).glob("*.json")
+        ]
+        prices = {"input_price": args.input_price, "output_price": args.output_price}
+        _write(render(score(cases, saved), args.label, **prices).rstrip("\n"), args.output)
+        return 0
+    with tempfile.TemporaryDirectory() as work:
+        if args.eval_command == "prepare":
+            prepare(root, cases, Path(args.out), Path(work))
+            return 0
+        if args.no_model:
+            run_all(root, cases, lambda _: NoModel(), Path(args.out), Path(work))
+            return 0
+        if args.answers:
+            answers = Path(args.answers)
+            run_all(
+                root, cases, lambda c: AnswerReviewer(answers / f"{c.id}.json"), Path(args.out), Path(work)
+            )
+            return 0
+        key = api_key_for(args.provider)
+        if key is None:
+            variable = {"anthropic": "ANTHROPIC_API_KEY", "openai": "OPENAI_API_KEY"}[args.provider]
+            _say(f"eval run needs {variable}; it calls the model once per case")
+            return 2
+        reviewer = make_reviewer(args.provider, args.model, args.effort, key)
+        runs = run_all(root, cases, lambda _: reviewer, Path(args.out), Path(work))
+        _say(f"reviewed {len(runs)} case(s); {sum(r.error is not None for r in runs)} failed.")
     return 0
 
 
