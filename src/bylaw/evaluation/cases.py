@@ -76,7 +76,8 @@ def build_case_context(root: Path, case: Case, work: Path) -> ReviewContext:
     _git(repo, "checkout", "-q", "-b", "change")
     head = root / "cases" / case.id / "head"
     if head.is_dir():
-        shutil.copytree(head, repo, dirs_exist_ok=True)
+        # shutil.copy, not copy2: a kept mtime older than git's index hides a same-size edit from `git add`.
+        shutil.copytree(head, repo, dirs_exist_ok=True, copy_function=shutil.copy)
     for path in case.remove:
         (repo / path).unlink()
     _git(repo, "add", "-A")
