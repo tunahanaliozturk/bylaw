@@ -48,6 +48,7 @@ class OutLocation(_Strict):
 
 class OutCriterion(_Strict):
     criterion: str
+    text: str | None
     status: CriterionStatus
     code: list[OutLocation]
     tests: list[OutLocation]

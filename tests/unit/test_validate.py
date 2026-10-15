@@ -155,3 +155,51 @@ def test_a_range_must_be_added_lines_all_the_way_through() -> None:
 
     assert kept.dropped == ()
     assert split.dropped == ("app.py:10 security: lines are not added by this change",)
+
+
+PROSE = CONTEXT.model_copy(
+    update={
+        "requirements": (
+            *CONTEXT.requirements,
+            Requirement(source="issue#7", title="Lockout", text="Lock accounts after failures.", criteria=()),
+        )
+    }
+)
+
+
+def _inferred(key: str = "issue#7/IC-1", text: str | None = "Locks after five failures") -> CriterionResult:
+    return CriterionResult(criterion=key, status=CriterionStatus.MISSING, text=text)
+
+
+def test_an_inferred_criterion_is_kept_for_a_requirement_without_criteria() -> None:
+    checked = validate(PROSE, ReviewResult(criteria=(_inferred(),)))
+
+    assert [c.criterion for c in checked.result.criteria] == ["issue#7/IC-1"]
+    assert checked.dropped == ()
+
+
+def test_an_inferred_criterion_is_dropped_where_criteria_are_listed() -> None:
+    checked = validate(PROSE, ReviewResult(criteria=(_inferred("issue#1/IC-1"),)))
+
+    assert checked.result.criteria == ()
+    assert checked.dropped == ("issue#1/IC-1: no such acceptance criterion",)
+
+
+def test_an_inferred_criterion_without_text_is_dropped() -> None:
+    checked = validate(PROSE, ReviewResult(criteria=(_inferred(text=None),)))
+
+    assert checked.dropped == ("issue#7/IC-1: inferred criterion needs text",)
+
+
+def test_more_than_five_inferred_criteria_are_dropped() -> None:
+    checked = validate(PROSE, ReviewResult(criteria=(_inferred("issue#7/IC-6"),)))
+
+    assert checked.dropped == ("issue#7/IC-6: no such acceptance criterion",)
+
+
+def test_a_requirement_finding_may_cite_an_inferred_criterion() -> None:
+    finding = _finding(category=Category.REQUIREMENT, evidence="issue#7/IC-1")
+
+    checked = validate(PROSE, ReviewResult(findings=(finding,), criteria=(_inferred(),)))
+
+    assert checked.result.findings == (finding,)
