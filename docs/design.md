@@ -96,7 +96,8 @@ GitHub issues and Markdown files in the repository ([ADR 0003](adr/0003-requirem
 
 - **Issues:** closing keywords (`Closes`, `Fixes`, `Resolves`, with `#n` or `owner/repo#n`) in the PR
   body and commit messages, plus GraphQL `closingIssuesReferences`. Issue body only; comments are left
-  out in v1.
+  out in v1. Only the pull request's own repository and repositories listed under `issue_repos` are read
+  ([ADR 0007](adr/0007-issue-references-stay-in-the-repository.md)).
 - **Spec files:** Markdown files linked from the PR body, plus changed files matching the spec glob
   (default `docs/specs/**`, `docs/adr/**`, `**/REQUIREMENTS.md`).
 

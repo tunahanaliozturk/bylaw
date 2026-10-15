@@ -2,7 +2,9 @@
 
 import tomllib
 
-from pydantic import BaseModel, ConfigDict, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
+
+from bylaw.model import Severity
 
 
 class ConfigError(Exception):
@@ -13,6 +15,9 @@ class Config(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     spec_globs: tuple[str, ...] = ("docs/specs/**", "docs/adr/**", "**/REQUIREMENTS.md")
+    severity_threshold: Severity = Severity.MEDIUM
+    max_comments: int = Field(default=15, ge=0, le=50)
+    issue_repos: tuple[str, ...] = ()
 
 
 def load_config(text: str | None) -> Config:

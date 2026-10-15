@@ -78,3 +78,9 @@ def test_gitattributes_patterns_without_a_slash_match_at_any_depth() -> None:
 def test_an_invalid_config_names_the_file() -> None:
     with pytest.raises(ConfigError, match=r"\.bylaw\.toml"):
         load_config("unknown_key = 1\n")
+
+
+def test_config_defaults_match_the_design() -> None:
+    config = load_config(None)
+
+    assert (config.severity_threshold, config.max_comments, config.issue_repos) == ("medium", 15, ())
