@@ -7,7 +7,7 @@ Each milestone ends with something a user can run. Design: [design.md](design.md
 
 - Design document and ADRs 0001 to 0006.
 
-## M1: context without a model
+## M1: context without a model (done, 2026-10-15)
 
 - Python package skeleton, CI gates (lint, strict typing, tests, licence audit).
 - `bylaw context` for a GitHub pull request and for a local branch (`--base main`).
