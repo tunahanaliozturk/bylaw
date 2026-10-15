@@ -54,14 +54,14 @@ def parse_unified_diff(text: str) -> tuple[ChangedFile, ...]:
             elif line.startswith("deleted file mode"):
                 status = "removed"
             elif line.startswith("rename from "):
-                old_path = line.removeprefix("rename from ")
+                old_path = _path(line.removeprefix("rename from "), "")
                 status = "renamed"
             elif line.startswith("rename to "):
-                new_path = line.removeprefix("rename to ")
-            elif line.startswith("--- a/"):
-                old_path = line.removeprefix("--- a/")
-            elif line.startswith("+++ b/"):
-                new_path = line.removeprefix("+++ b/")
+                new_path = _path(line.removeprefix("rename to "), "")
+            elif line.startswith("--- ") and _path(line[4:], "") != "/dev/null":
+                old_path = _path(line[4:], "a/")
+            elif line.startswith("+++ ") and _path(line[4:], "") != "/dev/null":
+                new_path = _path(line[4:], "b/")
             elif line.startswith("Binary files"):
                 binary = True
         path = old_path if status == "removed" else new_path
@@ -79,3 +79,13 @@ def parse_unified_diff(text: str) -> tuple[ChangedFile, ...]:
             )
         )
     return tuple(files)
+
+
+def _path(raw: str, prefix: str) -> str:
+    """Undo what git does to a path in a header: a trailing tab when it has a space, C quoting otherwise."""
+    path = raw.removesuffix("\t")
+    if len(path) > 1 and path.startswith('"') and path.endswith('"'):
+        # Escapes are octal UTF-8 bytes or C escapes; decode them as bytes, then the bytes as UTF-8.
+        escaped = path[1:-1].encode("utf-8").decode("unicode_escape")
+        path = escaped.encode("latin-1").decode("utf-8", errors="replace")
+    return path.removeprefix(prefix)

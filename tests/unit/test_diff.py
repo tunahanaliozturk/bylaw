@@ -95,3 +95,32 @@ def test_a_git_diff_yields_status_paths_and_added_lines_per_file() -> None:
         ("new name.py", "renamed", "old name.py", [1], False),
         ("logo.png", "added", None, [], True),
     ]
+
+
+def test_paths_with_spaces_lose_the_tab_git_appends() -> None:
+    diff = (
+        "diff --git a/sp ace.py b/sp ace.py\n"
+        "index 1111111..2222222 100644\n"
+        "--- a/sp ace.py\t\n"
+        "+++ b/sp ace.py\t\n"
+        "@@ -1 +1 @@\n"
+        "-x\n"
+        "+y\n"
+    )
+
+    assert [f.path for f in parse_unified_diff(diff)] == ["sp ace.py"]
+
+
+def test_c_quoted_paths_are_unquoted() -> None:
+    # git writes a backslash in a path as "\\" inside a C-quoted name.
+    diff = (
+        r'diff --git "a/back\\slash.py" "b/back\\slash.py"' + "\n"
+        "index 1111111..2222222 100644\n"
+        r'--- "a/back\\slash.py"' + "\n"
+        r'+++ "b/back\\slash.py"' + "\n"
+        "@@ -1 +1 @@\n"
+        "-x\n"
+        "+y\n"
+    )
+
+    assert [f.path for f in parse_unified_diff(diff)] == [r"back\slash.py"]

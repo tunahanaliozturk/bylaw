@@ -27,8 +27,19 @@ class LocalGitSource:
         return ChangeInfo(self._base, self._head, title="", body="", commit_messages=messages)
 
     def changed_files(self) -> tuple[ChangedFile, ...]:
+        # Explicit prefixes: a user's diff.noprefix or diff.mnemonicPrefix setting would otherwise change
+        # the headers the parser reads.
         diff = self._git(
-            "-c", "core.quotePath=false", "diff", "--no-color", "--no-ext-diff", "-M", self._base, self._head
+            "-c",
+            "core.quotePath=false",
+            "diff",
+            "--no-color",
+            "--no-ext-diff",
+            "--src-prefix=a/",
+            "--dst-prefix=b/",
+            "-M",
+            self._base,
+            self._head,
         )
         return parse_unified_diff(diff)
 
