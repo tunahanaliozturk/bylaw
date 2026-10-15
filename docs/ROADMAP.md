@@ -17,7 +17,7 @@ Each milestone ends with something a user can run. Design: [design.md](design.md
 - Exit: `bylaw context --pr N` prints a `ReviewContext` JSON for a real pull request, and the
   `.editorconfig` findings are correct without any LLM call.
 
-## M2: findings, validator, comments
+## M2: findings, validator, comments (done, 2026-10-15)
 
 - `Finding` schema, `bylaw validate`, `bylaw post`.
 - Summary comment with hidden marker and state, inline comments with fingerprints, re-run behaviour.
@@ -57,3 +57,10 @@ Ideas, not commitments:
 - Incremental review of only the new commits, to cut cost on long pull requests.
 - An MCP server wrapping the CLI.
 - A GitHub App for organisations that do not want to manage workflow files.
+
+Known gaps from reviews, small and not yet scheduled:
+
+- Renamed-only, mode-only and empty files get the "binary or too large" note.
+- An invalid glob such as `[z-a]` in a base `.editorconfig` ends the run with a traceback.
+- The note about skipped lock, vendored and generated files gives a count, not the paths.
+- Nothing says so when GitHub's 3000-file listing cap cuts a pull request short.
