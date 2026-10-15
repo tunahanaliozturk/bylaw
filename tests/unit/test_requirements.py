@@ -107,7 +107,7 @@ def test_requirements_come_from_issues_and_specs_with_notes_for_gaps() -> None:
     assert notes == (
         "Could not read issue#99; it is left out of the requirement check.",
         "Linked spec docs/specs/missing.md does not exist at the head commit.",
-        "docs/specs/login.md has no structured acceptance criteria.",
+        "docs/specs/login.md has no structured acceptance criteria; a reviewer infers them from the text.",
     )
 
 

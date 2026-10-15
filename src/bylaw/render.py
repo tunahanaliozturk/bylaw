@@ -106,15 +106,27 @@ def _requirements(context: ReviewContext, result: ReviewResult) -> str:
     results = {item.criterion: item for item in result.criteria}
     rows = ["| Criterion | Status | Code | Tests |", "| --- | --- | --- | --- |"]
     for requirement in context.requirements:
-        for criterion in requirement.criteria:
-            key = f"{requirement.source}/{criterion.key}"
+        listed = [(f"{requirement.source}/{c.key}", _cell(c.text)) for c in requirement.criteria]
+        if not listed:
+            # ADR 0011: a prose requirement's criteria come from the reviewer, marked as inferred.
+            prefix = f"{requirement.source}/IC-"
+            inferred = sorted(
+                (item for key, item in results.items() if key.startswith(prefix)),
+                key=lambda item: int(item.criterion.removeprefix(prefix)),
+            )
+            listed = [(item.criterion, f"{_cell(item.text or '')} (inferred)") for item in inferred]
+        if not listed:
+            rows.append(
+                f"| {_code(requirement.source)} {_cell(requirement.title)} | no criteria listed |  |  |"
+            )
+        for key, text in listed:
             item: CriterionResult | None = results.get(key)
             status = item.status.value if item else "not assessed"
             if item and item.note:
                 status = f"{status}: {_cell(item.note)}"
             code = _locations(item.code) if item else ""
             tests = _locations(item.tests) if item else ""
-            rows.append(f"| {_code(key)} {_cell(criterion.text)} | {status} | {code} | {tests} |")
+            rows.append(f"| {_code(key)} {text} | {status} | {code} | {tests} |")
     return "### Requirements\n\n" + "\n".join(rows)
 
 

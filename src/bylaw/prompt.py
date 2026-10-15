@@ -58,11 +58,12 @@ def _rule(rule: RuleSource) -> str:
 
 def _requirement(requirement: Requirement) -> str:
     criteria = "\n".join(f"- {requirement.source}/{c.key}: {c.text}" for c in requirement.criteria)
-    return (
-        f"{requirement.source}: {requirement.title}\n"
-        f"Criteria:\n{criteria or '- (none listed)'}\n"
-        f"Text:\n{requirement.text}"
-    )
+    if not criteria:
+        criteria = (
+            f"- none listed. Derive up to 5 testable criteria from the text and label them "
+            f"{requirement.source}/IC-1 to {requirement.source}/IC-5."
+        )
+    return f"{requirement.source}: {requirement.title}\nCriteria:\n{criteria}\nText:\n{requirement.text}"
 
 
 def _known(finding: Finding) -> str:
