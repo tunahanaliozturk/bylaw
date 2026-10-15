@@ -463,6 +463,7 @@ class GitHubSource:
                     added_lines=added,
                     missing_final_newline=missing,
                     patch_omitted=item.patch is None,
+                    patch=item.patch or "",
                 )
             )
         return tuple(files)

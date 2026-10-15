@@ -46,6 +46,7 @@ class ChangedFile(_Frozen):
     added_lines: tuple[AddedLine, ...] = ()
     missing_final_newline: bool = False
     patch_omitted: bool = False
+    patch: str = ""
 
 
 class RuleSource(_Frozen):

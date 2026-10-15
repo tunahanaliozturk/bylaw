@@ -76,6 +76,7 @@ def parse_unified_diff(text: str) -> tuple[ChangedFile, ...]:
                 added_lines=added,
                 missing_final_newline=missing,
                 patch_omitted=binary,
+                patch="@@" + body if marker else "",
             )
         )
     return tuple(files)
@@ -89,3 +90,23 @@ def _path(raw: str, prefix: str) -> str:
         escaped = path[1:-1].encode("utf-8").decode("unicode_escape")
         path = escaped.encode("latin-1").decode("utf-8", errors="replace")
     return path.removeprefix(prefix)
+
+
+def numbered_patch(patch: str) -> str:
+    """The patch with new-file line numbers, so a reviewer can cite exactly the lines it may comment on."""
+    out: list[str] = []
+    new_line = 0
+    for raw in patch.split("\n"):
+        line = raw.removesuffix("\r")
+        if hunk := _HUNK.match(line):
+            new_line = int(hunk.group(1))
+            out.append(line)
+        elif line.startswith("+"):
+            out.append(f"{new_line:>5} + {line[1:]}")
+            new_line += 1
+        elif line.startswith("-"):
+            out.append(f"{'':>5} - {line[1:]}")
+        elif line.startswith(" "):
+            out.append(f"{new_line:>5}   {line[1:]}")
+            new_line += 1
+    return "\n".join(out)
