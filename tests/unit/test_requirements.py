@@ -130,3 +130,17 @@ def test_issues_in_other_repositories_need_an_allow_list() -> None:
         "otherorg/private#1 is in another repository; list it under issue_repos in .bylaw.toml to use it.",
     )
     assert [r.source for r in allowed] == ["otherorg/private#1"]
+
+
+def test_maintainer_comments_join_the_requirement_text_but_not_its_criteria() -> None:
+    linked = IssueRef("octo", "app", 7)
+    source = FakeSource(
+        commits=("Closes #7",),
+        issues={linked: Issue(linked, "Login", "- [ ] Email sign in", ("- [ ] Lock after five failures",))},
+    )
+
+    (requirement,), _ = collect_requirements(source, source.info(), (), (), ())
+
+    assert "## Comments from maintainers" in requirement.text
+    assert "Lock after five failures" in requirement.text
+    assert [c.text for c in requirement.criteria] == ["Email sign in"]

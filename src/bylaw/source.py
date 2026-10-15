@@ -37,6 +37,8 @@ class Issue:
     ref: IssueRef
     title: str
     body: str
+    # Trusted authors' comments, oldest first (ADR 0011).
+    comments: tuple[str, ...] = ()
 
 
 class RepoSource(Protocol):
