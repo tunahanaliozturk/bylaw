@@ -1,8 +1,10 @@
+import json
 import subprocess
 from pathlib import Path
 
 import pytest
 
+from bylaw.cli import main
 from bylaw.local_git import LocalGitSource
 from bylaw.source import SourceError
 
@@ -57,3 +59,15 @@ def test_commit_messages_keep_their_closing_keywords(repo: Path) -> None:
 def test_an_unknown_base_is_a_source_error(repo: Path) -> None:
     with pytest.raises(SourceError, match="nope"):
         LocalGitSource(repo, "nope")
+
+
+def test_the_cli_prints_utf8_json_for_a_local_branch(
+    repo: Path, capsysbinary: pytest.CaptureFixture[bytes]
+) -> None:
+    code = main(["context", "--base", "main", "--path", str(repo)])
+
+    output = capsysbinary.readouterr().out.decode("utf-8")
+    context = json.loads(output)
+    assert code == 0
+    assert "Öztürk" in output
+    assert [(f["file"], f["evidence"]) for f in context["findings"]] == [("app.py", ".editorconfig:3")]
