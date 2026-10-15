@@ -6,7 +6,7 @@ import httpx2
 import openai
 import pytest
 
-from bylaw.engine import ReviewError, api_key_for, make_reviewer
+from bylaw.engine import ReviewError, Usage, api_key_for, make_reviewer
 from bylaw.engine_anthropic import AnthropicReviewer
 from bylaw.engine_openai import OpenAIReviewer
 
@@ -211,3 +211,37 @@ def test_the_provider_key_wins_over_the_shared_one(monkeypatch: pytest.MonkeyPat
 
     assert api_key_for("openai") == "openai-own"
     assert api_key_for("anthropic") == "shared"
+
+
+def test_anthropic_reports_the_tokens_it_used_with_cache_counted_as_input() -> None:
+    message = _message(json.dumps(REVIEW))
+    message["usage"] = {
+        "input_tokens": 1200,
+        "output_tokens": 300,
+        "cache_read_input_tokens": 800,
+        "cache_creation_input_tokens": 0,
+    }
+    reviewer = _anthropic(lambda _: httpx2.Response(200, json=message))
+
+    reviewer.review("system text", "user text")
+
+    assert reviewer.last_usage == Usage(input_tokens=2000, output_tokens=300)
+
+
+def test_openai_reports_the_tokens_it_used() -> None:
+    response = _response(json.dumps(REVIEW))
+    response["usage"] = {
+        "input_tokens": 900,
+        "input_tokens_details": {"cached_tokens": 0},
+        "output_tokens": 250,
+        "output_tokens_details": {"reasoning_tokens": 100},
+        "total_tokens": 1150,
+    }
+    client = openai.DefaultHttpxClient(
+        transport=httpx2.MockTransport(lambda _: httpx2.Response(200, json=response))
+    )
+    reviewer = OpenAIReviewer(model="gpt-test", effort=None, api_key=SECRET, http_client=client)
+
+    reviewer.review("system text", "user text")
+
+    assert reviewer.last_usage == Usage(input_tokens=900, output_tokens=250)

@@ -1,6 +1,7 @@
 """The model-facing review schema and the provider-neutral reviewer interface (ADR 0001)."""
 
 import os
+from dataclasses import dataclass
 from typing import Protocol
 
 from pydantic import BaseModel, ConfigDict
@@ -13,6 +14,14 @@ _KEY_VARIABLES = {"anthropic": "ANTHROPIC_API_KEY", "openai": "OPENAI_API_KEY"}
 
 class ReviewError(Exception):
     """The model review did not produce a result. The message is safe to print and never holds a key."""
+
+
+@dataclass(frozen=True)
+class Usage:
+    """Tokens one review used. Cached input is counted as input, so a cost from it is an upper bound."""
+
+    input_tokens: int
+    output_tokens: int
 
 
 # Strict structured outputs want every field required and no defaults, so the model-facing schema is
