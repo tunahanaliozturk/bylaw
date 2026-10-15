@@ -48,6 +48,9 @@ Each milestone ends with something a user can run. Design: [design.md](design.md
 
 - README with real screenshots, architecture diagram, logo and social preview.
 - PyPI trusted publishing, Action tags, Marketplace listing.
+- On going public: a ruleset on `main` (pull request required, `checks` and `tests` green, linear
+  history, no force push or deletion), secret scanning with push protection, private vulnerability
+  reporting and CodeQL. GitHub offers these on private repositories only with a paid plan.
 - Exit: `uvx bylaw` and `uses: tunahanaliozturk/bylaw@v0` work from a clean machine.
 
 ## Later
