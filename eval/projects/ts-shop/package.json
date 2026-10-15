@@ -1,0 +1,17 @@
+{
+  "name": "shop",
+  "version": "2.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "test": "node --test --experimental-strip-types test/"
+  },
+  "dependencies": {
+    "express": "5.1.0"
+  },
+  "devDependencies": {
+    "@types/express": "5.0.3",
+    "typescript": "5.9.3"
+  }
+}
