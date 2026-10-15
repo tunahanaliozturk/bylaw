@@ -9,7 +9,7 @@ You do the reviewing; bylaw gathers the context, tells you the output rules, che
 
 ## Run bylaw
 
-Run every command below as `uvx --from git+https://github.com/tunahanaliozturk/bylaw bylaw <command>`. If `uvx` is missing, tell the user to install uv (`https://docs.astral.sh/uv/getting-started/installation/`) and stop. Write bylaw's files to a fresh temporary directory, never into the user's repository; below it is called `$TMP`.
+Run every command below as `uvx --from git+https://github.com/tunahanaliozturk/bylaw bylaw <command>`. If `uvx` is missing, tell the user to install uv (`https://docs.astral.sh/uv/getting-started/installation/`) and stop. Write bylaw's files to a fresh temporary directory, never into the user's repository; below it is called `$TMP`. In a sandbox where uv cannot write its own cache ("Could not acquire lock", "Access is denied"), set `UV_CACHE_DIR` to a folder inside `$TMP` for these commands.
 
 ## Steps
 

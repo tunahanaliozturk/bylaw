@@ -32,7 +32,7 @@ Each milestone ends with something a user can run. Design: [design.md](design.md
 - Exit: the Action reviews a demo pull request end to end without a key; the live model run on the
   demo repository happens at the end of the project.
 
-## M4: Claude Code plugin and Codex skill
+## M4: Claude Code plugin and Codex skill (done, 2026-10-15)
 
 - `SKILL.md`, `/bylaw-review` command, plugin and marketplace manifests.
 - Codex install path verified against the Codex documentation.
