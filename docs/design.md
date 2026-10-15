@@ -119,9 +119,10 @@ marked `inferred` and shown with lower confidence.
 - **Fingerprint.** Each inline comment carries a hash of file, category, rule and normalised code
   snippet, without the line number, so shifting code does not change it.
 - **Re-runs.** An existing fingerprint is not posted again. A fingerprint that disappeared means the issue
-  was fixed and its thread is resolved. A thread resolved by a person, or answered with `bylaw: ignore`,
-  is muted. This state lives as hidden JSON in the summary comment
-  ([ADR 0005](adr/0005-state-in-summary-comment.md)).
+  was fixed and bylaw resolves its thread; if the problem comes back, bylaw reopens it. A maintainer
+  mutes a finding by replying `bylaw: ignore`. Only comments from bots and from people with write access
+  count ([ADR 0008](adr/0008-trusted-authors-carry-state.md)). State lives as hidden JSON in the summary
+  comment ([ADR 0005](adr/0005-state-in-summary-comment.md)).
 
 ## Packaging
 

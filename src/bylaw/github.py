@@ -1,6 +1,7 @@
 """Reads a pull request through the GitHub REST and GraphQL APIs."""
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from functools import cached_property
 from http import HTTPStatus
 from typing import Self
@@ -11,6 +12,8 @@ from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 
 from bylaw.diff import parse_patch
 from bylaw.model import ChangedFile, FileStatus
+from bylaw.plan import Thread, ThreadComment
+from bylaw.render import SUMMARY_MARKER
 from bylaw.source import ChangeInfo, Issue, IssueRef
 
 _PAGE_SIZE = 100
@@ -106,6 +109,102 @@ class _GqlResponse(_Model):
 _PULL_FILES = TypeAdapter(list[PullFile])
 _COMMITS = TypeAdapter(list[_Commit])
 
+TRUSTED_ASSOCIATIONS = frozenset({"OWNER", "MEMBER", "COLLABORATOR"})
+_THREADS_QUERY = """
+query($owner: String!, $name: String!, $number: Int!, $after: String) {
+  repository(owner: $owner, name: $name) {
+    pullRequest(number: $number) {
+      reviewThreads(first: 100, after: $after) {
+        pageInfo { hasNextPage endCursor }
+        nodes {
+          id
+          isResolved
+          comments(first: 50) { nodes { body authorAssociation author { __typename } } }
+        }
+      }
+    }
+  }
+}
+"""
+_RESOLVE = "mutation($id: ID!) { resolveReviewThread(input: {threadId: $id}) { thread { id } } }"
+_UNRESOLVE = "mutation($id: ID!) { unresolveReviewThread(input: {threadId: $id}) { thread { id } } }"
+
+
+class _GqlAuthor(_Model):
+    typename: str = Field(alias="__typename")
+
+
+class _GqlComment(_Model):
+    body: str
+    author_association: str = Field(alias="authorAssociation")
+    author: _GqlAuthor | None = None
+
+
+class _GqlComments(_Model):
+    nodes: list[_GqlComment]
+
+
+class _GqlThread(_Model):
+    id: str
+    is_resolved: bool = Field(alias="isResolved")
+    comments: _GqlComments
+
+
+class _GqlPageInfo(_Model):
+    has_next_page: bool = Field(alias="hasNextPage")
+    end_cursor: str | None = Field(default=None, alias="endCursor")
+
+
+class _GqlThreads(_Model):
+    page_info: _GqlPageInfo = Field(alias="pageInfo")
+    nodes: list[_GqlThread]
+
+
+class _GqlThreadPull(_Model):
+    review_threads: _GqlThreads = Field(alias="reviewThreads")
+
+
+class _GqlThreadRepository(_Model):
+    pull_request: _GqlThreadPull | None = Field(default=None, alias="pullRequest")
+
+
+class _GqlThreadData(_Model):
+    repository: _GqlThreadRepository | None = None
+
+
+class _User(_Model):
+    kind: str = Field(default="User", alias="type")
+
+
+class _IssueComment(_Model):
+    id: int
+    body: str = ""
+    user: _User | None = None
+    author_association: str = "NONE"
+
+
+_ISSUE_COMMENTS = TypeAdapter(list[_IssueComment])
+
+
+@dataclass(frozen=True, slots=True)
+class SummaryComment:
+    id: int
+    body: str
+
+
+@dataclass(frozen=True, slots=True)
+class ReviewComment:
+    path: str
+    line: int
+    start_line: int
+    body: str
+
+    def payload(self) -> dict[str, object]:
+        data: dict[str, object] = {"path": self.path, "line": self.line, "side": "RIGHT", "body": self.body}
+        if self.start_line < self.line:
+            data |= {"start_line": self.start_line, "start_side": "RIGHT"}
+        return data
+
 
 class GitHubClient:
     def __init__(
@@ -197,6 +296,74 @@ class GitHubClient:
             refs.append(IssueRef(ref_owner, ref_name, node.number))
         return tuple(refs)
 
+    def review_threads(self, repo: str, number: int) -> list[Thread]:
+        owner, _, name = repo.partition("/")
+        threads: list[Thread] = []
+        after: str | None = None
+        while True:
+            variables = {"owner": owner, "name": name, "number": number, "after": after}
+            data = _GqlThreadData.model_validate(self._graphql(_THREADS_QUERY, variables))
+            pull = data.repository.pull_request if data.repository else None
+            if pull is None:
+                return threads
+            for node in pull.review_threads.nodes:
+                comments = tuple(
+                    ThreadComment(
+                        body=c.body,
+                        trusted=_trusted(c.author.typename if c.author else "", c.author_association),
+                    )
+                    for c in node.comments.nodes
+                )
+                threads.append(Thread(id=node.id, resolved=node.is_resolved, comments=comments))
+            if not pull.review_threads.page_info.has_next_page:
+                return threads
+            after = pull.review_threads.page_info.end_cursor
+
+    def summary_comment(self, repo: str, number: int) -> SummaryComment | None:
+        for page in range(1, _MAX_FILE_PAGES + 1):
+            params = {"per_page": _PAGE_SIZE, "page": page}
+            batch = _ISSUE_COMMENTS.validate_python(
+                self._get(f"/repos/{repo}/issues/{number}/comments", params).json()
+            )
+            for comment in batch:
+                kind = comment.user.kind if comment.user else ""
+                if SUMMARY_MARKER in comment.body and _trusted(kind, comment.author_association):
+                    return SummaryComment(id=comment.id, body=comment.body)
+            if len(batch) < _PAGE_SIZE:
+                return None
+        return None
+
+    def upsert_summary(self, repo: str, number: int, comment_id: int | None, body: str) -> None:
+        if comment_id is None:
+            url = f"{self._api_url}/repos/{repo}/issues/{number}/comments"
+            _raise_for_status(self._send("POST", url, json={"body": body}))
+        else:
+            url = f"{self._api_url}/repos/{repo}/issues/comments/{comment_id}"
+            _raise_for_status(self._send("PATCH", url, json={"body": body}))
+
+    def create_review(
+        self, repo: str, number: int, commit_id: str, body: str, comments: Sequence[ReviewComment]
+    ) -> None:
+        payload = {
+            "commit_id": commit_id,
+            "event": "COMMENT",
+            "body": body,
+            "comments": [comment.payload() for comment in comments],
+        }
+        url = f"{self._api_url}/repos/{repo}/pulls/{number}/reviews"
+        _raise_for_status(self._send("POST", url, json=payload))
+
+    def set_thread_resolved(self, thread_id: str, *, resolved: bool) -> None:
+        self._graphql(_RESOLVE if resolved else _UNRESOLVE, {"id": thread_id})
+
+    def _graphql(self, query: str, variables: Mapping[str, object]) -> object:
+        response = self._send("POST", self._graphql_url, json={"query": query, "variables": variables})
+        _raise_for_status(response)
+        body = response.json()
+        if isinstance(body, dict) and body.get("errors"):
+            raise GitHubError(f"GitHub GraphQL call failed: {body['errors'][0].get('message')}")
+        return body.get("data") if isinstance(body, dict) else None
+
     def _get(self, path: str, params: Params | None = None) -> httpx.Response:
         response = self._send("GET", f"{self._api_url}{path}", params=params)
         _raise_for_status(response)
@@ -242,6 +409,11 @@ def _raise_for_status(response: httpx.Response) -> None:
     raise GitHubError(
         f"GitHub returned {response.status_code} for {request.method} {request.url.path}: {message}"
     )
+
+
+def _trusted(kind: str, association: str) -> bool:
+    """ADR 0008: only bots and people with write access can carry bylaw's state or mute a finding."""
+    return kind == "Bot" or association in TRUSTED_ASSOCIATIONS
 
 
 class GitHubSource:
