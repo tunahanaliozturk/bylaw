@@ -98,7 +98,7 @@ def test_requirements_come_from_issues_and_specs_with_notes_for_gaps() -> None:
         head={"docs/specs/login.md": "# Login spec\nPlain prose only.\n"},
     )
 
-    requirements, notes = collect_requirements(source, source.info(), source.files, GLOBS)
+    requirements, notes = collect_requirements(source, source.info(), source.files, GLOBS, ())
 
     assert [(r.source, r.title, len(r.criteria)) for r in requirements] == [
         ("issue#12", "Login", 1),
@@ -113,3 +113,20 @@ def test_requirements_come_from_issues_and_specs_with_notes_for_gaps() -> None:
 
 def test_dot_segments_in_an_issue_reference_are_rejected() -> None:
     assert parse_issue_refs(["Fixes ../..#5", "Closes ./x#6", "fixes octo/..#7"], "octo/app") == ()
+
+
+def test_issues_in_other_repositories_need_an_allow_list() -> None:
+    other = IssueRef("otherorg", "private", 1)
+    source = FakeSource(
+        body="Fixes otherorg/private#1",
+        issues={other: Issue(other, "Secret", "- [ ] hidden criterion")},
+    )
+
+    blocked, notes = collect_requirements(source, source.info(), (), GLOBS, ())
+    allowed, _ = collect_requirements(source, source.info(), (), GLOBS, ("OtherOrg/Private",))
+
+    assert blocked == ()
+    assert notes == (
+        "otherorg/private#1 is in another repository; list it under issue_repos in .bylaw.toml to use it.",
+    )
+    assert [r.source for r in allowed] == ["otherorg/private#1"]

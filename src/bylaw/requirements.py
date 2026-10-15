@@ -100,12 +100,22 @@ def collect_requirements(
     info: ChangeInfo,
     changed: Sequence[ChangedFile],
     spec_globs: Sequence[str],
+    issue_repos: Sequence[str],
 ) -> tuple[tuple[Requirement, ...], tuple[str, ...]]:
     requirements: list[Requirement] = []
     notes: list[str] = []
+    allowed = {repo.lower() for repo in issue_repos}
+    if source.repo is not None:
+        allowed.add(source.repo.lower())
     keyword_refs = parse_issue_refs([info.body, *info.commit_messages], source.repo)
     for ref in dict.fromkeys([*source.closing_issue_refs(), *keyword_refs]):
         label = ref.label(source.repo)
+        if f"{ref.owner}/{ref.repo}" not in allowed:
+            # ADR 0007: issue text ends up in a public comment, so another repository needs an opt-in.
+            notes.append(
+                f"{label} is in another repository; list it under issue_repos in .bylaw.toml to use it."
+            )
+            continue
         issue = source.read_issue(ref)
         if issue is None:
             notes.append(f"Could not read {label}; it is left out of the requirement check.")

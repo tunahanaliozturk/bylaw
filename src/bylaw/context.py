@@ -85,7 +85,9 @@ def build_context(source: RepoSource) -> ReviewContext:
             "versions (ADR 0004)."
         )
 
-    requirements, requirement_notes = collect_requirements(source, info, files, config.spec_globs)
+    requirements, requirement_notes = collect_requirements(
+        source, info, files, config.spec_globs, config.issue_repos
+    )
     return ReviewContext(
         base_sha=info.base_sha,
         head_sha=info.head_sha,
