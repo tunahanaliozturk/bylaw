@@ -33,14 +33,15 @@ A `case.toml` names the project, the kind, the pull request title and commit mes
 ## Matching
 
 - A finding matches a label when the file is the same, its lines come within 2 lines of the label's lines, and its category is one the label accepts. Each label matches once.
-- A second finding that would have matched an already matched label is a duplicate: counted, not a false alarm.
-- A finding inside an `allowed` span is ignored.
-- Any other finding is a false alarm in its category. If it sits on an unmatched label with the wrong category, the label counts as located.
-- A label nothing matched is a miss in its first category.
+- A finding near an already matched label, in any category, is a duplicate: counted, not a false alarm.
+- A finding near an unmatched label but in a category the label does not accept leaves the label a miss, and the label counts as located: the reviewer found the defect and named it wrongly. It is not a false alarm.
+- A finding inside an `allowed` span is reported as another remark on planted code, not scored.
+- Any other finding is a false alarm in its category. So false alarms, and precision, come from clean pull requests and from code a case does not add; the report gives the number of other remarks next to them.
+- A label nothing matched is a miss in its first category. Each label is located at most once, whatever order the findings come in.
 - A clean case has an inline comment when a finding of medium severity or above remains after the rules above.
 - A criterion is right when the run's status is one of the accepted statuses.
 - Scope creep matches on file and line within 2 lines.
-- A case with no run, or whose run failed, is listed under errors and scored with what bylaw's own checks found.
+- A case with no run is listed under errors and scored as if nothing was found. A case whose review failed is listed under errors and scored with what bylaw's own checks found.
 
 Findings are scored after `bylaw validate`, together with bylaw's own `.editorconfig` findings: the score is for what would be posted, not for the raw model output. The report also gives how many model findings the validator dropped.
 
@@ -53,12 +54,12 @@ bylaw eval run --provider anthropic --only py-sqli --out runs/opus
 bylaw eval score --runs runs/opus --only py-sqli --label "claude-opus-5-5, 2026-10-15" --input-price <usd> --output-price <usd>
 ```
 
-Then run the whole set into the same directory. A rerun skips cases that already have a result and retries only the failed ones, so an interrupted run never pays twice.
+Then run the whole set into the same directory. A rerun skips cases that already have a result and retries only the failed ones, so an interrupted run never pays twice. Each saved result records the reviewer and a hash of the case: a rerun with another model into the same directory is refused, and a case whose files changed is reviewed again. `score --only` scores only the matching cases, tokens and latency included.
 
 Host models (Claude Code, Codex) review without an API key: `bylaw eval prepare --out host` writes `<id>.brief.txt` and `<id>.context.json` per case, the host writes `<id>.json` for each brief in the `bylaw schema` format, and `bylaw eval run --answers host --out runs/host` scores them like any other run.
 
 `bylaw eval run --no-model` gives the baseline of a repository without a model key: bylaw's own checks only.
 
-Prices are given on the command line, never stored in the code, because they change. Cost counts cached input as full input, so it is an upper bound.
+Prices are given on the command line, never stored in the code, because they change. Cost is per reviewed case and approximate: cached input is priced as plain input, and failed attempts are not counted. Latency is only reported for model runs; replayed host answers and `--no-model` have none.
 
 Committed results live in `eval/results/<name>/`: the per-case runs and `report.md`.

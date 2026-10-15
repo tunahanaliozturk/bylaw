@@ -15,6 +15,9 @@ def render(
         "",
         f"{score.cases} cases. Matching rules: docs/eval/README.md.",
         "",
+        "False alarms count findings on clean pull requests and outside the code a case adds; remarks on",
+        "planted code that are not the planted defect are listed separately, not counted.",
+        "",
         "| Category | Hits | False alarms | Misses | Precision | Recall |",
         "| --- | --- | --- | --- | --- | --- |",
     ]
@@ -30,6 +33,8 @@ def render(
         f"{score.clean_cases}.",
         f"- Model findings the validator dropped: {score.dropped} of {score.model_findings}.",
         f"- Duplicate findings: {score.duplicates}.",
+        f"- Other remarks on planted code, not scored: {score.ignored} ({score.ignored_inline} at medium "
+        "or above).",
         f"- Acceptance criteria judged correctly: {score.criteria_correct} of {score.criteria_total}.",
         f"- Scope creep found: {score.creep_found} of {score.creep_expected}, "
         f"with {score.creep_extra} extra.",
@@ -38,12 +43,15 @@ def render(
         p90 = f", {score.p90_seconds:.1f} s p90" if score.p90_seconds is not None else ""
         lines.append(f"- Latency: {score.median_seconds:.1f} s median{p90}.")
     if score.input_tokens is not None and score.output_tokens is not None:
-        lines.append(f"- Tokens: {score.input_tokens:,} in, {score.output_tokens:,} out.")
-        if input_price is not None and output_price is not None and score.cases:
+        lines.append(
+            f"- Tokens: {score.input_tokens:,} in, {score.output_tokens:,} out, over {score.usage_cases} "
+            "reviewed cases."
+        )
+        if input_price is not None and output_price is not None and score.usage_cases:
             cost = (score.input_tokens * input_price + score.output_tokens * output_price) / 1_000_000
             lines.append(
-                f"- Cost: ${cost / score.cases:.2f} per pull request at the given prices, an upper bound "
-                "because cached input is billed as full input."
+                f"- Cost: ${cost / score.usage_cases:.2f} per pull request at the given prices. Approximate: "
+                "cached input is priced as plain input, and failed attempts are not counted."
             )
     for title, items in (
         ("Errors", score.errors),

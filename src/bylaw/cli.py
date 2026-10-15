@@ -147,12 +147,16 @@ def _eval(args: argparse.Namespace) -> int:
             prepare(root, cases, Path(args.out), Path(work))
             return 0
         if args.no_model:
-            run_all(root, cases, lambda _: NoModel(), Path(args.out), Path(work))
+            run_all(root, cases, lambda _: NoModel(), Path(args.out), "no-model")
             return 0
         if args.answers:
             answers = Path(args.answers)
             run_all(
-                root, cases, lambda c: AnswerReviewer(answers / f"{c.id}.json"), Path(args.out), Path(work)
+                root,
+                cases,
+                lambda c: AnswerReviewer(answers / f"{c.id}.json"),
+                Path(args.out),
+                f"answers:{answers.resolve().name}",
             )
             return 0
         key = api_key_for(args.provider)
@@ -161,7 +165,8 @@ def _eval(args: argparse.Namespace) -> int:
             _say(f"eval run needs {variable}; it calls the model once per case")
             return 2
         reviewer = make_reviewer(args.provider, args.model, args.effort, key)
-        runs = run_all(root, cases, lambda _: reviewer, Path(args.out), Path(work))
+        identity = f"{args.provider}:{args.model or 'default model'}:{args.effort or 'default effort'}"
+        runs = run_all(root, cases, lambda _: reviewer, Path(args.out), identity)
         _say(f"reviewed {len(runs)} case(s); {sum(r.error is not None for r in runs)} failed.")
     return 0
 

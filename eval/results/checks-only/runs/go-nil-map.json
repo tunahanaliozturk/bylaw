@@ -7,8 +7,11 @@
   },
   "dropped": [],
   "model_findings": 0,
-  "seconds": 0.0031394999823533,
+  "seconds": null,
   "input_tokens": null,
   "output_tokens": null,
-  "error": null
+  "error": null,
+  "reviewer": "no-model",
+  "case_digest": "b76700484f7e1cc835c3834458fb37bd0e9735c02e5c1e32d729d2681c55531e",
+  "dropped_findings": 0
 }

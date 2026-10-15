@@ -40,6 +40,9 @@ class Score(_Frozen):
     categories: tuple[CategoryScore, ...]
     labelled: int
     located: int
+    # Findings on planted code that are neither the label nor a false alarm (allowed spans).
+    ignored: int
+    ignored_inline: int
     duplicates: int
     clean_cases: int
     clean_with_inline: int
@@ -52,6 +55,7 @@ class Score(_Frozen):
     creep_extra: int
     median_seconds: float | None
     p90_seconds: float | None
+    usage_cases: int
     input_tokens: int | None
     output_tokens: int | None
     errors: tuple[str, ...]
@@ -69,11 +73,14 @@ def _near(finding: Finding, span: Span) -> bool:
 
 
 def score(cases: Sequence[Case], runs: Sequence[CaseRun]) -> Score:  # noqa: PLR0912, PLR0915 - one pass, many counters
+    ids = {case.id for case in cases}
+    # Only the scored cases: a runs directory can hold a whole run while --only scores part of it.
+    runs = [run for run in runs if run.case_id in ids]
     by_id = {run.case_id: run for run in runs}
     tp: Counter[Category] = Counter()
     fp: Counter[Category] = Counter()
     fn: Counter[Category] = Counter()
-    located = duplicates = clean_cases = clean_with_inline = 0
+    located = duplicates = clean_cases = clean_with_inline = ignored = ignored_inline = 0
     criteria_total = criteria_correct = creep_expected = creep_found = creep_extra = 0
     errors: list[str] = []
     misses: list[str] = []
@@ -89,9 +96,16 @@ def score(cases: Sequence[Case], runs: Sequence[CaseRun]) -> Score:  # noqa: PLR
             result = run.result
         open_labels = list(case.findings)
         matched: list[Span] = []
-        found_located: set[int] = set()
+        # Labels are tracked by position: two labels can be equal values.
+        near_label: set[int] = set()
         inline = False
-        for finding in result.findings:
+        # Right-category findings first, so the order a reviewer lists findings in never changes the score.
+        ordered = sorted(
+            result.findings,
+            key=lambda f: not any(_near(f, e) and f.category in e.categories for e in case.findings),
+        )
+        for finding in ordered:
+            near_label.update(i for i, label in enumerate(case.findings) if _near(finding, label))
             hit = next(
                 (e for e in open_labels if _near(finding, e) and finding.category in e.categories), None
             )
@@ -99,23 +113,23 @@ def score(cases: Sequence[Case], runs: Sequence[CaseRun]) -> Score:  # noqa: PLR
                 open_labels.remove(hit)
                 matched.append(hit)
                 tp[finding.category] += 1
-                located += 1
                 continue
             if any(_near(finding, e) for e in matched):
                 duplicates += 1
                 continue
+            if any(_near(finding, e) for e in open_labels):
+                # The defect, found at its place under another category: located, missed, not invented.
+                continue
             if any(_near(finding, span) for span in case.allowed):
+                ignored += 1
+                ignored_inline += finding.severity in _INLINE
                 continue
             fp[finding.category] += 1
             false_alarms.append(
                 f"{case.id}: {finding.file}:{finding.line_start} {finding.category} {finding.message[:80]}"
             )
             inline = inline or finding.severity in _INLINE
-            for label in open_labels:
-                if _near(finding, label) and id(label) not in found_located:
-                    found_located.add(id(label))
-                    located += 1
-                    break
+        located += len(near_label)
         for label in open_labels:
             fn[label.categories[0]] += 1
             misses.append(f"{case.id}: {label.note}")
@@ -149,18 +163,21 @@ def score(cases: Sequence[Case], runs: Sequence[CaseRun]) -> Score:  # noqa: PLR
         ),
         labelled=sum(len(c.findings) for c in cases),
         located=located,
+        ignored=ignored,
+        ignored_inline=ignored_inline,
         duplicates=duplicates,
         clean_cases=clean_cases,
         clean_with_inline=clean_with_inline,
         model_findings=sum(r.model_findings for r in runs),
-        dropped=sum(len(r.dropped) for r in runs),
+        dropped=sum(r.dropped_findings for r in runs),
         criteria_total=criteria_total,
         criteria_correct=criteria_correct,
         creep_expected=creep_expected,
         creep_found=creep_found,
         creep_extra=creep_extra,
         median_seconds=statistics.median(seconds) if seconds else None,
-        p90_seconds=statistics.quantiles(seconds, n=10)[-1] if len(seconds) >= 2 else None,  # noqa: PLR2004
+        p90_seconds=statistics.quantiles(seconds, n=10, method="inclusive")[-1] if seconds[1:] else None,
+        usage_cases=len(tokens_in),
         input_tokens=sum(tokens_in) if tokens_in else None,
         output_tokens=sum(tokens_out) if tokens_out else None,
         errors=tuple(errors),

@@ -1,5 +1,6 @@
 """A case: a base project, the files a pull request changes, and labels for what a review must find."""
 
+import hashlib
 import shutil
 import subprocess
 import tomllib
@@ -90,3 +91,12 @@ def _git(cwd: Path, *args: str) -> None:
     settings = ["-c", "user.name=bylaw eval", "-c", "user.email=eval@bylaw.invalid"]
     settings += ["-c", "commit.gpgsign=false", "-c", "core.autocrlf=false"]
     subprocess.run(["git", *settings, *args], cwd=cwd, check=True, capture_output=True)  # noqa: S603, S607
+
+
+def case_digest(root: Path, case: Case) -> str:
+    """A hash of everything a case is built from, so a saved review of an older version is not reused."""
+    digest = hashlib.sha256()
+    for directory in (root / "projects" / case.project, root / "cases" / case.id):
+        for path in sorted(p for p in directory.rglob("*") if p.is_file()):
+            digest.update(path.relative_to(root).as_posix().encode() + b"\0" + path.read_bytes() + b"\0")
+    return digest.hexdigest()

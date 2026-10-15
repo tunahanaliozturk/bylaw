@@ -1,0 +1,4 @@
+project = "py-users"
+kind = "clean"
+title = "Let users download their uploads"
+message = "Add upload download"

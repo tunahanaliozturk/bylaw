@@ -33,3 +33,5 @@ def test_the_report_names_the_label_metrics_and_cost() -> None:
     assert "| security | 1 | 0 | 0 | 100% | 100% |" in text
     assert "$12.00 per pull request" in text
     assert "4.0 s median" in text
+    assert "Other remarks on planted code, not scored: 0" in text
+    assert "over 1 reviewed cases" in text

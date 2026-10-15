@@ -47,13 +47,71 @@ def test_a_finding_within_two_lines_and_the_right_category_is_a_hit() -> None:
     assert security.precision == security.recall == 1.0
 
 
-def test_a_wrong_category_is_a_miss_and_a_false_alarm_but_still_located() -> None:
+def test_a_wrong_category_is_a_miss_but_located_not_a_false_alarm() -> None:
     result = score([_case(findings=[SQLI])], [_run("c", _found(10, Category.BUG))])
 
     assert _category(result, Category.SECURITY).false_negatives == 1
-    assert _category(result, Category.BUG).false_positives == 1
+    assert _category(result, Category.BUG).false_positives == 0
     assert result.located == 1
     assert result.misses == ("c: sqli",)
+
+
+def test_located_counts_labels_once_whatever_the_order_and_inside_allowed_spans() -> None:
+    case = _case(findings=[SQLI], allowed=[Span(file="app.py", lines=(5, 15))])
+    wrong, right = _found(10, Category.BUG), _found(10)
+
+    for findings in ((wrong, right), (right, wrong), (wrong,)):
+        result = score([case], [_run("c", *findings)])
+        assert (result.located, result.labelled) == (1, 1), findings
+        assert _category(result, Category.BUG).false_positives == 0
+
+
+def test_findings_ignored_in_allowed_spans_are_reported() -> None:
+    case = _case(findings=[SQLI], allowed=[Span(file="app.py", lines=(20, 30))])
+
+    result = score(
+        [case], [_run("c", _found(10), _found(25, Category.BUG), _found(26, severity=Severity.LOW))]
+    )
+
+    assert (result.ignored, result.ignored_inline) == (2, 1)
+
+
+def test_runs_for_cases_outside_the_scored_set_are_left_out() -> None:
+    mine = _run("c").model_copy(update={"seconds": 2.0, "input_tokens": 10, "output_tokens": 1})
+    other = _run("other", _found(3)).model_copy(
+        update={"seconds": 9.0, "input_tokens": 999, "output_tokens": 99}
+    )
+
+    result = score([_case()], [mine, other])
+
+    assert (result.input_tokens, result.output_tokens, result.model_findings) == (10, 1, 0)
+    assert result.median_seconds == 2.0
+    assert result.usage_cases == 1
+
+
+def test_only_dropped_findings_count_against_model_findings() -> None:
+    run = _run("c", _found(10)).model_copy(
+        update={
+            "dropped": (
+                "x.py:1 bug: file is not part of the change",
+                "spec.md/AC-1: no such acceptance criterion",
+            ),
+            "dropped_findings": 1,
+        }
+    )
+
+    result = score([_case(findings=[SQLI])], [run])
+
+    assert (result.dropped, result.model_findings) == (1, 1)
+
+
+def test_p90_never_exceeds_the_slowest_run() -> None:
+    runs = [_run(i).model_copy(update={"seconds": s}) for i, s in (("a", 1.0), ("b", 2.0))]
+
+    result = score([_case("a"), _case("b")], runs)
+
+    assert result.p90_seconds is not None
+    assert result.p90_seconds <= 2.0
 
 
 def test_the_same_defect_reported_twice_is_a_duplicate_not_a_false_alarm() -> None:

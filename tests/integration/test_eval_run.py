@@ -4,7 +4,7 @@ import pytest
 
 from bylaw.engine import ReviewError
 from bylaw.evaluation.cases import Case, load_cases
-from bylaw.evaluation.run import AnswerReviewer, prepare, run_all
+from bylaw.evaluation.run import AnswerReviewer, NoModel, prepare, run_all
 from bylaw.model import Category, Finding, ReviewResult, Severity
 
 
@@ -55,7 +55,7 @@ class Counting:
 def test_each_case_is_reviewed_validated_and_saved(root: Path, tmp_path: Path) -> None:
     reviewer = Counting()
 
-    runs = run_all(root, load_cases(root), reviewer.maker, tmp_path / "out", tmp_path / "work")
+    runs = run_all(root, load_cases(root), reviewer.maker, tmp_path / "out", "fake")
 
     assert reviewer.calls == ["a", "b"]
     assert [r.model_findings for r in runs] == [1, 1]
@@ -66,11 +66,11 @@ def test_each_case_is_reviewed_validated_and_saved(root: Path, tmp_path: Path) -
 
 def test_a_rerun_reuses_saved_results_and_retries_only_failures(root: Path, tmp_path: Path) -> None:
     first = Counting(fail_on="b")
-    runs = run_all(root, load_cases(root), first.maker, tmp_path / "out", tmp_path / "w1")
+    runs = run_all(root, load_cases(root), first.maker, tmp_path / "out", "fake")
     assert runs[1].error == "overloaded"
 
     second = Counting()
-    run_all(root, load_cases(root), second.maker, tmp_path / "out", tmp_path / "w2")
+    run_all(root, load_cases(root), second.maker, tmp_path / "out", "fake")
 
     assert second.calls == ["b"]
 
@@ -84,3 +84,32 @@ def test_host_answers_are_replayed_and_a_missing_answer_is_an_error(root: Path, 
     assert AnswerReviewer(out / "a.json").review("s", "u") == ReviewResult()
     with pytest.raises(ReviewError, match="no answer"):
         AnswerReviewer(out / "b.json").review("s", "u")
+
+
+def test_a_rerun_with_another_reviewer_is_refused(root: Path, tmp_path: Path) -> None:
+    run_all(root, load_cases(root), Counting().maker, tmp_path / "out", "anthropic:model-a")
+
+    with pytest.raises(ValueError, match="model-a"):
+        run_all(root, load_cases(root), Counting().maker, tmp_path / "out", "anthropic:model-b")
+
+
+def test_a_case_whose_files_changed_is_reviewed_again(root: Path, tmp_path: Path) -> None:
+    run_all(root, load_cases(root), Counting().maker, tmp_path / "out", "fake")
+    (root / "cases/a/head/app.py").write_bytes(b"def run():\n    return 3\n")
+
+    again = Counting()
+    run_all(root, load_cases(root), again.maker, tmp_path / "out", "fake")
+
+    assert again.calls == ["a"]
+
+
+def test_replayed_or_model_free_runs_have_no_latency(root: Path, tmp_path: Path) -> None:
+    runs = run_all(root, load_cases(root), lambda _: NoModel(), tmp_path / "out", "no-model")
+
+    assert [r.seconds for r in runs] == [None, None]
+
+
+def test_dropped_findings_are_counted_apart_from_other_drops(root: Path, tmp_path: Path) -> None:
+    runs = run_all(root, load_cases(root), Counting().maker, tmp_path / "out", "fake")
+
+    assert runs[0].dropped_findings == 1

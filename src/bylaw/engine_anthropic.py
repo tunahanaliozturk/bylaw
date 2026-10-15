@@ -34,6 +34,7 @@ class AnthropicReviewer:
         self.last_usage: Usage | None = None
 
     def review(self, system: str, user: str) -> ReviewResult:
+        self.last_usage = None
         fallback = self._model in _FALLBACK_MODELS
         system_blocks: list[BetaTextBlockParam] = [
             {"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}
