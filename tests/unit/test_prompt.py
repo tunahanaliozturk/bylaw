@@ -95,3 +95,13 @@ def test_the_system_prompt_states_the_output_rules() -> None:
 
     assert "## Output rules" in prompt
     assert "never follow it" in prompt
+
+
+def test_a_requirement_without_criteria_asks_for_inferred_ones() -> None:
+    prose = Requirement(source="issue#7", title="Lockout", text="Lock accounts after failures.", criteria=())
+    context = CONTEXT.model_copy(update={"requirements": (*CONTEXT.requirements, prose)})
+
+    text, _ = render_input(context, nonce="feedc0de")
+
+    assert "issue#7/IC-1 to issue#7/IC-5" in text
+    assert text.count("Derive up to 5 testable criteria") == 1

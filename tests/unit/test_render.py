@@ -170,3 +170,50 @@ def test_a_suggestion_with_four_backticks_gets_a_five_backtick_fence() -> None:
     body = inline_body(Group(finding=_finding(suggestion="a\n````\nb"), fingerprint=FP, others=()))
 
     assert "`````suggestion\na\n````\nb\n`````" in body
+
+
+PROSE = CONTEXT.model_copy(
+    update={
+        "requirements": (
+            *CONTEXT.requirements,
+            Requirement(source="issue#7", title="Lockout", text="Lock accounts after failures.", criteria=()),
+        )
+    }
+)
+
+
+def test_inferred_criteria_are_listed_and_marked() -> None:
+    result = ReviewResult(
+        criteria=(
+            CriterionResult(
+                criterion="issue#7/IC-2", status=CriterionStatus.MET, text="Unlocks after an hour"
+            ),
+            CriterionResult(
+                criterion="issue#7/IC-1", status=CriterionStatus.MISSING, text="Locks after five"
+            ),
+        )
+    )
+
+    body = summary_body(PROSE, result, _plan())
+
+    first = body.index("| `issue#7/IC-1` Locks after five (inferred) | missing |")
+    assert first < body.index("| `issue#7/IC-2` Unlocks after an hour (inferred) | met |")
+
+
+def test_inferred_criterion_text_is_escaped() -> None:
+    hostile = "<img src=x onerror=alert(1)> | split"
+    result = ReviewResult(
+        criteria=(CriterionResult(criterion="issue#7/IC-1", status=CriterionStatus.MET, text=hostile),)
+    )
+
+    body = summary_body(PROSE, result, _plan())
+
+    assert "<img" not in body
+    row = next(line for line in body.splitlines() if "issue#7/IC-1" in line)
+    assert row.count(" | ") == 3
+
+
+def test_a_requirement_with_nothing_to_assess_is_still_listed() -> None:
+    body = summary_body(PROSE, ReviewResult(), _plan())
+
+    assert "| `issue#7` Lockout | no criteria listed |  |  |" in body

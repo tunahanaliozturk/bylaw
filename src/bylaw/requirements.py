@@ -127,7 +127,11 @@ def collect_requirements(
             notes.append(f"Linked spec {path} does not exist at the head commit.")
             continue
         requirements.append(_requirement(path, _title(text, path), text))
-    notes.extend(f"{r.source} has no structured acceptance criteria." for r in requirements if not r.criteria)
+    notes.extend(
+        f"{r.source} has no structured acceptance criteria; a reviewer infers them from the text."
+        for r in requirements
+        if not r.criteria
+    )
     return tuple(requirements), tuple(notes)
 
 
