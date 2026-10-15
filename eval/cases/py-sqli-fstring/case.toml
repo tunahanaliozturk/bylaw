@@ -1,0 +1,14 @@
+project = "py-users"
+kind = "security"
+title = "Look up users by email"
+message = "Add lookup by email"
+
+[[findings]]
+file = "app/users.py"
+lines = [40, 40]
+categories = ["security", "rule"]
+note = "SQL built with an f-string from the email argument"
+
+[[allowed]]
+file = "app/users.py"
+lines = [38, 41]
