@@ -8,6 +8,8 @@ from collections.abc import Sequence
 from importlib.metadata import version
 from pathlib import Path
 
+from pydantic import BaseModel
+
 from bylaw.config import Config, ConfigError, load_config
 from bylaw.context import build_context
 from bylaw.engine import PROVIDERS, OutReview, ReviewError, api_key_for, make_reviewer
@@ -35,6 +37,7 @@ def _parser() -> argparse.ArgumentParser:
     target.add_argument("--base", help="review committed changes from this ref to HEAD in a local repository")
     context.add_argument("--repo", help="owner/name; defaults to GITHUB_REPOSITORY in --pr mode")
     context.add_argument("--path", default=".", help="local repository directory for --base (default: .)")
+    context.add_argument("--output", help="write the JSON to this file (UTF-8) instead of standard output")
 
     check = commands.add_parser("validate", help="drop findings the context cannot back up")
     check.add_argument("--context", required=True, help="ReviewContext JSON from `bylaw context`")
@@ -52,6 +55,7 @@ def _parser() -> argparse.ArgumentParser:
 
     show = commands.add_parser("prompt", help="print what a reviewer model would read, for host agents")
     show.add_argument("--context", required=True, help="ReviewContext JSON from `bylaw context`")
+    show.add_argument("--output", help="write the brief to this file (UTF-8) instead of standard output")
 
     run = commands.add_parser("review", help="review a change end to end: context, model, checks, comments")
     source = run.add_mutually_exclusive_group(required=True)
@@ -75,7 +79,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
         if args.command == "context":
-            _write(_context(args).model_dump_json(indent=2))
+            _write(_context(args).model_dump_json(indent=2), args.output)
         elif args.command == "validate":
             checked = _validated(args)
             payload = {"result": checked.result.model_dump(mode="json"), "dropped": list(checked.dropped)}
@@ -85,9 +89,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         elif args.command == "schema":
             _write(json.dumps(OutReview.model_json_schema(), indent=2))
         elif args.command == "prompt":
-            context = ReviewContext.model_validate_json(Path(args.context).read_text(encoding="utf-8"))
-            text, _ = render_input(context)
-            _write(f"{system_prompt()}\n---\n{text}")
+            text, left_out = render_input(_read(ReviewContext, args.context))
+            if left_out:
+                _say(f"Left out of the review for size: {', '.join(left_out)}.")
+            _write(f"{system_prompt()}\n---\n{text}", args.output)
         else:
             _post(args)
     except (SourceError, GitHubError, ConfigError, OSError, ValueError) as error:
@@ -96,10 +101,21 @@ def main(argv: Sequence[str] | None = None) -> int:
     return 0
 
 
-def _write(text: str) -> None:
+def _write(text: str, output: str | None = None) -> None:
+    data = text.encode("utf-8") + b"\n"
+    if output:
+        # bylaw writes the file itself: a shell redirect on Windows re-encodes it as UTF-16 or adds a BOM.
+        Path(output).write_bytes(data)
+        return
     # Bytes, not text: a Windows console defaults to cp1252 and cannot print every character in a diff.
-    sys.stdout.buffer.write(text.encode("utf-8") + b"\n")
+    sys.stdout.buffer.write(data)
     sys.stdout.flush()
+
+
+def _read[M: BaseModel](model: type[M], path: str) -> M:
+    raw = Path(path).read_bytes()
+    # A file saved through a Windows shell redirect starts with a BOM; detect_encoding reads and strips it.
+    return model.model_validate_json(raw.decode(json.detect_encoding(raw)))
 
 
 def _context(args: argparse.Namespace) -> ReviewContext:
@@ -112,19 +128,15 @@ def _context(args: argparse.Namespace) -> ReviewContext:
 
 
 def _validated(args: argparse.Namespace) -> Validated:
-    context = ReviewContext.model_validate_json(Path(args.context).read_text(encoding="utf-8"))
-    result = (
-        ReviewResult.model_validate_json(Path(args.result).read_text(encoding="utf-8"))
-        if args.result
-        else ReviewResult()
-    )
+    context = _read(ReviewContext, args.context)
+    result = _read(ReviewResult, args.result) if args.result else ReviewResult()
     # The deterministic findings travel in the context; merged here so a run without a model posts them.
     merged = result.model_copy(update={"findings": (*context.findings, *result.findings)})
     return validate(context, merged)
 
 
 def _post(args: argparse.Namespace) -> None:
-    context = ReviewContext.model_validate_json(Path(args.context).read_text(encoding="utf-8"))
+    context = _read(ReviewContext, args.context)
     checked = _validated(args)
     for reason in checked.dropped:
         _say(f"dropped {reason}")
@@ -174,7 +186,7 @@ def _review(args: argparse.Namespace) -> int:
     if args.post and args.pr is None:
         raise SourceError("--post needs --pr")
     if args.pr is None:
-        context = ReviewContext.model_validate_json(Path(args.context).read_text(encoding="utf-8"))
+        context = _read(ReviewContext, args.context)
         context, result = _with_model_review(context, args)
         checked = _check(context, result)
         counted = checked.result.findings

@@ -64,3 +64,28 @@ def test_every_bylaw_command_and_flag_the_skill_mentions_exists() -> None:
         assert command in subcommands, command
         for flag in re.findall(r"(--[a-z][a-z-]+)", rest):
             assert flag in subcommands[command].format_help(), f"bylaw {command} {flag}"
+
+
+def test_the_skill_runs_the_bylaw_that_ships_with_it_not_the_tip_of_main() -> None:
+    text = SKILL.read_text(encoding="utf-8")
+
+    assert "uvx --from <plugin root> bylaw" in text
+    assert "two levels above this SKILL.md" in text
+
+
+def test_the_skill_writes_files_through_bylaw_not_a_shell_redirect() -> None:
+    # A redirect on Windows PowerShell re-encodes the file, and $TMP is unset on macOS and Linux.
+    text = SKILL.read_text(encoding="utf-8")
+
+    assert " > " not in text
+    assert "$TMP" not in text
+    assert "--output <work>/context.json" in text
+    assert "--output <work>/brief.txt" in text
+
+
+def test_the_skill_passes_the_token_inline_and_never_prints_it() -> None:
+    text = SKILL.read_text(encoding="utf-8")
+
+    assert "GITHUB_TOKEN=$(gh auth token)" in text
+    assert "$env:GITHUB_TOKEN = gh auth token" in text
+    assert "Never print the token" in text

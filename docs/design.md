@@ -41,9 +41,11 @@ Two modes share the core:
 
 - **Action and CLI.** Pull request event, then `context`, then `engine` calls the LLM with the user's own
   key, then `validate`, then `publish`.
-- **Claude Code and Codex.** The skill runs `uvx bylaw context`, the host model reviews with the prompts
-  from `uvx bylaw prompts`, writes `findings.json`, and runs `bylaw validate`. Results print in the
-  terminal, or go to the pull request with `--post`. No extra API key.
+- **Claude Code and Codex.** The skill runs the bylaw source installed with the plugin
+  (`uvx --from <plugin root> bylaw`), so the CLI matches the skill's version. `bylaw context` and
+  `bylaw prompt` write the context and the brief to files, the host model reviews against `bylaw
+  schema`, and `bylaw validate` checks the result. `bylaw post --dry-run` shows the review; `bylaw
+  post --pr` publishes it. No extra API key.
 
 The same `context` command also works on a local branch with no pull request (`bylaw context --base
 main`), so a developer can check their work against the rules and the spec before opening the PR.

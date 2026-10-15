@@ -87,3 +87,46 @@ def test_a_result_that_breaks_the_schema_is_a_clear_error(
     assert code == 2
     assert error.startswith("bylaw: ")
     assert "Traceback" not in error
+
+
+_EMPTY_CONTEXT = (
+    '{"base_sha": "b", "head_sha": "h", "title": "t", "files": [], "rules": [], '
+    '"requirements": [], "findings": [], "notes": []}'
+)
+
+
+@pytest.mark.parametrize("encoding", ["utf-8-sig", "utf-16"])
+def test_a_context_file_a_windows_shell_saved_with_a_byte_order_mark_still_reads(
+    tmp_path: Path, encoding: str
+) -> None:
+    # PowerShell 7 writes `>` as UTF-8 with a BOM, Windows PowerShell 5.1 as UTF-16.
+    context = tmp_path / "context.json"
+    context.write_text(_EMPTY_CONTEXT, encoding=encoding)
+
+    assert main(["validate", "--context", str(context)]) == 0
+
+
+def test_prompt_writes_the_whole_brief_to_the_output_file(
+    tmp_path: Path, capsysbinary: pytest.CaptureFixture[bytes]
+) -> None:
+    context = tmp_path / "context.json"
+    brief = tmp_path / "brief.txt"
+    context.write_text(_EMPTY_CONTEXT, encoding="utf-8")
+
+    code = main(["prompt", "--context", str(context), "--output", str(brief)])
+
+    assert code == 0
+    assert capsysbinary.readouterr().out == b""
+    assert "\n---\n" in brief.read_bytes().decode("utf-8")
+
+
+def test_prompt_names_the_files_left_out_for_size(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    context = json.loads(_EMPTY_CONTEXT)
+    context["files"] = [{"path": "huge.py", "status": "added", "patch": "@@ -0,0 +1 @@\n" + "+x\n" * 450_000}]
+    path = tmp_path / "context.json"
+    path.write_text(json.dumps(context), encoding="utf-8")
+
+    code = main(["prompt", "--context", str(path), "--output", str(tmp_path / "brief.txt")])
+
+    assert code == 0
+    assert "bylaw: Left out of the review for size: huge.py." in capsys.readouterr().err

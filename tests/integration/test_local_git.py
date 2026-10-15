@@ -79,3 +79,16 @@ def test_a_noprefix_git_config_does_not_empty_the_diff(repo: Path) -> None:
     files = LocalGitSource(repo, "main").changed_files()
 
     assert [f.path for f in files] == ["app.py"]
+
+
+def test_context_writes_utf8_to_the_output_file_and_nothing_to_stdout(
+    repo: Path, tmp_path: Path, capsysbinary: pytest.CaptureFixture[bytes]
+) -> None:
+    out = tmp_path / "out" / "context.json"
+    out.parent.mkdir()
+
+    code = main(["context", "--base", "main", "--path", str(repo), "--output", str(out)])
+
+    assert code == 0
+    assert capsysbinary.readouterr().out == b""
+    assert "Öztürk" in json.loads(out.read_bytes().decode("utf-8"))["files"][0]["patch"]
