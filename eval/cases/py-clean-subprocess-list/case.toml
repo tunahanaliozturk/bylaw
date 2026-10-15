@@ -1,0 +1,4 @@
+project = "py-users"
+kind = "clean"
+title = "Avatar thumbnails"
+message = "Add avatar thumbnails"

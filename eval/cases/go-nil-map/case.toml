@@ -1,0 +1,14 @@
+project = "go-api"
+kind = "bug"
+title = "Count widget views"
+message = "Add view counter"
+
+[[findings]]
+file = "handlers.go"
+lines = [65, 65]
+categories = ["bug"]
+note = "writes to a nil map, which panics"
+
+[[allowed]]
+file = "handlers.go"
+lines = [57, 67]

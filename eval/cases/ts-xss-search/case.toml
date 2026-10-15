@@ -1,0 +1,14 @@
+project = "ts-shop"
+kind = "security"
+title = "Search page"
+message = "Add search page"
+
+[[findings]]
+file = "src/server.ts"
+lines = [33, 33]
+categories = ["security"]
+note = "query text written into HTML unescaped"
+
+[[allowed]]
+file = "src/server.ts"
+lines = [31, 34]

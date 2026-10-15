@@ -1,0 +1,4 @@
+project = "cs-orders"
+kind = "clean"
+title = "Cancel orders"
+message = "Add order cancellation"

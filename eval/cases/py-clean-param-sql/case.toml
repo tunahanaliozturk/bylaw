@@ -1,0 +1,4 @@
+project = "py-users"
+kind = "clean"
+title = "Look up users by email"
+message = "Add lookup by email"

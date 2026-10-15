@@ -1,5 +1,6 @@
-"""The committed evaluation set: every label must be reachable, and a reviewer that knows the labels scores perfectly."""
+"""The committed evaluation set: every label is reachable, and an oracle reviewer scores perfectly."""
 
+from collections import Counter
 from pathlib import Path
 
 import pytest
@@ -18,7 +19,7 @@ class Oracle:
     def __init__(self, case: Case) -> None:
         self._case = case
 
-    def review(self, system: str, user: str) -> ReviewResult:  # noqa: ARG002
+    def review(self, system: str, user: str) -> ReviewResult:
         findings = tuple(
             Finding(
                 file=label.file,
@@ -33,7 +34,7 @@ class Oracle:
             if not label.deterministic
         )
         criteria = tuple(
-            CriterionResult(criterion=key, status=accepted[0]) for key, accepted in self._case.criteria.items()
+            CriterionResult(criterion=key, status=ok[0]) for key, ok in self._case.criteria.items()
         )
         creep = tuple(ScopeCreep(file=c.file, line=c.line, message="creep") for c in self._case.scope_creep)
         return ReviewResult(findings=findings, criteria=criteria, scope_creep=creep)
@@ -64,3 +65,21 @@ def test_an_oracle_reviewer_scores_perfectly(
     assert result.criteria_correct == result.criteria_total
     assert (result.creep_found, result.creep_extra) == (result.creep_expected, 0)
     assert result.clean_with_inline == 0
+
+
+def test_the_set_has_the_size_and_mix_the_design_asks_for(cases: tuple[Case, ...]) -> None:
+    kinds = Counter(case.kind for case in cases)
+
+    assert 40 <= len(cases) <= 50
+    assert kinds["clean"] >= 8
+    assert all(kinds[k] >= 4 for k in ("security", "bug", "rule", "requirement", "scope"))
+    assert {case.project for case in cases} == {"go-api", "ts-shop", "cs-orders", "py-users"}
+
+
+def test_every_deterministic_label_is_found_without_a_model(
+    cases: tuple[Case, ...], contexts: dict[str, ReviewContext]
+) -> None:
+    for case in cases:
+        for label in (label for label in case.findings if label.deterministic):
+            found = contexts[case.id].findings
+            assert any(f.file == label.file and f.line_start == label.lines[0] for f in found), case.id

@@ -1,0 +1,14 @@
+project = "py-users"
+kind = "bug"
+title = "Keep requests going when a write fails"
+message = "Do not fail requests on write errors"
+
+[[findings]]
+file = "app/db.py"
+lines = [21, 21]
+categories = ["bug"]
+note = "every exception inside the block is swallowed, so failed writes look successful"
+
+[[allowed]]
+file = "app/db.py"
+lines = [19, 21]

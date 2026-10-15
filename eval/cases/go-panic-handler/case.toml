@@ -1,0 +1,19 @@
+project = "go-api"
+kind = "rule"
+title = "Delete widgets"
+message = "Add widget deletion"
+
+[[findings]]
+file = "handlers.go"
+lines = [60, 60]
+categories = ["rule", "bug"]
+note = "panics in a handler on a bad id"
+evidence = "CONTRIBUTING.md:9"
+
+[[allowed]]
+file = "store.go"
+lines = [45, 50]
+
+[[allowed]]
+file = "handlers.go"
+lines = [57, 68]

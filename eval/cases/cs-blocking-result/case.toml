@@ -1,0 +1,15 @@
+project = "cs-orders"
+kind = "rule"
+title = "Order total endpoint"
+message = "Add order total endpoint"
+
+[[findings]]
+file = "OrdersController.cs"
+lines = [19, 19]
+categories = ["rule", "bug"]
+note = "blocks on a task with .Result"
+evidence = "CONTRIBUTING.md:7"
+
+[[allowed]]
+file = "OrdersController.cs"
+lines = [16, 23]

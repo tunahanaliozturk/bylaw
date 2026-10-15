@@ -1,0 +1,15 @@
+project = "py-users"
+kind = "rule"
+title = "Rename users"
+message = "Add rename"
+
+[[findings]]
+file = "app/users.py"
+lines = [41, 41]
+categories = ["rule"]
+note = "print instead of logging"
+evidence = "CONTRIBUTING.md:8"
+
+[[allowed]]
+file = "app/users.py"
+lines = [38, 41]

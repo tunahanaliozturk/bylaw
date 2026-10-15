@@ -1,0 +1,22 @@
+project = "py-users"
+kind = "security"
+title = "Let users download their uploads"
+message = "Add upload download"
+
+[[findings]]
+file = "app/files.py"
+lines = [22, 22]
+categories = ["security"]
+note = "client-supplied file name joined to the upload directory without a containment check"
+
+[[allowed]]
+file = "app/files.py"
+lines = [20, 22]
+
+[[allowed]]
+file = "app/web.py"
+lines = [5, 5]
+
+[[allowed]]
+file = "app/web.py"
+lines = [33, 36]

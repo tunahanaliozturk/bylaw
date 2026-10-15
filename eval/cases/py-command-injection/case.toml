@@ -1,0 +1,14 @@
+project = "py-users"
+kind = "security"
+title = "Avatar thumbnails"
+message = "Add avatar thumbnails"
+
+[[findings]]
+file = "app/thumbnails.py"
+lines = [11, 11]
+categories = ["security"]
+note = "client-supplied name interpolated into a shell command"
+
+[[allowed]]
+file = "app/thumbnails.py"
+lines = [1, 12]

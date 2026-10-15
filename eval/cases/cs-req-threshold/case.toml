@@ -1,0 +1,16 @@
+project = "cs-orders"
+kind = "requirement"
+title = "Free shipping"
+message = "Add shipping rule"
+
+[criteria]
+"docs/specs/free-shipping.md/AC-1" = ["partial", "missing"]
+"docs/specs/free-shipping.md/AC-2" = ["met", "partial"]
+
+[[allowed]]
+file = "docs/specs/free-shipping.md"
+lines = [1, 8]
+
+[[allowed]]
+file = "OrderService.cs"
+lines = [19, 23]

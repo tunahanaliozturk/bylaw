@@ -1,0 +1,4 @@
+project = "py-users"
+kind = "clean"
+title = "Document the service"
+message = "Expand the README"

@@ -1,0 +1,4 @@
+project = "py-users"
+kind = "clean"
+title = "Count users"
+message = "Add user count"

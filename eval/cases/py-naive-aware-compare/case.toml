@@ -1,0 +1,14 @@
+project = "py-users"
+kind = "bug"
+title = "Use local time for token expiry"
+message = "Compare reset token expiry in local time"
+
+[[findings]]
+file = "app/auth.py"
+lines = [31, 31]
+categories = ["bug"]
+note = "naive now() compared with the aware expiry raises TypeError"
+
+[[allowed]]
+file = "app/auth.py"
+lines = [31, 31]

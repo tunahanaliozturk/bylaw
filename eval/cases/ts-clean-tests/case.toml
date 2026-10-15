@@ -1,0 +1,4 @@
+project = "ts-shop"
+kind = "clean"
+title = "Test the empty cart subtotal"
+message = "Cover the empty cart"

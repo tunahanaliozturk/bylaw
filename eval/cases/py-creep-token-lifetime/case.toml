@@ -1,0 +1,23 @@
+project = "py-users"
+kind = "scope"
+title = "Welcome email text"
+message = "Add welcome email"
+
+[criteria]
+"docs/specs/welcome-email.md/AC-1" = ["met", "partial"]
+
+[[allowed]]
+file = "docs/specs/welcome-email.md"
+lines = [1, 7]
+
+[[allowed]]
+file = "app/mail.py"
+lines = [1, 8]
+
+[[allowed]]
+file = "app/auth.py"
+lines = [8, 8]
+
+[[scope_creep]]
+file = "app/auth.py"
+line = 8
