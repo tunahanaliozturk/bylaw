@@ -10,9 +10,10 @@ from pathlib import Path
 
 from bylaw.config import Config, ConfigError, load_config
 from bylaw.context import build_context
+from bylaw.engine import PROVIDERS, ReviewError, api_key_for, make_reviewer
 from bylaw.github import GitHubClient, GitHubError, GitHubSource
 from bylaw.local_git import LocalGitSource
-from bylaw.model import ReviewContext, ReviewResult
+from bylaw.model import ReviewContext, ReviewResult, Severity
 from bylaw.prompt import render_input, system_prompt
 from bylaw.publish import preview, publish
 from bylaw.source import SourceError
@@ -48,6 +49,22 @@ def _parser() -> argparse.ArgumentParser:
 
     show = commands.add_parser("prompt", help="print what a reviewer model would read, for host agents")
     show.add_argument("--context", required=True, help="ReviewContext JSON from `bylaw context`")
+
+    run = commands.add_parser("review", help="review a change end to end: context, model, checks, comments")
+    source = run.add_mutually_exclusive_group(required=True)
+    source.add_argument("--pr", type=int, help="pull request number")
+    source.add_argument("--context", help="ReviewContext JSON from `bylaw context`")
+    run.add_argument("--repo", help="owner/name; defaults to GITHUB_REPOSITORY")
+    run.add_argument("--provider", choices=PROVIDERS, default="anthropic")
+    run.add_argument("--model", help="model name; defaults to claude-opus-5-5 for anthropic")
+    run.add_argument("--effort", default="high", help="reasoning effort passed to the model (default: high)")
+    run.add_argument("--post", action="store_true", help="publish to the pull request (needs --pr)")
+    run.add_argument(
+        "--fail-on",
+        choices=[*Severity, "none"],
+        default="none",
+        help="exit 1 when a finding at or above this severity remains",
+    )
     return parser
 
 
@@ -60,6 +77,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             checked = _validated(args)
             payload = {"result": checked.result.model_dump(mode="json"), "dropped": list(checked.dropped)}
             _write(json.dumps(payload, indent=2, ensure_ascii=False))
+        elif args.command == "review":
+            return _review(args)
         elif args.command == "prompt":
             context = ReviewContext.model_validate_json(Path(args.context).read_text(encoding="utf-8"))
             text, _ = render_input(context)
@@ -128,3 +147,95 @@ def _repo_and_token(repo_arg: str | None) -> tuple[str, str]:
     if not repo:
         raise SourceError("--repo or GITHUB_REPOSITORY is required with --pr")
     return repo, token
+
+
+_RANK = {severity: rank for rank, severity in enumerate(Severity)}
+
+
+def _review(args: argparse.Namespace) -> int:
+    if _fork_without_secrets():
+        print(
+            "::notice title=bylaw::Pull requests from forks get no secrets on the pull_request event. "
+            "Use the pull_request_target recipe to review them (docs/recipes)."
+        )
+        return 0
+    if args.post and args.pr is None:
+        raise SourceError("--post needs --pr")
+    if args.pr is None:
+        context = ReviewContext.model_validate_json(Path(args.context).read_text(encoding="utf-8"))
+        context, result = _with_model_review(context, args)
+        checked = _check(context, result)
+    else:
+        checked = _review_pull_request(args)
+    if not args.post:
+        payload = {"result": checked.result.model_dump(mode="json"), "dropped": list(checked.dropped)}
+        _write(json.dumps(payload, indent=2, ensure_ascii=False))
+    return _exit_code(checked.result, args.fail_on)
+
+
+def _review_pull_request(args: argparse.Namespace) -> Validated:
+    repo, token = _repo_and_token(args.repo)
+    api_url = os.environ.get("GITHUB_API_URL", "https://api.github.com")
+    with GitHubClient(token, api_url, os.environ.get("GITHUB_GRAPHQL_URL")) as client:
+        source = GitHubSource(client, repo, args.pr)
+        context, result = _with_model_review(build_context(source), args)
+        checked = _check(context, result)
+        if args.post:
+            config = load_config(source.read_base(".bylaw.toml"))
+            plan = publish(client, repo, args.pr, context=context, result=checked.result, config=config)
+            print(
+                f"bylaw: posted {len(plan.inline)} comment(s), resolved {len(plan.resolve)}.", file=sys.stderr
+            )
+    return checked
+
+
+def _with_model_review(
+    context: ReviewContext, args: argparse.Namespace
+) -> tuple[ReviewContext, ReviewResult]:
+    """The context with notes about the model run, and the model's result (empty when it did not run)."""
+    key = api_key_for(args.provider)
+    notes: list[str] = []
+    result = ReviewResult()
+    if key is None:
+        notes.append("The model review did not run: no API key is set.")
+    else:
+        text, left_out = render_input(context)
+        if left_out:
+            notes.append(f"Left out of the model review for size: {', '.join(left_out)}.")
+        try:
+            result = make_reviewer(args.provider, args.model, args.effort, key).review(system_prompt(), text)
+        except ReviewError as error:
+            notes.append(f"The model review did not run: {error}.")
+    for note in notes:
+        print(f"bylaw: {note}", file=sys.stderr)
+    return context.model_copy(update={"notes": (*context.notes, *notes)}), result
+
+
+def _check(context: ReviewContext, result: ReviewResult) -> Validated:
+    merged = result.model_copy(update={"findings": (*context.findings, *result.findings)})
+    checked = validate(context, merged)
+    for reason in checked.dropped:
+        print(f"bylaw: dropped {reason}", file=sys.stderr)
+    return checked
+
+
+def _exit_code(result: ReviewResult, fail_on: str) -> int:
+    if fail_on == "none":
+        return 0
+    threshold = _RANK[Severity(fail_on)]
+    failing = [f for f in result.findings if _RANK[f.severity] <= threshold]
+    if failing:
+        print(f"bylaw: {len(failing)} finding(s) at or above {fail_on}.", file=sys.stderr)
+        return 1
+    return 0
+
+
+def _fork_without_secrets() -> bool:
+    if os.environ.get("GITHUB_EVENT_NAME") != "pull_request" or not os.environ.get("GITHUB_EVENT_PATH"):
+        return False
+    try:
+        event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text(encoding="utf-8"))
+        pull = event["pull_request"]
+        return bool(pull["head"]["repo"]["full_name"] != pull["base"]["repo"]["full_name"])
+    except (OSError, ValueError, KeyError, TypeError):
+        return False
