@@ -114,12 +114,13 @@ _THREADS_QUERY = """
 query($owner: String!, $name: String!, $number: Int!, $after: String) {
   repository(owner: $owner, name: $name) {
     pullRequest(number: $number) {
+      author { login }
       reviewThreads(first: 100, after: $after) {
         pageInfo { hasNextPage endCursor }
         nodes {
           id
           isResolved
-          comments(first: 50) { nodes { body authorAssociation author { __typename } } }
+          comments(first: 50) { nodes { body authorAssociation author { __typename login } } }
         }
       }
     }
@@ -131,7 +132,8 @@ _UNRESOLVE = "mutation($id: ID!) { unresolveReviewThread(input: {threadId: $id})
 
 
 class _GqlAuthor(_Model):
-    typename: str = Field(alias="__typename")
+    typename: str = Field(default="", alias="__typename")
+    login: str = ""
 
 
 class _GqlComment(_Model):
@@ -161,6 +163,7 @@ class _GqlThreads(_Model):
 
 
 class _GqlThreadPull(_Model):
+    author: _GqlAuthor | None = None
     review_threads: _GqlThreads = Field(alias="reviewThreads")
 
 
@@ -306,11 +309,13 @@ class GitHubClient:
             pull = data.repository.pull_request if data.repository else None
             if pull is None:
                 return threads
+            pr_author = pull.author.login if pull.author else None
             for node in pull.review_threads.nodes:
                 comments = tuple(
                     ThreadComment(
                         body=c.body,
                         trusted=_trusted(c.author.typename if c.author else "", c.author_association),
+                        by_pr_author=c.author is not None and c.author.login == pr_author,
                     )
                     for c in node.comments.nodes
                 )
@@ -320,6 +325,12 @@ class GitHubClient:
             after = pull.review_threads.page_info.end_cursor
 
     def summary_comment(self, repo: str, number: int) -> SummaryComment | None:
+        """The comment that opens with the summary marker, a bot's first (ADR 0008).
+
+        A marker in the middle of a comment is someone quoting it; editing that comment would overwrite
+        a person's words.
+        """
+        fallback: SummaryComment | None = None
         for page in range(1, _MAX_FILE_PAGES + 1):
             params = {"per_page": _PAGE_SIZE, "page": page}
             batch = _ISSUE_COMMENTS.validate_python(
@@ -327,11 +338,16 @@ class GitHubClient:
             )
             for comment in batch:
                 kind = comment.user.kind if comment.user else ""
-                if SUMMARY_MARKER in comment.body and _trusted(kind, comment.author_association):
+                if not comment.body.startswith(SUMMARY_MARKER) or not _trusted(
+                    kind, comment.author_association
+                ):
+                    continue
+                if kind == "Bot":
                     return SummaryComment(id=comment.id, body=comment.body)
+                fallback = fallback or SummaryComment(id=comment.id, body=comment.body)
             if len(batch) < _PAGE_SIZE:
-                return None
-        return None
+                break
+        return fallback
 
     def upsert_summary(self, repo: str, number: int, comment_id: int | None, body: str) -> None:
         if comment_id is None:

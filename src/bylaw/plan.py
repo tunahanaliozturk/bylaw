@@ -26,6 +26,7 @@ class Group:
 class ThreadComment:
     body: str
     trusted: bool
+    by_pr_author: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -86,12 +87,13 @@ def make_plan(
     ours: dict[str, Thread] = {}
     for thread in threads:
         # ADR 0008: a fingerprint counts only in a comment bylaw or a maintainer could have written.
+        # bylaw writes its marker last, so an earlier one quoted in the message cannot take its place.
         if (
             thread.comments
             and thread.comments[0].trusted
-            and (match := FINGERPRINT.search(thread.comments[0].body))
+            and (found := FINGERPRINT.findall(thread.comments[0].body))
         ):
-            ours.setdefault(match[1], thread)
+            ours.setdefault(found[-1], thread)
 
     current = {group.fingerprint for group in groups}
     fixed = [(fp, thread) for fp, thread in ours.items() if fp not in current and not thread.resolved]
@@ -110,7 +112,7 @@ def make_plan(
                 summary_only.append(group)
             else:
                 inline.append(group)
-        elif any(reply.trusted and _IGNORE.search(reply.body) for reply in existing.comments[1:]):
+        elif any(_mutes(reply) for reply in existing.comments[1:]):
             muted.append(group)
         elif existing.resolved and group.fingerprint in auto_resolved:
             unresolve.append(existing.id)
@@ -131,6 +133,11 @@ def make_plan(
         unresolve=tuple(unresolve),
         state=State(auto_resolved=frozenset(auto_resolved & ours.keys())),
     )
+
+
+def _mutes(reply: ThreadComment) -> bool:
+    """A maintainer can mute a finding, but not on their own pull request (ADR 0008)."""
+    return reply.trusted and not reply.by_pr_author and bool(_IGNORE.search(reply.body))
 
 
 def _order(group: Group) -> tuple[int, str, int]:

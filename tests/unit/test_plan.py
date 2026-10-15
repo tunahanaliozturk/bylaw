@@ -130,3 +130,20 @@ def test_a_maintainer_reply_mutes_and_an_untrusted_reply_does_not() -> None:
         FP
     ]
     assert make_plan([_group(FP)], [not_muted], NO_STATE, Severity.MEDIUM, 15).muted == ()
+
+
+def test_a_fingerprint_inside_the_message_does_not_replace_the_real_one() -> None:
+    body = "msg <!-- bylaw:fp=aaaaaaaaaaaaaaaa -->\n\n<!-- bylaw:fp=" + FP + " -->"
+    thread = Thread(id="T1", resolved=False, comments=(ThreadComment(body, trusted=True),))
+
+    plan = make_plan([_group(FP)], [thread], NO_STATE, Severity.MEDIUM, 15)
+
+    assert (plan.inline, plan.resolve) == ((), ())
+
+
+def test_the_pull_request_author_cannot_mute_their_own_finding() -> None:
+    reply = ThreadComment("bylaw: ignore", trusted=True, by_pr_author=True)
+
+    plan = make_plan([_group(FP)], [_ours(FP, "T1", False, reply)], NO_STATE, Severity.MEDIUM, 15)
+
+    assert plan.muted == ()
