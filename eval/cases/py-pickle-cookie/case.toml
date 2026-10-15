@@ -1,0 +1,18 @@
+project = "py-users"
+kind = "security"
+title = "Remember the theme in a cookie"
+message = "Add preferences cookie"
+
+[[findings]]
+file = "app/web.py"
+lines = [37, 37]
+categories = ["security"]
+note = "unpickles a client-controlled cookie"
+
+[[allowed]]
+file = "app/web.py"
+lines = [1, 4]
+
+[[allowed]]
+file = "app/web.py"
+lines = [35, 38]

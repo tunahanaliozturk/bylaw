@@ -1,0 +1,15 @@
+project = "go-api"
+kind = "security"
+title = "Find widgets by name"
+message = "Add FindByName"
+
+[[findings]]
+file = "store.go"
+lines = [46, 46]
+categories = ["security", "rule"]
+note = "query built with Sprintf from the name"
+evidence = "CONTRIBUTING.md:10"
+
+[[allowed]]
+file = "store.go"
+lines = [45, 61]

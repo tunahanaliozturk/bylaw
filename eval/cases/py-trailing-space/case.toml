@@ -1,0 +1,15 @@
+project = "py-users"
+kind = "rule"
+title = "Token hint for support"
+message = "Add token hint"
+
+[[findings]]
+file = "app/auth.py"
+lines = [34, 34]
+categories = ["rule"]
+note = "trailing whitespace"
+deterministic = true
+
+[[allowed]]
+file = "app/auth.py"
+lines = [34, 36]

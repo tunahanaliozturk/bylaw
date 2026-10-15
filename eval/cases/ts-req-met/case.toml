@@ -1,0 +1,24 @@
+project = "ts-shop"
+kind = "requirement"
+title = "Remove items"
+message = "Add removeItem"
+
+[criteria]
+"docs/specs/remove-item.md/AC-1" = ["met"]
+"docs/specs/remove-item.md/AC-2" = ["met"]
+
+[[allowed]]
+file = "docs/specs/remove-item.md"
+lines = [1, 8]
+
+[[allowed]]
+file = "src/cart.ts"
+lines = [27, 29]
+
+[[allowed]]
+file = "test/cart.test.ts"
+lines = [4, 4]
+
+[[allowed]]
+file = "test/cart.test.ts"
+lines = [17, 25]

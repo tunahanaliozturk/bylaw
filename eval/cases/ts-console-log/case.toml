@@ -1,0 +1,15 @@
+project = "ts-shop"
+kind = "rule"
+title = "Simpler order log"
+message = "Log order ids plainly"
+
+[[findings]]
+file = "src/server.ts"
+lines = [27, 27]
+categories = ["rule"]
+note = "console.log instead of logger"
+evidence = "CONTRIBUTING.md:8"
+
+[[allowed]]
+file = "src/server.ts"
+lines = [27, 27]

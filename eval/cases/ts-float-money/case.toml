@@ -1,0 +1,15 @@
+project = "ts-shop"
+kind = "rule"
+title = "Show totals with tax"
+message = "Add total with tax"
+
+[[findings]]
+file = "src/cart.ts"
+lines = [28, 28]
+categories = ["rule", "bug"]
+note = "money in floating point"
+evidence = "CONTRIBUTING.md:7"
+
+[[allowed]]
+file = "src/cart.ts"
+lines = [27, 29]

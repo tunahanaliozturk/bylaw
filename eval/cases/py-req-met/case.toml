@@ -1,0 +1,25 @@
+project = "py-users"
+kind = "requirement"
+title = "Display names"
+message = "Let users change their display name"
+
+[criteria]
+"docs/specs/display-name.md/AC-1" = ["met"]
+"docs/specs/display-name.md/AC-2" = ["met"]
+"docs/specs/display-name.md/AC-3" = ["met"]
+
+[[allowed]]
+file = "docs/specs/display-name.md"
+lines = [1, 9]
+
+[[allowed]]
+file = "app/users.py"
+lines = [38, 42]
+
+[[allowed]]
+file = "tests/test_users.py"
+lines = [1, 5]
+
+[[allowed]]
+file = "tests/test_users.py"
+lines = [30, 44]

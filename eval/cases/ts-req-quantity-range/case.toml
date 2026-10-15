@@ -1,0 +1,16 @@
+project = "ts-shop"
+kind = "requirement"
+title = "Change item quantity"
+message = "Add setQuantity"
+
+[criteria]
+"docs/specs/quantity.md/AC-1" = ["met", "partial"]
+"docs/specs/quantity.md/AC-2" = ["missing"]
+
+[[allowed]]
+file = "docs/specs/quantity.md"
+lines = [1, 8]
+
+[[allowed]]
+file = "src/cart.ts"
+lines = [27, 29]

@@ -1,0 +1,19 @@
+project = "py-users"
+kind = "rule"
+title = "Gravatar fallback"
+message = "Fetch avatars from Gravatar"
+
+[[findings]]
+file = "pyproject.toml"
+lines = [5, 5]
+categories = ["rule"]
+note = "third-party dependency added without an ADR"
+evidence = "CONTRIBUTING.md:10"
+
+[[allowed]]
+file = "pyproject.toml"
+lines = [5, 5]
+
+[[allowed]]
+file = "app/gravatar.py"
+lines = [1, 13]

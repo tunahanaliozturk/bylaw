@@ -1,0 +1,20 @@
+project = "py-users"
+kind = "requirement"
+title = "CSV export"
+message = "Add CSV export"
+
+[criteria]
+"docs/specs/export.md/AC-1" = ["met"]
+"docs/specs/export.md/AC-2" = ["partial"]
+
+[[allowed]]
+file = "docs/specs/export.md"
+lines = [1, 8]
+
+[[allowed]]
+file = "app/export.py"
+lines = [1, 14]
+
+[[allowed]]
+file = "tests/test_export.py"
+lines = [1, 16]

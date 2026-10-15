@@ -1,0 +1,22 @@
+project = "py-users"
+kind = "security"
+title = "Shorter, URL-friendly reset tokens"
+message = "Use letters and digits for reset tokens"
+
+[[findings]]
+file = "app/auth.py"
+lines = [29, 29]
+categories = ["security"]
+note = "reset token from the non-cryptographic random module"
+
+[[allowed]]
+file = "app/auth.py"
+lines = [4, 5]
+
+[[allowed]]
+file = "app/auth.py"
+lines = [6, 7]
+
+[[allowed]]
+file = "app/auth.py"
+lines = [28, 30]

@@ -1,0 +1,24 @@
+project = "go-api"
+kind = "requirement"
+title = "Rename widgets"
+message = "Add widget rename"
+
+[criteria]
+"docs/specs/rename.md/AC-1" = ["met", "partial"]
+"docs/specs/rename.md/AC-2" = ["missing", "partial"]
+
+[[allowed]]
+file = "docs/specs/rename.md"
+lines = [1, 8]
+
+[[allowed]]
+file = "store.go"
+lines = [45, 50]
+
+[[allowed]]
+file = "handlers.go"
+lines = [57, 77]
+
+[[allowed]]
+file = "main.go"
+lines = [18, 19]

@@ -1,0 +1,15 @@
+project = "ts-shop"
+kind = "rule"
+title = "Format prices"
+message = "Add price formatting"
+
+[[findings]]
+file = "src/money.ts"
+lines = [3, 3]
+categories = ["rule"]
+note = "no newline at the end of the file"
+deterministic = true
+
+[[allowed]]
+file = "src/money.ts"
+lines = [1, 3]

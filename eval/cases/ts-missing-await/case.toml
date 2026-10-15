@@ -1,0 +1,15 @@
+project = "ts-shop"
+kind = "bug"
+title = "Express checkout"
+message = "Add express checkout"
+
+[[findings]]
+file = "src/server.ts"
+lines = [34, 34]
+categories = ["bug", "rule"]
+note = "responds 201 before the order is saved; a failure is lost"
+evidence = "CONTRIBUTING.md:11"
+
+[[allowed]]
+file = "src/server.ts"
+lines = [31, 36]

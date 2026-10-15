@@ -1,0 +1,15 @@
+project = "py-users"
+kind = "rule"
+title = "Deactivate users"
+message = "Add deactivate"
+
+[[findings]]
+file = "app/users.py"
+lines = [41, 41]
+categories = ["rule", "security"]
+note = "logs the user's email address"
+evidence = "CONTRIBUTING.md:9"
+
+[[allowed]]
+file = "app/users.py"
+lines = [38, 41]

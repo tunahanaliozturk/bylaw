@@ -1,0 +1,18 @@
+project = "cs-orders"
+kind = "bug"
+title = "Confirm placed orders"
+message = "Log a confirmation after placing"
+
+[[findings]]
+file = "OrderService.cs"
+lines = [22, 22]
+categories = ["bug"]
+note = "async void: exceptions crash the process and the call is not awaited"
+
+[[allowed]]
+file = "OrderService.cs"
+lines = [19, 27]
+
+[[allowed]]
+file = "OrdersController.cs"
+lines = [21, 22]

@@ -1,0 +1,14 @@
+project = "py-users"
+kind = "bug"
+title = "Simplify paging"
+message = "Page in Python instead of SQL"
+
+[[findings]]
+file = "app/users.py"
+lines = [34, 34]
+categories = ["bug"]
+note = "a page returns size + 1 users"
+
+[[allowed]]
+file = "app/users.py"
+lines = [32, 34]

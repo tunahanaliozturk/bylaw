@@ -1,0 +1,18 @@
+project = "go-api"
+kind = "bug"
+title = "Bulk import widgets"
+message = "Add widget import"
+
+[[findings]]
+file = "handlers.go"
+lines = [65, 65]
+categories = ["bug"]
+note = "Unmarshal error ignored: bad input reports success"
+
+[[allowed]]
+file = "handlers.go"
+lines = [5, 6]
+
+[[allowed]]
+file = "handlers.go"
+lines = [58, 74]

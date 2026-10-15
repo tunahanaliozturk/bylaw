@@ -1,0 +1,14 @@
+project = "cs-orders"
+kind = "bug"
+title = "Order totals"
+message = "Add order total lookup"
+
+[[findings]]
+file = "OrderService.cs"
+lines = [25, 25]
+categories = ["bug"]
+note = "FirstOrDefault result dereferenced without a null check"
+
+[[allowed]]
+file = "OrderService.cs"
+lines = [19, 27]

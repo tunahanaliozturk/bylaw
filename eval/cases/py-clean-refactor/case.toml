@@ -1,0 +1,4 @@
+project = "py-users"
+kind = "clean"
+title = "Share row conversion"
+message = "Extract row conversion into a helper"

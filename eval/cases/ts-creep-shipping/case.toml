@@ -1,0 +1,23 @@
+project = "ts-shop"
+kind = "scope"
+title = "Coupons"
+message = "Add coupons"
+
+[criteria]
+"docs/specs/coupons.md/AC-1" = ["met", "partial"]
+
+[[allowed]]
+file = "docs/specs/coupons.md"
+lines = [1, 7]
+
+[[allowed]]
+file = "src/cart.ts"
+lines = [27, 29]
+
+[[allowed]]
+file = "src/orders.ts"
+lines = [21, 21]
+
+[[scope_creep]]
+file = "src/orders.ts"
+line = 21

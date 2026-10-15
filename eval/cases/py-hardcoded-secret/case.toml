@@ -1,0 +1,14 @@
+project = "py-users"
+kind = "security"
+title = "Send mail through the mailer API"
+message = "Add mailer headers"
+
+[[findings]]
+file = "app/auth.py"
+lines = [34, 34]
+categories = ["security"]
+note = "API token committed as a string literal"
+
+[[allowed]]
+file = "app/auth.py"
+lines = [34, 39]

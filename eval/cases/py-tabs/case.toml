@@ -1,0 +1,15 @@
+project = "py-users"
+kind = "rule"
+title = "Count users"
+message = "Add user count"
+
+[[findings]]
+file = "app/users.py"
+lines = [39, 39]
+categories = ["rule"]
+note = "indented with tabs"
+deterministic = true
+
+[[allowed]]
+file = "app/users.py"
+lines = [38, 40]

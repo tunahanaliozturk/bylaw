@@ -1,0 +1,15 @@
+project = "cs-orders"
+kind = "security"
+title = "Orders for a customer"
+message = "Add customer order lookup"
+
+[[findings]]
+file = "OrderService.cs"
+lines = [24, 24]
+categories = ["security", "rule"]
+note = "FromSqlRaw with the customer interpolated into the SQL"
+evidence = "CONTRIBUTING.md:9"
+
+[[allowed]]
+file = "OrderService.cs"
+lines = [19, 26]

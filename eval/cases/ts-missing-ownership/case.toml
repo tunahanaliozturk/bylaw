@@ -1,0 +1,23 @@
+project = "ts-shop"
+kind = "security"
+title = "Cancel orders"
+message = "Add order cancellation"
+
+[[findings]]
+file = "src/server.ts"
+lines = [33, 37]
+categories = ["security", "rule"]
+note = "cancels any user's order: no ownership check"
+evidence = "CONTRIBUTING.md:10"
+
+[[allowed]]
+file = "src/orders.ts"
+lines = [24, 26]
+
+[[allowed]]
+file = "src/server.ts"
+lines = [5, 5]
+
+[[allowed]]
+file = "src/server.ts"
+lines = [31, 39]

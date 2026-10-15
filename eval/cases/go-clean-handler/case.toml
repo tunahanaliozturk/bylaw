@@ -1,0 +1,4 @@
+project = "go-api"
+kind = "clean"
+title = "List widgets"
+message = "Add widget listing"

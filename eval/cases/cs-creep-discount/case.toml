@@ -1,0 +1,28 @@
+project = "cs-orders"
+kind = "scope"
+title = "Order notes"
+message = "Add order notes"
+
+[criteria]
+"docs/specs/order-notes.md/AC-1" = ["met", "partial"]
+"docs/specs/order-notes.md/AC-2" = ["met", "partial"]
+
+[[allowed]]
+file = "docs/specs/order-notes.md"
+lines = [1, 8]
+
+[[allowed]]
+file = "Order.cs"
+lines = [8, 9]
+
+[[allowed]]
+file = "OrderService.cs"
+lines = [15, 19]
+
+[[allowed]]
+file = "OrderService.cs"
+lines = [23, 36]
+
+[[scope_creep]]
+file = "OrderService.cs"
+line = 15

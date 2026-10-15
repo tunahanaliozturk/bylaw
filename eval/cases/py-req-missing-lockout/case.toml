@@ -1,0 +1,17 @@
+project = "py-users"
+kind = "requirement"
+title = "Sign in"
+message = "Add login"
+
+[criteria]
+"docs/specs/login.md/AC-1" = ["met", "partial"]
+"docs/specs/login.md/AC-2" = ["met", "partial"]
+"docs/specs/login.md/AC-3" = ["missing"]
+
+[[allowed]]
+file = "docs/specs/login.md"
+lines = [1, 9]
+
+[[allowed]]
+file = "app/login.py"
+lines = [1, 16]

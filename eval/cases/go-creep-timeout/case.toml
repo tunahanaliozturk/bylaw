@@ -1,0 +1,27 @@
+project = "go-api"
+kind = "scope"
+title = "Health endpoint"
+message = "Add health check"
+
+[criteria]
+"docs/specs/health.md/AC-1" = ["met", "partial"]
+
+[[allowed]]
+file = "docs/specs/health.md"
+lines = [1, 7]
+
+[[allowed]]
+file = "handlers.go"
+lines = [57, 60]
+
+[[allowed]]
+file = "main.go"
+lines = [18, 19]
+
+[[allowed]]
+file = "main.go"
+lines = [24, 24]
+
+[[scope_creep]]
+file = "main.go"
+line = 24

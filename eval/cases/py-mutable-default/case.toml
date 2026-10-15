@@ -1,0 +1,14 @@
+project = "py-users"
+kind = "bug"
+title = "Collect welcome email recipients"
+message = "Add welcome recipients"
+
+[[findings]]
+file = "app/users.py"
+lines = [38, 38]
+categories = ["bug"]
+note = "mutable default list is shared between calls"
+
+[[allowed]]
+file = "app/users.py"
+lines = [38, 42]
