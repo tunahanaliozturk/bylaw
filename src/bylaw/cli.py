@@ -10,7 +10,7 @@ from pathlib import Path
 
 from bylaw.config import Config, ConfigError, load_config
 from bylaw.context import build_context
-from bylaw.engine import PROVIDERS, ReviewError, api_key_for, make_reviewer
+from bylaw.engine import PROVIDERS, OutReview, ReviewError, api_key_for, make_reviewer
 from bylaw.github import GitHubClient, GitHubError, GitHubSource
 from bylaw.local_git import LocalGitSource
 from bylaw.model import Finding, ReviewContext, ReviewResult, Severity
@@ -48,6 +48,8 @@ def _parser() -> argparse.ArgumentParser:
     where.add_argument("--dry-run", action="store_true", help="print what would be posted instead")
     post.add_argument("--repo", help="owner/name; defaults to GITHUB_REPOSITORY")
 
+    commands.add_parser("schema", help="print the JSON schema a reviewer's result must follow")
+
     show = commands.add_parser("prompt", help="print what a reviewer model would read, for host agents")
     show.add_argument("--context", required=True, help="ReviewContext JSON from `bylaw context`")
 
@@ -80,6 +82,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             _write(json.dumps(payload, indent=2, ensure_ascii=False))
         elif args.command == "review":
             return _review(args)
+        elif args.command == "schema":
+            _write(json.dumps(OutReview.model_json_schema(), indent=2))
         elif args.command == "prompt":
             context = ReviewContext.model_validate_json(Path(args.context).read_text(encoding="utf-8"))
             text, _ = render_input(context)

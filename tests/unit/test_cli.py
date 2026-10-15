@@ -59,3 +59,31 @@ def test_validate_reports_what_it_dropped(tmp_path: Path, capsys: pytest.Capture
     assert code == 0
     assert output["result"]["findings"] == []
     assert output["dropped"] == ["x.py:1 bug: file is not part of the change"]
+
+
+def test_schema_prints_the_review_result_schema(capsysbinary: pytest.CaptureFixture[bytes]) -> None:
+    code = main(["schema"])
+
+    schema = json.loads(capsysbinary.readouterr().out)
+    assert code == 0
+    assert set(schema["required"]) == {"findings", "criteria", "scope_creep"}
+
+
+def test_a_result_that_breaks_the_schema_is_a_clear_error(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    context = tmp_path / "context.json"
+    result = tmp_path / "result.json"
+    context.write_text(
+        '{"base_sha": "b", "head_sha": "h", "title": "t", "files": [], "rules": [], '
+        '"requirements": [], "findings": [], "notes": []}',
+        encoding="utf-8",
+    )
+    result.write_text('{"findings": [{"file": "a.py"}]}', encoding="utf-8")
+
+    code = main(["validate", "--context", str(context), "--result", str(result)])
+
+    error = capsys.readouterr().err
+    assert code == 2
+    assert error.startswith("bylaw: ")
+    assert "Traceback" not in error
