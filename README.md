@@ -18,7 +18,7 @@
 Most AI reviewers give general advice. bylaw reviews a pull request against what your repository already wrote down:
 
 - **Your rules.** `.editorconfig`, linter configs, `CONTRIBUTING.md`, `AGENTS.md`. Every rule finding cites the line it comes from.
-- **Your requirements.** The acceptance criteria in the issues the pull request closes and the specs it links. The summary says which are met, partly met or missing, and flags changes nobody asked for.
+- **Your requirements.** The acceptance criteria in the issues the pull request closes and the specs it links, including what maintainers added in the issue's comments. An issue written as prose gets criteria inferred from its text, marked as such. The summary says which are met, partly met or missing, and flags changes nobody asked for.
 - **Security and bugs.** Injection, secrets, unsafe deserialisation, missing authorisation, and plain bugs.
 
 Findings go on the changed lines as review comments. A re-run never repeats a comment and resolves the threads of findings that were fixed.

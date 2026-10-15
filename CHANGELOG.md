@@ -12,4 +12,5 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 - Inline comments and one summary comment with the requirement checklist; re-runs update instead of repeating, and resolve fixed threads.
 - GitHub Action, with recipes for `pull_request` and `pull_request_target`.
 - Claude Code and Codex plugins sharing one skill, so the host model reviews without an API key.
+- Inferred acceptance criteria for issues and specs written as prose, and maintainers' issue comments as part of the requirement.
 - `bylaw eval`: 50 labelled pull requests in four languages, a resumable runner and a scorer.
