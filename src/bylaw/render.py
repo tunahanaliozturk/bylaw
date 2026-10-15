@@ -95,6 +95,8 @@ def _requirements(context: ReviewContext, result: ReviewResult) -> str:
             key = f"{requirement.source}/{criterion.key}"
             item: CriterionResult | None = results.get(key)
             status = item.status.value if item else "not assessed"
+            if item and item.note:
+                status = f"{status}: {_cell(item.note)}"
             code = _locations(item.code) if item else ""
             tests = _locations(item.tests) if item else ""
             rows.append(f"| `{key}` {_cell(criterion.text)} | {status} | {code} | {tests} |")

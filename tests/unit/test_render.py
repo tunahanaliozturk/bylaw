@@ -123,3 +123,17 @@ def test_an_oversized_summary_is_trimmed_and_keeps_its_state() -> None:
 def test_unreadable_state_reads_as_empty() -> None:
     assert read_state("<!-- bylaw:state {not json} -->") == State(auto_resolved=frozenset())
     assert read_state("no state here") == State(auto_resolved=frozenset())
+
+
+def test_a_criterion_note_is_shown_next_to_its_status() -> None:
+    result = ReviewResult(
+        criteria=(
+            CriterionResult(
+                criterion="issue#1/AC-2", status=CriterionStatus.PARTIAL, note="No test shows it."
+            ),
+        )
+    )
+
+    body = summary_body(CONTEXT, result, _plan())
+
+    assert "| `issue#1/AC-2` Lockout | partial: No test shows it. |  |  |" in body
