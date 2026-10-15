@@ -6,7 +6,12 @@ requires-python = ">=3.13"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "Tunahan Ali Ozturk" }]
-dependencies = ["pydantic>=2.14.1", "httpx>=0.28.1"]
+dependencies = [
+    "pydantic>=2.14.1",
+    "httpx>=0.28.1",
+    "anthropic>=1.14.0",
+    "openai>=3.31.0",
+]
 
 [project.scripts]
 bylaw = "bylaw.cli:main"
