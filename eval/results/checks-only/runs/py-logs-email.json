@@ -1,0 +1,14 @@
+{
+  "case_id": "py-logs-email",
+  "result": {
+    "findings": [],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 0,
+  "seconds": 0.006275199993979186,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null
+}

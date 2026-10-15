@@ -1,0 +1,14 @@
+{
+  "case_id": "go-ignored-unmarshal",
+  "result": {
+    "findings": [],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 0,
+  "seconds": 0.006103100022301078,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null
+}

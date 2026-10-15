@@ -1,0 +1,14 @@
+{
+  "case_id": "py-clean-param-sql",
+  "result": {
+    "findings": [],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 0,
+  "seconds": 0.007202999986475334,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null
+}

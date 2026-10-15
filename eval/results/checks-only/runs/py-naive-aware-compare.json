@@ -1,0 +1,14 @@
+{
+  "case_id": "py-naive-aware-compare",
+  "result": {
+    "findings": [],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 0,
+  "seconds": 0.00629089999711141,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null
+}

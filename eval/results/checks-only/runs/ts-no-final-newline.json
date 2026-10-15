@@ -1,0 +1,25 @@
+{
+  "case_id": "ts-no-final-newline",
+  "result": {
+    "findings": [
+      {
+        "file": "src/money.ts",
+        "line_start": 3,
+        "line_end": 3,
+        "category": "rule",
+        "severity": "low",
+        "message": "No newline at the end of the file on line 3.",
+        "suggestion": null,
+        "evidence": ".editorconfig:4"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 0,
+  "seconds": 0.0075505000131670386,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null
+}
