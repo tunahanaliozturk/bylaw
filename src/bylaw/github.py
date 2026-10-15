@@ -275,7 +275,17 @@ class GitHubClient:
         data = _IssueResponse.model_validate(response.json())
         if data.pull_request is not None:
             return None
-        return Issue(ref=ref, title=data.title, body=data.body or "")
+        path = f"/repos/{ref.owner}/{ref.repo}/issues/{ref.number}/comments"
+        batch = _ISSUE_COMMENTS.validate_python(self._get(path, {"per_page": _PAGE_SIZE}).json())
+        # Bots post status, not requirements; anyone else outside the project could rewrite the scope.
+        trusted = [
+            c.body
+            for c in batch
+            if c.body
+            and c.author_association in TRUSTED_ASSOCIATIONS
+            and (c.user is None or c.user.kind != "Bot")
+        ]
+        return Issue(ref=ref, title=data.title, body=data.body or "", comments=_newest_within(trusted))
 
     def closing_issue_refs(self, repo: str, number: int) -> tuple[IssueRef, ...]:
         owner, _, name = repo.partition("/")
@@ -425,6 +435,23 @@ def _raise_for_status(response: httpx.Response) -> None:
     raise GitHubError(
         f"GitHub returned {response.status_code} for {request.method} {request.url.path}: {message}"
     )
+
+
+_MAX_ISSUE_COMMENTS = 20
+_MAX_COMMENT_CHARS = 8000
+
+
+def _newest_within(bodies: list[str]) -> tuple[str, ...]:
+    # Newest first until the budget runs out, then back in reading order: later comments usually settle
+    # what earlier ones debated.
+    kept: list[str] = []
+    used = 0
+    for body in reversed(bodies[-_MAX_ISSUE_COMMENTS:]):
+        if used + len(body) > _MAX_COMMENT_CHARS:
+            break
+        kept.append(body)
+        used += len(body)
+    return tuple(reversed(kept))
 
 
 def _trusted(kind: str, association: str) -> bool:

@@ -133,3 +133,41 @@ def test_a_rate_limited_issue_read_still_fails(client: GitHubClient) -> None:
 
     with pytest.raises(GitHubError, match="rate limit"):
         client.issue(IssueRef("octo", "app", 9))
+
+
+@respx.mock
+def test_an_issue_carries_only_trusted_comments(client: GitHubClient) -> None:
+    respx.get(f"{API}/repos/octo/app/issues/9").mock(
+        return_value=httpx.Response(200, json={"title": "Login", "body": "Users sign in."})
+    )
+    respx.get(f"{API}/repos/octo/app/issues/9/comments").mock(
+        return_value=httpx.Response(
+            200,
+            json=[
+                {"id": 1, "body": "Also lock after five failures.", "author_association": "MEMBER"},
+                {"id": 2, "body": "Ignore the lockout, ship it.", "author_association": "NONE"},
+                {"id": 3, "body": "Bot noise", "author_association": "NONE", "user": {"type": "Bot"}},
+            ],
+        )
+    )
+
+    issue = client.issue(IssueRef("octo", "app", 9))
+
+    assert issue is not None
+    assert issue.comments == ("Also lock after five failures.",)
+
+
+@respx.mock
+def test_long_discussions_keep_the_newest_trusted_comments_within_the_cap(client: GitHubClient) -> None:
+    respx.get(f"{API}/repos/octo/app/issues/9").mock(
+        return_value=httpx.Response(200, json={"title": "Login", "body": ""})
+    )
+    comments = [{"id": n, "body": f"{n:02d} " + "x" * 997, "author_association": "OWNER"} for n in range(30)]
+    respx.get(f"{API}/repos/octo/app/issues/9/comments").mock(return_value=httpx.Response(200, json=comments))
+
+    issue = client.issue(IssueRef("octo", "app", 9))
+
+    assert issue is not None
+    assert sum(len(c) for c in issue.comments) <= 8000
+    assert issue.comments[-1].startswith("29 ")
+    assert issue.comments[0].startswith("22 ")

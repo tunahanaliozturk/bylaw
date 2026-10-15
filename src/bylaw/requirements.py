@@ -120,7 +120,7 @@ def collect_requirements(
         if issue is None:
             notes.append(f"Could not read {label}; it is left out of the requirement check.")
             continue
-        requirements.append(_requirement(label, issue.title, issue.body))
+        requirements.append(_requirement(label, issue.title, issue.body, issue.comments))
     for path in spec_paths(changed, info.body, spec_globs, source.repo):
         text = source.read_head(path)
         if text is None:
@@ -131,8 +131,11 @@ def collect_requirements(
     return tuple(requirements), tuple(notes)
 
 
-def _requirement(source: str, title: str, text: str) -> Requirement:
-    return Requirement(source=source, title=title, text=text, criteria=extract_criteria(text))
+def _requirement(source: str, title: str, text: str, comments: tuple[str, ...] = ()) -> Requirement:
+    # Criteria come from the body only, so their keys stay stable as the discussion grows.
+    discussion = "\n\n".join(comments)
+    full = f"{text}\n\n## Comments from maintainers\n\n{discussion}" if comments else text
+    return Requirement(source=source, title=title, text=full, criteria=extract_criteria(text))
 
 
 def _title(markdown: str, fallback: str) -> str:
