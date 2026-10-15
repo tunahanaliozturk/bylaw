@@ -105,10 +105,10 @@ GitHub issues and Markdown files in the repository ([ADR 0003](adr/0003-requirem
 
 Acceptance criteria are extracted deterministically first: task list items, items under headings named
 "Acceptance criteria" or "Requirements", and Given/When/Then blocks. They are numbered `AC-1`, `AC-2` and
-so on, from the issue body only. When a document has no such structure, the reviewer derives up to five
-criteria from its text in the same review call, labelled `IC-1` to `IC-5` and marked `inferred` in the
-summary. Comments that trusted authors (owners, members, collaborators) left on a linked issue are part of
-the requirement text ([ADR 0011](adr/0011-inferred-criteria-and-maintainer-comments.md)).
+so on, from the issue body only. When a linked issue has no such structure, or has maintainer comments,
+the reviewer derives up to five criteria in the same review call, labelled `IC-1` to `IC-5` and marked
+`inferred` in the summary. Comments that trusted authors (owners, members, collaborators, not the pull
+request's author) left on a linked issue are part of the requirement text ([ADR 0011](adr/0011-inferred-criteria-and-maintainer-comments.md)).
 
 ## Comments
 

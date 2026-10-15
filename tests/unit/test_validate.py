@@ -161,7 +161,13 @@ PROSE = CONTEXT.model_copy(
     update={
         "requirements": (
             *CONTEXT.requirements,
-            Requirement(source="issue#7", title="Lockout", text="Lock accounts after failures.", criteria=()),
+            Requirement(
+                source="issue#7",
+                title="Lockout",
+                text="Lock accounts after failures.",
+                criteria=(),
+                inferable=True,
+            ),
         )
     }
 )
@@ -203,3 +209,25 @@ def test_a_requirement_finding_may_cite_an_inferred_criterion() -> None:
     checked = validate(PROSE, ReviewResult(findings=(finding,), criteria=(_inferred(),)))
 
     assert checked.result.findings == (finding,)
+
+
+def test_a_discussed_issue_with_a_checklist_may_add_inferred_criteria() -> None:
+    discussed = CONTEXT.model_copy(
+        update={"requirements": (CONTEXT.requirements[0].model_copy(update={"inferable": True}),)}
+    )
+
+    checked = validate(discussed, ReviewResult(criteria=(_inferred("issue#1/IC-1"),)))
+
+    assert [c.criterion for c in checked.result.criteria] == ["issue#1/IC-1"]
+
+
+def test_inferred_criterion_text_that_is_blank_or_too_long_is_dropped() -> None:
+    blank = _inferred(text="   ")
+    long = _inferred("issue#7/IC-2", text="x" * 301)
+
+    checked = validate(PROSE, ReviewResult(criteria=(blank, long)))
+
+    assert checked.dropped == (
+        "issue#7/IC-1: inferred criterion needs text",
+        "issue#7/IC-2: inferred criterion text is too long",
+    )

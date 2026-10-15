@@ -51,6 +51,7 @@ class _Ref(_Model):
 class PullRequest(_Model):
     title: str
     body: str | None = None
+    user: "_User | None" = None
     base: _Ref
     head: _Ref
 
@@ -177,6 +178,7 @@ class _GqlThreadData(_Model):
 
 class _User(_Model):
     kind: str = Field(default="User", alias="type")
+    login: str = ""
 
 
 class _IssueComment(_Model):
@@ -264,7 +266,8 @@ class GitHubClient:
         )
         return None if response is None else response.content.decode("utf-8", errors="replace")
 
-    def issue(self, ref: IssueRef) -> Issue | None:
+    def issue(self, ref: IssueRef, exclude: str | None = None) -> Issue | None:
+        """The issue with its trusted comments; `exclude` names the pull request author, never trusted."""
         response = self._send("GET", f"{self._api_url}/repos/{ref.owner}/{ref.repo}/issues/{ref.number}")
         # A moved, hidden, deleted or disabled issue leaves the review to go on without it; a rate limit
         # does not, because every later call would fail too.
@@ -276,14 +279,23 @@ class GitHubClient:
         if data.pull_request is not None:
             return None
         path = f"/repos/{ref.owner}/{ref.repo}/issues/{ref.number}/comments"
-        batch = _ISSUE_COMMENTS.validate_python(self._get(path, {"per_page": _PAGE_SIZE}).json())
-        # Bots post status, not requirements; anyone else outside the project could rewrite the scope.
+        comments: list[_IssueComment] = []
+        # Oldest first; every page is read so the newest comments, which usually settle the scope, are kept.
+        for page in range(1, _MAX_FILE_PAGES + 1):
+            batch = _ISSUE_COMMENTS.validate_python(
+                self._get(path, {"per_page": _PAGE_SIZE, "page": page}).json()
+            )
+            comments.extend(batch)
+            if len(batch) < _PAGE_SIZE:
+                break
+        # Bots post status, not requirements. The pull request author cannot rescope the issue they are
+        # implementing (ADR 0008), and nobody outside the project can.
         trusted = [
             c.body
-            for c in batch
+            for c in comments
             if c.body
             and c.author_association in TRUSTED_ASSOCIATIONS
-            and (c.user is None or c.user.kind != "Bot")
+            and (c.user is None or (c.user.kind != "Bot" and (exclude is None or c.user.login != exclude)))
         ]
         return Issue(ref=ref, title=data.title, body=data.body or "", comments=_newest_within(trusted))
 
@@ -448,7 +460,8 @@ def _newest_within(bodies: list[str]) -> tuple[str, ...]:
     used = 0
     for body in reversed(bodies[-_MAX_ISSUE_COMMENTS:]):
         if used + len(body) > _MAX_COMMENT_CHARS:
-            break
+            # A pasted log must not push every other maintainer comment out.
+            continue
         kept.append(body)
         used += len(body)
     return tuple(reversed(kept))
@@ -505,4 +518,5 @@ class GitHubSource:
         return self._client.closing_issue_refs(self._repo, self._number)
 
     def read_issue(self, ref: IssueRef) -> Issue | None:
-        return self._client.issue(ref)
+        author = self._pull.user.login if self._pull.user else None
+        return self._client.issue(ref, exclude=author)

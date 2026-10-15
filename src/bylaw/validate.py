@@ -72,7 +72,7 @@ class _Checker:
         }
         self._rule_lines = {r.path: len(r.text.splitlines()) for r in context.rules}
         self.criteria = frozenset(f"{r.source}/{c.key}" for r in context.requirements for c in r.criteria)
-        self._prose = frozenset(r.source for r in context.requirements if not r.criteria)
+        self._prose = frozenset(r.source for r in context.requirements if r.inferable)
 
     def inferred_problem(self, item: CriterionResult) -> str | None:
         """None when the item is a valid inferred criterion (ADR 0011)."""

@@ -107,14 +107,13 @@ def _requirements(context: ReviewContext, result: ReviewResult) -> str:
     rows = ["| Criterion | Status | Code | Tests |", "| --- | --- | --- | --- |"]
     for requirement in context.requirements:
         listed = [(f"{requirement.source}/{c.key}", _cell(c.text)) for c in requirement.criteria]
-        if not listed:
-            # ADR 0011: a prose requirement's criteria come from the reviewer, marked as inferred.
-            prefix = f"{requirement.source}/IC-"
-            inferred = sorted(
-                (item for key, item in results.items() if key.startswith(prefix)),
-                key=lambda item: int(item.criterion.removeprefix(prefix)),
-            )
-            listed = [(item.criterion, f"{_cell(item.text or '')} (inferred)") for item in inferred]
+        # ADR 0011: criteria the reviewer inferred from prose or maintainer comments follow, marked.
+        prefix = f"{requirement.source}/IC-"
+        inferred = sorted(
+            (item for key, item in results.items() if key.startswith(prefix)),
+            key=lambda item: int(item.criterion.removeprefix(prefix)),
+        )
+        listed += [(item.criterion, f"{_cell(item.text or '')} (inferred)") for item in inferred]
         if not listed:
             rows.append(
                 f"| {_code(requirement.source)} {_cell(requirement.title)} | no criteria listed |  |  |"

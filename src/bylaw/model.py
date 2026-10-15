@@ -65,6 +65,8 @@ class Requirement(_Frozen):
     title: str
     text: str
     criteria: tuple[Criterion, ...]
+    # A reviewer may add inferred criteria (ADR 0011): issues with no checklist or with maintainer comments.
+    inferable: bool = False
 
 
 class Finding(_Frozen):

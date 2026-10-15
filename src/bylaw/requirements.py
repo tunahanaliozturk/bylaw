@@ -120,26 +120,27 @@ def collect_requirements(
         if issue is None:
             notes.append(f"Could not read {label}; it is left out of the requirement check.")
             continue
-        requirements.append(_requirement(label, issue.title, issue.body, issue.comments))
+        requirements.append(_requirement(label, issue.title, issue.body, issue.comments, issue=True))
     for path in spec_paths(changed, info.body, spec_globs, source.repo):
         text = source.read_head(path)
         if text is None:
             notes.append(f"Linked spec {path} does not exist at the head commit.")
             continue
         requirements.append(_requirement(path, _title(text, path), text))
-    notes.extend(
-        f"{r.source} has no structured acceptance criteria; a reviewer infers them from the text."
-        for r in requirements
-        if not r.criteria
-    )
+    notes.extend(f"{r.source} has no structured acceptance criteria." for r in requirements if not r.criteria)
     return tuple(requirements), tuple(notes)
 
 
-def _requirement(source: str, title: str, text: str, comments: tuple[str, ...] = ()) -> Requirement:
+def _requirement(
+    source: str, title: str, text: str, comments: tuple[str, ...] = (), *, issue: bool = False
+) -> Requirement:
     # Criteria come from the body only, so their keys stay stable as the discussion grows.
     discussion = "\n\n".join(comments)
     full = f"{text}\n\n## Comments from maintainers\n\n{discussion}" if comments else text
-    return Requirement(source=source, title=title, text=full, criteria=extract_criteria(text))
+    criteria = extract_criteria(text)
+    # Specs are left as written: a prose ADR in the change is context, not a list of things to check.
+    inferable = issue and (not criteria or bool(comments))
+    return Requirement(source=source, title=title, text=full, criteria=criteria, inferable=inferable)
 
 
 def _title(markdown: str, fallback: str) -> str:
