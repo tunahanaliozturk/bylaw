@@ -18,8 +18,9 @@ code and the exact dependency versions of the tag the workflow names.
 
 - An action tag is a reproducible release: same code, same locked dependencies.
 - The Action works before any PyPI release, which lets M3 be checked end to end now.
-- Cost: each run creates a virtual environment from the lock, a few seconds with uv's cache and longer
-  on a cold runner. To be measured on the demo repository and reported.
+- Cost: each run creates a virtual environment from the lock. On the demo repository the whole review
+  step took about 10 seconds on `ubuntu-latest`, of which installing the 21 locked packages took about
+  2 seconds (workflow run 38749119302, 2026-10-15, no model call).
 - Cost: the environment is created inside the action directory on the runner; that directory is
   throwaway, so nothing persists between runs.
 
