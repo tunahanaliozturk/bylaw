@@ -98,10 +98,29 @@ def test_the_system_prompt_states_the_output_rules() -> None:
 
 
 def test_a_requirement_without_criteria_asks_for_inferred_ones() -> None:
-    prose = Requirement(source="issue#7", title="Lockout", text="Lock accounts after failures.", criteria=())
+    prose = Requirement(
+        source="issue#7", title="Lockout", text="Lock accounts after failures.", criteria=(), inferable=True
+    )
     context = CONTEXT.model_copy(update={"requirements": (*CONTEXT.requirements, prose)})
 
     text, _ = render_input(context, nonce="feedc0de")
 
     assert "issue#7/IC-1 to issue#7/IC-5" in text
     assert text.count("Derive up to 5 testable criteria") == 1
+
+
+def test_a_listed_requirement_with_maintainer_comments_asks_for_what_the_list_misses() -> None:
+    discussed = Requirement(
+        source="issue#9",
+        title="Login",
+        text="- [ ] Email sign in",
+        criteria=(Criterion(key="AC-1", text="Email sign in"),),
+        inferable=True,
+    )
+    context = CONTEXT.model_copy(update={"requirements": (discussed,)})
+
+    text, _ = render_input(context, nonce="feedc0de")
+
+    assert "- issue#9/AC-1: Email sign in" in text
+    assert "that the listed ones do not cover" in text
+    assert "issue#9/IC-1 to issue#9/IC-5" in text

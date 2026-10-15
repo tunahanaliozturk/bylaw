@@ -107,7 +107,7 @@ def test_requirements_come_from_issues_and_specs_with_notes_for_gaps() -> None:
     assert notes == (
         "Could not read issue#99; it is left out of the requirement check.",
         "Linked spec docs/specs/missing.md does not exist at the head commit.",
-        "docs/specs/login.md has no structured acceptance criteria; a reviewer infers them from the text.",
+        "docs/specs/login.md has no structured acceptance criteria.",
     )
 
 
@@ -144,3 +144,38 @@ def test_maintainer_comments_join_the_requirement_text_but_not_its_criteria() ->
     assert "## Comments from maintainers" in requirement.text
     assert "Lock after five failures" in requirement.text
     assert [c.text for c in requirement.criteria] == ["Email sign in"]
+
+
+def test_issues_without_a_checklist_or_with_maintainer_comments_may_get_inferred_criteria() -> None:
+    plain, listed, discussed = (
+        IssueRef("octo", "app", 1),
+        IssueRef("octo", "app", 2),
+        IssueRef("octo", "app", 3),
+    )
+    source = FakeSource(
+        commits=("Closes #1, closes #2, closes #3",),
+        issues={
+            plain: Issue(plain, "Prose", "Users sign in."),
+            listed: Issue(listed, "Listed", "- [ ] Email sign in"),
+            discussed: Issue(
+                discussed, "Discussed", "- [ ] Email sign in", ("Also lock after five failures.",)
+            ),
+        },
+    )
+
+    requirements, _ = collect_requirements(source, source.info(), (), (), ())
+
+    assert [(r.source, r.inferable) for r in requirements] == [
+        ("issue#1", True),
+        ("issue#2", False),
+        ("issue#3", True),
+    ]
+
+
+def test_a_prose_spec_file_gets_no_inferred_criteria() -> None:
+    spec = ChangedFile(path="docs/specs/login.md", status="added")
+    source = FakeSource(head={"docs/specs/login.md": "# Login\n\nUsers sign in.\n"})
+
+    (requirement,), _ = collect_requirements(source, source.info(), (spec,), ("docs/specs/**",), ())
+
+    assert requirement.inferable is False

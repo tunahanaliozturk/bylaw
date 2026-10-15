@@ -171,3 +171,63 @@ def test_long_discussions_keep_the_newest_trusted_comments_within_the_cap(client
     assert sum(len(c) for c in issue.comments) <= 8000
     assert issue.comments[-1].startswith("29 ")
     assert issue.comments[0].startswith("22 ")
+
+
+def _issue_routes(comments: list[dict[str, object]], body: str = "") -> None:
+    respx.get(f"{API}/repos/octo/app/issues/9").mock(
+        return_value=httpx.Response(200, json={"title": "Login", "body": body})
+    )
+    pages = [comments[i : i + 100] for i in range(0, len(comments), 100)] or [[]]
+    route = respx.get(f"{API}/repos/octo/app/issues/9/comments")
+    route.side_effect = [httpx.Response(200, json=page) for page in pages]
+
+
+@respx.mock
+def test_the_pull_request_authors_own_issue_comments_are_left_out(client: GitHubClient) -> None:
+    _issue_routes(
+        [
+            {
+                "id": 1,
+                "body": "Must lock after five failures.",
+                "author_association": "OWNER",
+                "user": {"login": "lead"},
+            },
+            {
+                "id": 2,
+                "body": "Lockout dropped from scope.",
+                "author_association": "MEMBER",
+                "user": {"login": "dev"},
+            },
+        ]
+    )
+
+    issue = client.issue(IssueRef("octo", "app", 9), exclude="dev")
+
+    assert issue is not None
+    assert issue.comments == ("Must lock after five failures.",)
+
+
+@respx.mock
+def test_comments_past_the_first_page_are_read_and_the_newest_kept(client: GitHubClient) -> None:
+    comments = [{"id": n, "body": f"comment {n}", "author_association": "OWNER"} for n in range(101)]
+    _issue_routes(comments)
+
+    issue = client.issue(IssueRef("octo", "app", 9))
+
+    assert issue is not None
+    assert issue.comments[-1] == "comment 100"
+
+
+@respx.mock
+def test_one_very_long_comment_does_not_push_out_the_others(client: GitHubClient) -> None:
+    _issue_routes(
+        [
+            {"id": 1, "body": "Must be reversible for 30 days.", "author_association": "OWNER"},
+            {"id": 2, "body": "log " + "x" * 8100, "author_association": "MEMBER"},
+        ]
+    )
+
+    issue = client.issue(IssueRef("octo", "app", 9))
+
+    assert issue is not None
+    assert issue.comments == ("Must be reversible for 30 days.",)

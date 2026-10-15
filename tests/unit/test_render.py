@@ -176,7 +176,13 @@ PROSE = CONTEXT.model_copy(
     update={
         "requirements": (
             *CONTEXT.requirements,
-            Requirement(source="issue#7", title="Lockout", text="Lock accounts after failures.", criteria=()),
+            Requirement(
+                source="issue#7",
+                title="Lockout",
+                text="Lock accounts after failures.",
+                criteria=(),
+                inferable=True,
+            ),
         )
     }
 )
@@ -217,3 +223,22 @@ def test_a_requirement_with_nothing_to_assess_is_still_listed() -> None:
     body = summary_body(PROSE, ReviewResult(), _plan())
 
     assert "| `issue#7` Lockout | no criteria listed |  |  |" in body
+
+
+def test_inferred_rows_follow_the_listed_criteria() -> None:
+    discussed = CONTEXT.model_copy(
+        update={"requirements": (CONTEXT.requirements[0].model_copy(update={"inferable": True}),)}
+    )
+    result = ReviewResult(
+        criteria=(
+            CriterionResult(
+                criterion="issue#1/IC-1", status=CriterionStatus.MISSING, text="Reversible for 30 days"
+            ),
+        )
+    )
+
+    body = summary_body(discussed, result, _plan())
+
+    assert body.index("`issue#1/AC-2` Lockout") < body.index(
+        "`issue#1/IC-1` Reversible for 30 days (inferred)"
+    )

@@ -58,11 +58,16 @@ def _rule(rule: RuleSource) -> str:
 
 def _requirement(requirement: Requirement) -> str:
     criteria = "\n".join(f"- {requirement.source}/{c.key}: {c.text}" for c in requirement.criteria)
-    if not criteria:
-        criteria = (
-            f"- none listed. Derive up to 5 testable criteria from the text and label them "
-            f"{requirement.source}/IC-1 to {requirement.source}/IC-5."
+    labels = f"{requirement.source}/IC-1 to {requirement.source}/IC-5"
+    if requirement.inferable and criteria:
+        criteria += (
+            f"\n- Also derive up to 5 testable criteria from the maintainers' comments that the listed "
+            f"ones do not cover, labelled {labels}."
         )
+    elif requirement.inferable:
+        criteria = f"- none listed. Derive up to 5 testable criteria from the text and label them {labels}."
+    elif not criteria:
+        criteria = "- (none listed)"
     return f"{requirement.source}: {requirement.title}\nCriteria:\n{criteria}\nText:\n{requirement.text}"
 
 

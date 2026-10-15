@@ -98,3 +98,8 @@ Known gaps from reviews, small and not yet scheduled:
 - `cs-async-void` accepts only the declaration, not the fire-and-forget call, as the place of the defect.
 - Throwaway evaluation repositories run the user's global git hooks; a failing hook ends the run with a
   traceback.
+- A linked issue whose comments cannot be read (moved or hidden between two calls) ends the review instead
+  of going on without the comments.
+- Summary cells show 80 characters, so an inferred criterion of up to 300 is cut.
+- Maintainer comments sit under an in-band heading that an issue body could imitate.
+- Hidden (minimised) issue comments still count; the REST API does not report them.
