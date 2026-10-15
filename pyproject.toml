@@ -1,0 +1,40 @@
+[project]
+name = "bylaw"
+version = "0.0.1"
+description = "Reviews pull requests against your repository's own rules and requirements."
+requires-python = ">=3.13"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Tunahan Ali Ozturk" }]
+dependencies = ["pydantic>=2.14.1", "httpx>=0.28.1"]
+
+[project.scripts]
+bylaw = "bylaw.cli:main"
+
+[dependency-groups]
+dev = ["pytest>=9.1.1", "pytest-cov>=7.1.0", "respx>=0.23.1", "ruff>=0.17.0", "mypy>=2.4.0"]
+
+[build-system]
+requires = ["hatchling>=1.32.4"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 110
+target-version = "py313"
+# Markdown is prose; its code samples are illustrations, not code ruff should rewrite.
+extend-exclude = ["docs"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "A", "C4", "SIM", "RET", "PTH", "ARG", "PL", "RUF", "S"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S603", "S607", "PLR2004"]
+
+[tool.mypy]
+strict = true
+python_version = "3.13"
+plugins = ["pydantic.mypy"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
