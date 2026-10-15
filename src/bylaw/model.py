@@ -86,3 +86,34 @@ class ReviewContext(_Frozen):
     requirements: tuple[Requirement, ...]
     findings: tuple[Finding, ...]
     notes: tuple[str, ...]
+
+
+class CriterionStatus(StrEnum):
+    MET = "met"
+    PARTIAL = "partial"
+    MISSING = "missing"
+
+
+class Location(_Frozen):
+    file: str
+    line: int
+
+
+class CriterionResult(_Frozen):
+    criterion: str
+    status: CriterionStatus
+    code: tuple[Location, ...] = ()
+    tests: tuple[Location, ...] = ()
+    note: str = ""
+
+
+class ScopeCreep(_Frozen):
+    file: str
+    line: int
+    message: str
+
+
+class ReviewResult(_Frozen):
+    findings: tuple[Finding, ...] = ()
+    criteria: tuple[CriterionResult, ...] = ()
+    scope_creep: tuple[ScopeCreep, ...] = ()
