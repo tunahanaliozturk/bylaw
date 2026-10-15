@@ -24,12 +24,13 @@ Each milestone ends with something a user can run. Design: [design.md](design.md
 - Exit: a hand-written `findings.json` posts correctly, and a second run on a new commit resolves fixed
   threads and posts nothing twice.
 
-## M3: built-in engine and the GitHub Action
+## M3: built-in engine and the GitHub Action (done, 2026-10-15; live model run deferred)
 
 - `engine` for Anthropic and OpenAI with structured output, shared prompts, `bylaw review`.
 - Composite `action.yml`, `pull_request` and `pull_request_target` recipes, `fail-on`.
 - `bylaw-demo` repository with seeded pull requests.
-- Exit: the Action reviews a demo pull request end to end with the user's own key.
+- Exit: the Action reviews a demo pull request end to end without a key; the live model run on the
+  demo repository happens at the end of the project.
 
 ## M4: Claude Code plugin and Codex skill
 
