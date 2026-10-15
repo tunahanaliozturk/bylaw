@@ -67,15 +67,10 @@ bylaw review --context context.json   # prints the findings as JSON; set ANTHROP
 
 ## How it works
 
-```mermaid
-flowchart LR
-  PR[Pull request] --> C[Context<br>diff, rules from the base branch,<br>issues and specs]
-  C --> D[Deterministic checks<br>.editorconfig]
-  C --> M[Reviewer<br>your model key, or Claude Code / Codex]
-  D --> V[Validate<br>findings on changed lines,<br>citations that exist]
-  M --> V
-  V --> P[Comments and summary<br>on the pull request]
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/flow-dark.png">
+  <img src="docs/images/flow-light.png" alt="Pull request, then context, then deterministic checks and the reviewer, then validation, then comments on the pull request" width="100%">
+</picture>
 
 1. **Context.** bylaw reads the diff, the rule files and `.bylaw.toml` from the **base** branch (so a change cannot loosen its own review), and the issues and specs the change links.
 2. **Review.** A model reviews with a fixed brief and a strict output schema. Text from the pull request, its issues and specs is treated as data, never as instructions.
