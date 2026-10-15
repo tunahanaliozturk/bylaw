@@ -105,8 +105,10 @@ GitHub issues and Markdown files in the repository ([ADR 0003](adr/0003-requirem
 
 Acceptance criteria are extracted deterministically first: task list items, items under headings named
 "Acceptance criteria" or "Requirements", and Given/When/Then blocks. They are numbered `AC-1`, `AC-2` and
-so on. When a document has no such structure, the model extracts criteria from the prose and they are
-marked `inferred` and shown with lower confidence.
+so on, from the issue body only. When a document has no such structure, the reviewer derives up to five
+criteria from its text in the same review call, labelled `IC-1` to `IC-5` and marked `inferred` in the
+summary. Comments that trusted authors (owners, members, collaborators) left on a linked issue are part of
+the requirement text ([ADR 0011](adr/0011-inferred-criteria-and-maintainer-comments.md)).
 
 ## Comments
 
@@ -193,5 +195,4 @@ terminal output), an architecture diagram, a logo and a social preview card. The
 - A hosted service or GitHub App.
 - A static analysis engine of our own: linter configuration is a rule source, linters are not re-run.
 - Jira, Azure DevOps, Confluence and Notion as requirement sources.
-- Issue comments as requirement text.
 - An MCP server; it can wrap the CLI later.

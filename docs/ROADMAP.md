@@ -53,12 +53,19 @@ Each milestone ends with something a user can run. Design: [design.md](design.md
   reporting and CodeQL. GitHub offers these on private repositories only with a paid plan.
 - Exit: `uvx bylaw` and `uses: tunahanaliozturk/bylaw@v0` work from a clean machine.
 
+## M7: requirements from prose and maintainer comments (done, 2026-10-15)
+
+- Reviewers derive up to five acceptance criteria for an issue or spec written as prose; the summary marks
+  them inferred. Trusted authors' comments on a linked issue are part of the requirement
+  ([ADR 0011](adr/0011-inferred-criteria-and-maintainer-comments.md)).
+- Exit: `bylaw-demo` pull request 5 closes a prose issue with a maintainer comment; the summary lists four
+  inferred criteria, including the one from the comment.
+
 ## Later
 
 Ideas, not commitments:
 
 - Jira and Azure DevOps work items as requirement sources.
-- Issue comments as requirement text.
 - Incremental review of only the new commits, to cut cost on long pull requests.
 - An MCP server wrapping the CLI.
 - A GitHub App for organisations that do not want to manage workflow files.
@@ -76,7 +83,6 @@ Known gaps from reviews, small and not yet scheduled:
 - The Anthropic call caps output at 20,000 tokens and does not stream.
 - The prompt budget counts characters, not tokens.
 - With the `pull_request_target` recipe, adding or removing a label re-runs the review.
-- Acceptance criteria are only read from checklists and headed sections; prose requirements are not inferred.
 - `/bylaw-review` reads `post` as a base branch name, does not accept `#12` or a PR URL, takes `owner/name`
   from `origin` (wrong on a fork) and defaults to `main` even on `master` repositories.
 - `--base` reviews committed changes only, and the skill does not tell the user so.
