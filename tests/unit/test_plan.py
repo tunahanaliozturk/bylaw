@@ -1,0 +1,132 @@
+from bylaw.model import AddedLine, Category, ChangedFile, Finding, ReviewContext, Severity
+from bylaw.plan import (
+    Group,
+    State,
+    Thread,
+    ThreadComment,
+    added_text,
+    fingerprint,
+    group_findings,
+    make_plan,
+)
+
+
+def _context(*lines: tuple[int, str]) -> ReviewContext:
+    added = tuple(AddedLine(number=n, text=t) for n, t in lines)
+    return ReviewContext(
+        base_sha="b",
+        head_sha="h",
+        title="t",
+        files=(ChangedFile(path="app.py", status="modified", added_lines=added),),
+        rules=(),
+        requirements=(),
+        findings=(),
+        notes=(),
+    )
+
+
+def _finding(line: int = 1, severity: Severity = Severity.HIGH, message: str = "m") -> Finding:
+    return Finding(
+        file="app.py",
+        line_start=line,
+        line_end=line,
+        category=Category.SECURITY,
+        severity=severity,
+        message=message,
+    )
+
+
+def _group(fp: str, severity: Severity = Severity.HIGH, line: int = 1) -> Group:
+    return Group(finding=_finding(line, severity), fingerprint=fp, others=())
+
+
+def _ours(fp: str, thread_id: str = "T1", resolved: bool = False, *replies: ThreadComment) -> Thread:
+    first = ThreadComment(body=f"text\n<!-- bylaw:fp={fp} -->", trusted=True)
+    return Thread(id=thread_id, resolved=resolved, comments=(first, *replies))
+
+
+FP = "0123456789abcdef"
+NO_STATE = State(auto_resolved=frozenset())
+
+
+def test_a_fingerprint_survives_the_code_moving_down() -> None:
+    before = added_text(_context((3, "query = 'a' + x")))
+    after = added_text(_context((13, "query  =  'a' + x")))
+
+    assert fingerprint(before, _finding(3)) == fingerprint(after, _finding(13))
+    assert len(fingerprint(before, _finding(3))) == 16
+
+
+def test_the_same_problem_in_several_places_becomes_one_group() -> None:
+    added = added_text(_context((1, "a"), (2, "b"), (3, "c")))
+
+    groups = group_findings((_finding(1), _finding(2), _finding(3, message="other")), added)
+
+    assert [(g.finding.line_start, [o.line_start for o in g.others]) for g in groups] == [(1, [2]), (3, [])]
+
+
+def test_new_findings_are_posted_highest_severity_first_up_to_the_cap() -> None:
+    groups = [_group(f"{i:016x}", Severity.MEDIUM, i) for i in range(3)] + [
+        _group("f" * 16, Severity.HIGH, 9)
+    ]
+
+    plan = make_plan(groups, (), NO_STATE, Severity.MEDIUM, 2)
+
+    assert [g.fingerprint for g in plan.inline] == ["f" * 16, f"{0:016x}"]
+    assert len(plan.summary_only) == 2
+
+
+def test_findings_below_the_threshold_go_to_the_summary() -> None:
+    plan = make_plan([_group(FP, Severity.LOW)], (), NO_STATE, Severity.MEDIUM, 15)
+
+    assert (plan.inline, [g.fingerprint for g in plan.summary_only]) == ((), [FP])
+
+
+def test_an_existing_thread_is_not_posted_again() -> None:
+    plan = make_plan([_group(FP)], [_ours(FP)], NO_STATE, Severity.MEDIUM, 15)
+
+    assert plan.inline == ()
+    assert [g.fingerprint for g in plan.open_threads] == [FP]
+
+
+def test_a_planted_fingerprint_from_an_untrusted_author_is_ignored() -> None:
+    planted = Thread(
+        id="X", resolved=False, comments=(ThreadComment(f"<!-- bylaw:fp={FP} -->", trusted=False),)
+    )
+
+    plan = make_plan([_group(FP)], [planted], NO_STATE, Severity.MEDIUM, 15)
+
+    assert [g.fingerprint for g in plan.inline] == [FP]
+    assert plan.resolve == ()
+
+
+def test_a_fixed_finding_resolves_its_thread_and_is_remembered() -> None:
+    plan = make_plan([], [_ours(FP)], NO_STATE, Severity.MEDIUM, 15)
+
+    assert plan.resolve == ("T1",)
+    assert plan.state.auto_resolved == frozenset({FP})
+
+
+def test_a_finding_that_comes_back_reopens_the_thread_bylaw_resolved() -> None:
+    plan = make_plan([_group(FP)], [_ours(FP, "T1", True)], State(frozenset({FP})), Severity.MEDIUM, 15)
+
+    assert plan.unresolve == ("T1",)
+    assert plan.state.auto_resolved == frozenset()
+    assert plan.inline == ()
+
+
+def test_a_thread_a_reviewer_resolved_stays_resolved_and_is_listed() -> None:
+    plan = make_plan([_group(FP)], [_ours(FP, "T1", True)], NO_STATE, Severity.MEDIUM, 15)
+
+    assert (plan.unresolve, plan.inline) == ((), ())
+    assert [g.fingerprint for g in plan.reviewer_resolved] == [FP]
+
+
+def test_a_maintainer_reply_mutes_and_an_untrusted_reply_does_not() -> None:
+    muted = _ours(FP, "T1", False, ThreadComment("bylaw: ignore, false positive", trusted=True))
+    not_muted = _ours(FP, "T1", False, ThreadComment("bylaw: ignore", trusted=False))
+
+    assert [g.fingerprint for g in make_plan([_group(FP)], [muted], NO_STATE, Severity.MEDIUM, 15).muted] == [
+        FP
+    ]
+    assert make_plan([_group(FP)], [not_muted], NO_STATE, Severity.MEDIUM, 15).muted == ()
