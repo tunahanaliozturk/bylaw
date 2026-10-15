@@ -35,6 +35,9 @@ def parse_issue_refs(texts: Iterable[str], default_repo: str | None) -> tuple[Is
             if full is None:
                 continue
             owner, _, name = full.lower().partition("/")
+            # Text from a pull request is untrusted: "fixes ../..#5" must not become a path into the API.
+            if {owner, name} & {"", ".", ".."}:
+                continue
             refs.append(IssueRef(owner, name, int(match["number"])))
     return tuple(dict.fromkeys(refs))
 

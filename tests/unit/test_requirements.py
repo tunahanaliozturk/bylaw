@@ -109,3 +109,7 @@ def test_requirements_come_from_issues_and_specs_with_notes_for_gaps() -> None:
         "Linked spec docs/specs/missing.md does not exist at the head commit.",
         "docs/specs/login.md has no structured acceptance criteria.",
     )
+
+
+def test_dot_segments_in_an_issue_reference_are_rejected() -> None:
+    assert parse_issue_refs(["Fixes ../..#5", "Closes ./x#6", "fixes octo/..#7"], "octo/app") == ()

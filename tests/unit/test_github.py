@@ -113,3 +113,23 @@ def test_a_pull_request_number_is_not_read_as_an_issue(client: GitHubClient) -> 
     )
 
     assert client.issue(IssueRef("octo", "app", 9)) is None
+
+
+@respx.mock
+@pytest.mark.parametrize("status", [301, 403, 410])
+def test_an_issue_that_moved_or_is_hidden_reads_as_none(client: GitHubClient, status: int) -> None:
+    respx.get(f"{API}/repos/octo/app/issues/9").mock(
+        return_value=httpx.Response(status, json={"message": "x"})
+    )
+
+    assert client.issue(IssueRef("octo", "app", 9)) is None
+
+
+@respx.mock
+def test_a_rate_limited_issue_read_still_fails(client: GitHubClient) -> None:
+    respx.get(f"{API}/repos/octo/app/issues/9").mock(
+        return_value=httpx.Response(403, json={"message": "x"}, headers={"x-ratelimit-remaining": "0"})
+    )
+
+    with pytest.raises(GitHubError, match="rate limit"):
+        client.issue(IssueRef("octo", "app", 9))

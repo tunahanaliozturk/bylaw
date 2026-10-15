@@ -16,6 +16,9 @@ from bylaw.source import ChangeInfo, Issue, IssueRef
 _PAGE_SIZE = 100
 _MAX_FILE_PAGES = 30  # GitHub lists at most 3000 files for a pull request.
 _MAX_COMMIT_PAGES = 3  # and at most 250 commits.
+_UNREADABLE_ISSUE = frozenset(
+    {HTTPStatus.MOVED_PERMANENTLY, HTTPStatus.FORBIDDEN, HTTPStatus.NOT_FOUND, HTTPStatus.GONE}
+)
 _STATUS: dict[str, FileStatus] = {"added": "added", "removed": "removed", "renamed": "renamed"}
 _CLOSING_QUERY = """
 query($owner: String!, $name: String!, $number: Int!) {
@@ -160,9 +163,13 @@ class GitHubClient:
         return None if response is None else response.content.decode("utf-8", errors="replace")
 
     def issue(self, ref: IssueRef) -> Issue | None:
-        response = self._get_optional(f"/repos/{ref.owner}/{ref.repo}/issues/{ref.number}")
-        if response is None:
+        response = self._send("GET", f"{self._api_url}/repos/{ref.owner}/{ref.repo}/issues/{ref.number}")
+        # A moved, hidden, deleted or disabled issue leaves the review to go on without it; a rate limit
+        # does not, because every later call would fail too.
+        rate_limited = response.headers.get("x-ratelimit-remaining") == "0"
+        if response.status_code in _UNREADABLE_ISSUE and not rate_limited:
             return None
+        _raise_for_status(response)
         data = _IssueResponse.model_validate(response.json())
         if data.pull_request is not None:
             return None

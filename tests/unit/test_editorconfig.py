@@ -73,3 +73,17 @@ def test_only_files_that_exist_are_reported_as_read() -> None:
     resolver.properties("src/deep/a.py")
 
     assert resolver.files_read == ((".editorconfig", "[*]\nindent_size = 2\n"),)
+
+
+def test_a_byte_order_mark_does_not_hide_the_first_line() -> None:
+    resolver = _resolver(
+        {
+            ".editorconfig": "\ufeffroot = true\n[*]\nindent_size = 2\n",
+            "src/.editorconfig": "\ufeff[*]\nmax_line_length = 80\n",
+        }
+    )
+
+    properties = resolver.properties("src/a.py")
+
+    assert properties["max_line_length"].value == "80"
+    assert properties["indent_size"].value == "2"

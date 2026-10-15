@@ -109,7 +109,8 @@ def _directories(path: str) -> list[str]:
 def _parse(path: str, directory: str, text: str) -> _File:
     root = False
     raw: list[tuple[str, list[tuple[str, str, int]]]] = []
-    for number, line in enumerate(text.splitlines(), start=1):
+    # Visual Studio saves .editorconfig with a byte order mark, which would hide the first line.
+    for number, line in enumerate(text.removeprefix("﻿").splitlines(), start=1):
         stripped = line.strip()
         if not stripped or stripped[0] in "#;":
             continue

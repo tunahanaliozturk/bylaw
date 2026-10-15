@@ -71,3 +71,11 @@ def test_the_cli_prints_utf8_json_for_a_local_branch(
     assert code == 0
     assert "Öztürk" in output
     assert [(f["file"], f["evidence"]) for f in context["findings"]] == [("app.py", ".editorconfig:3")]
+
+
+def test_a_noprefix_git_config_does_not_empty_the_diff(repo: Path) -> None:
+    _git(repo, "config", "diff.noprefix", "true")
+
+    files = LocalGitSource(repo, "main").changed_files()
+
+    assert [f.path for f in files] == ["app.py"]
