@@ -1,0 +1,53 @@
+name: bylaw
+description: Review pull requests against your repository's own rules and the requirements they claim to implement.
+author: Tunahan Ali Ozturk
+branding:
+  icon: check-circle
+  color: gray-dark
+
+inputs:
+  api-key:
+    description: API key for the model provider. Leave empty to run only the deterministic checks.
+    required: false
+    default: ""
+  provider:
+    description: Model provider, anthropic or openai.
+    required: false
+    default: anthropic
+  model:
+    description: Model name. Defaults to claude-opus-5-5 for anthropic; required for openai.
+    required: false
+    default: ""
+  effort:
+    description: Reasoning effort passed to the model.
+    required: false
+    default: high
+  fail-on:
+    description: Fail the check when a finding at or above this severity remains (critical, high, medium, low, suggestion or none).
+    required: false
+    default: none
+  github-token:
+    description: Token used to read the pull request and write comments.
+    required: false
+    default: ${{ github.token }}
+
+runs:
+  using: composite
+  steps:
+    - uses: astral-sh/setup-uv@v10.2.0
+    - name: Review the pull request
+      shell: bash
+      # Inputs travel as environment variables and are quoted below, so nothing a workflow passes in can
+      # become part of the command line.
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        BYLAW_API_KEY: ${{ inputs.api-key }}
+        BYLAW_PROVIDER: ${{ inputs.provider }}
+        BYLAW_MODEL: ${{ inputs.model }}
+        BYLAW_EFFORT: ${{ inputs.effort }}
+        BYLAW_FAIL_ON: ${{ inputs.fail-on }}
+        BYLAW_PR: ${{ github.event.pull_request.number }}
+      run: |
+        args=(review --pr "$BYLAW_PR" --post --provider "$BYLAW_PROVIDER" --effort "$BYLAW_EFFORT" --fail-on "$BYLAW_FAIL_ON")
+        if [ -n "$BYLAW_MODEL" ]; then args+=(--model "$BYLAW_MODEL"); fi
+        uv run --project "$GITHUB_ACTION_PATH" --locked --no-dev bylaw "${args[@]}"

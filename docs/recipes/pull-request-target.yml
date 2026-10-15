@@ -1,0 +1,27 @@
+# Reviews fork pull requests once a maintainer adds the `bylaw` label (ADR 0006).
+# bylaw reads the diff through the API and never runs the pull request's code. Do not add
+# actions/checkout of the pull request head to this workflow: that is what makes
+# pull_request_target dangerous.
+name: bylaw
+
+on:
+  pull_request_target:
+    types: [labeled, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: read
+
+concurrency:
+  group: bylaw-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    if: contains(github.event.pull_request.labels.*.name, 'bylaw')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: tunahanaliozturk/bylaw@v0
+        with:
+          api-key: ${{ secrets.ANTHROPIC_API_KEY }}

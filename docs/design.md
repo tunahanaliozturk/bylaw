@@ -129,9 +129,11 @@ marked `inferred` and shown with lower confidence.
 Prompts live in the Python package and the skills fetch them with `bylaw prompts`, so the three packages
 cannot drift apart.
 
-- **GitHub Action.** Composite `action.yml` at the repository root: `astral-sh/setup-uv`, then `uvx
-  bylaw@<pinned version> review`. Inputs: `provider`, `model`, `api-key`, `fail-on`, `max-comments`.
-  Listed on the GitHub Marketplace and versioned by tags (`v1`, `v1.2.0`).
+- **GitHub Action.** Composite `action.yml` at the repository root: `astral-sh/setup-uv`, then
+  `uv run --project "$GITHUB_ACTION_PATH" --locked --no-dev bylaw review --post`, so a tag runs its own
+  code with its own lock file ([ADR 0009](adr/0009-action-runs-from-its-own-source.md)). Inputs:
+  `api-key`, `provider`, `model`, `effort`, `fail-on`, `github-token`. Without a key it runs the
+  deterministic checks only. Listed on the GitHub Marketplace and versioned by tags (`v1`, `v1.2.0`).
 - **Claude Code plugin.** `.claude-plugin/plugin.json` and `marketplace.json` in the same repository, with
   `skills/bylaw-review/SKILL.md` and a `/bylaw-review [pr]` command.
 - **Codex.** The same `SKILL.md`, plus an `AGENTS.md` snippet. The exact install path is to be taken from
