@@ -1,0 +1,31 @@
+name: Bug report
+description: bylaw did something wrong or crashed.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What bylaw did, and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce
+      description: The command or workflow, and a pull request or a minimal diff if you can share one.
+    validations:
+      required: true
+  - type: input
+    id: where
+    attributes:
+      label: Where it ran
+      description: GitHub Action, Claude Code, Codex or CLI, with the bylaw version and model.
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Output
+      description: The relevant log lines. Remove any token or key first.
+      render: text
