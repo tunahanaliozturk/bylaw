@@ -107,8 +107,8 @@ Acceptance criteria are extracted deterministically first: task list items, item
 "Acceptance criteria" or "Requirements", and Given/When/Then blocks. They are numbered `AC-1`, `AC-2` and
 so on, from the issue body only. When a linked issue has no such structure, or has maintainer comments,
 the reviewer derives up to five criteria in the same review call, labelled `IC-1` to `IC-5` and marked
-`inferred` in the summary. Comments that trusted authors (owners, members, collaborators, not the pull
-request's author) left on a linked issue are part of the requirement text ([ADR 0011](adr/0011-inferred-criteria-and-maintainer-comments.md)).
+`inferred` in the summary. Comments that trusted authors (owners, members, collaborators; a member who
+wrote the pull request is left out) left on a linked issue are part of the requirement text ([ADR 0011](adr/0011-inferred-criteria-and-maintainer-comments.md)).
 
 ## Comments
 

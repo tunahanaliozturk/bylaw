@@ -288,15 +288,10 @@ class GitHubClient:
             comments.extend(batch)
             if len(batch) < _PAGE_SIZE:
                 break
-        # Bots post status, not requirements. The pull request author cannot rescope the issue they are
-        # implementing (ADR 0008), and nobody outside the project can.
-        trusted = [
-            c.body
-            for c in comments
-            if c.body
-            and c.author_association in TRUSTED_ASSOCIATIONS
-            and (c.user is None or (c.user.kind != "Bot" and (exclude is None or c.user.login != exclude)))
-        ]
+        # Bots post status, not requirements, and nobody outside the project may rescope the issue. The pull
+        # request author is left out only as a member: an owner or collaborator could edit the issue body
+        # anyway, but a member may have read access only (ADR 0008).
+        trusted = [c.body for c in comments if c.body and _counts(c, exclude)]
         return Issue(ref=ref, title=data.title, body=data.body or "", comments=_newest_within(trusted))
 
     def closing_issue_refs(self, repo: str, number: int) -> tuple[IssueRef, ...]:
@@ -465,6 +460,16 @@ def _newest_within(bodies: list[str]) -> tuple[str, ...]:
         kept.append(body)
         used += len(body)
     return tuple(reversed(kept))
+
+
+def _counts(comment: _IssueComment, pr_author: str | None) -> bool:
+    if comment.author_association not in TRUSTED_ASSOCIATIONS:
+        return False
+    if comment.user is None:
+        return True
+    if comment.user.kind == "Bot":
+        return False
+    return not (comment.author_association == "MEMBER" and comment.user.login == pr_author)
 
 
 def _trusted(kind: str, association: str) -> bool:

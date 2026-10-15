@@ -231,3 +231,16 @@ def test_one_very_long_comment_does_not_push_out_the_others(client: GitHubClient
 
     assert issue is not None
     assert issue.comments == ("Must be reversible for 30 days.",)
+
+
+@respx.mock
+def test_an_owner_or_collaborator_authoring_the_pull_request_still_counts(client: GitHubClient) -> None:
+    # They could edit the issue body anyway; only a member, who may have read access only, is left out.
+    _issue_routes(
+        [{"id": 1, "body": "Must be reversible.", "author_association": "OWNER", "user": {"login": "dev"}}]
+    )
+
+    issue = client.issue(IssueRef("octo", "app", 9), exclude="dev")
+
+    assert issue is not None
+    assert issue.comments == ("Must be reversible.",)
