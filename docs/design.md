@@ -179,6 +179,7 @@ are skipped; large pull requests are split into file groups.
   scope creep) and clean pull requests. Reported per model and date: recall and precision per category,
   false positive rate on clean PRs, share of findings the validator dropped for invented citations, and
   cost and latency per PR. Run before a release, not on every CI run, because it costs money.
+  The set, labels and matching rules: [docs/eval/README.md](eval/README.md).
 
 ## README images
 
