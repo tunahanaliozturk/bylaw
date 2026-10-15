@@ -28,7 +28,7 @@ extend-exclude = ["docs"]
 select = ["E", "F", "W", "I", "N", "UP", "B", "A", "C4", "SIM", "RET", "PTH", "ARG", "PL", "RUF", "S"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101", "S603", "S607", "PLR2004"]
+"tests/**" = ["S101", "S603", "S607", "PLR2004", "ARG002"]
 
 [tool.mypy]
 strict = true

@@ -1,4 +1,6 @@
+import json
 from importlib.metadata import version
+from pathlib import Path
 
 import pytest
 
@@ -35,3 +37,25 @@ def test_pr_mode_without_a_repository_fails_with_a_clear_message(
 
     assert code == 2
     assert "--repo or GITHUB_REPOSITORY" in capsys.readouterr().err
+
+
+def test_validate_reports_what_it_dropped(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    context = tmp_path / "context.json"
+    result = tmp_path / "result.json"
+    context.write_text(
+        '{"base_sha": "b", "head_sha": "h", "title": "t", "files": [], "rules": [], '
+        '"requirements": [], "findings": [], "notes": []}',
+        encoding="utf-8",
+    )
+    result.write_text(
+        '{"findings": [{"file": "x.py", "line_start": 1, "line_end": 1, "category": "bug", '
+        '"severity": "high", "message": "m"}]}',
+        encoding="utf-8",
+    )
+
+    code = main(["validate", "--context", str(context), "--result", str(result)])
+
+    output = json.loads(capsys.readouterr().out)
+    assert code == 0
+    assert output["result"]["findings"] == []
+    assert output["dropped"] == ["x.py:1 bug: file is not part of the change"]
