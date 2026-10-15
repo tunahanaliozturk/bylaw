@@ -26,6 +26,7 @@ REVIEW = {
     "criteria": [
         {
             "criterion": "issue#1/AC-1",
+            "text": None,
             "status": "met",
             "code": [{"file": "users.py", "line": 6}],
             "tests": [],

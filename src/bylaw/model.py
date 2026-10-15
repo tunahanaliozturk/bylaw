@@ -103,6 +103,8 @@ class Location(_Frozen):
 class CriterionResult(_Frozen):
     criterion: str
     status: CriterionStatus
+    # The criterion itself, for one the reviewer inferred from a requirement written as prose.
+    text: str | None = None
     code: tuple[Location, ...] = ()
     tests: tuple[Location, ...] = ()
     note: str = ""

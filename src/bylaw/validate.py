@@ -1,10 +1,14 @@
 """Drops what the review context cannot back up. Runs on every result, whoever produced it."""
 
+import re
 from dataclasses import dataclass
 
 from bylaw.model import Category, CriterionResult, Finding, Location, ReviewContext, ReviewResult, ScopeCreep
 
 _NEEDS_EVIDENCE = frozenset({Category.RULE, Category.REQUIREMENT})
+INFERRED_LIMIT = 5
+INFERRED_TEXT_LIMIT = 300
+_INFERRED = re.compile(r"IC-([1-9][0-9]*)")
 
 
 @dataclass(frozen=True, slots=True)
@@ -16,6 +20,8 @@ class Validated:
 def validate(context: ReviewContext, result: ReviewResult) -> Validated:
     checker = _Checker(context)
     dropped: list[str] = []
+    # Inferred criteria first, so a requirement finding may cite one.
+    checker.criteria |= {item.criterion for item in result.criteria if checker.inferred_problem(item) is None}
 
     findings: list[Finding] = []
     seen: set[tuple[str, int, int, Category]] = set()
@@ -34,7 +40,9 @@ def validate(context: ReviewContext, result: ReviewResult) -> Validated:
     assessed: set[str] = set()
     for item in result.criteria:
         if item.criterion not in checker.criteria:
-            dropped.append(f"{item.criterion}: no such acceptance criterion")
+            dropped.append(
+                f"{item.criterion}: {checker.inferred_problem(item) or 'no such acceptance criterion'}"
+            )
             continue
         if item.criterion in assessed:
             dropped.append(f"{item.criterion}: duplicate criterion result")
@@ -64,6 +72,19 @@ class _Checker:
         }
         self._rule_lines = {r.path: len(r.text.splitlines()) for r in context.rules}
         self.criteria = frozenset(f"{r.source}/{c.key}" for r in context.requirements for c in r.criteria)
+        self._prose = frozenset(r.source for r in context.requirements if not r.criteria)
+
+    def inferred_problem(self, item: CriterionResult) -> str | None:
+        """None when the item is a valid inferred criterion (ADR 0011)."""
+        source, _, label = item.criterion.rpartition("/")
+        number = _INFERRED.fullmatch(label)
+        if source not in self._prose or number is None or int(number[1]) > INFERRED_LIMIT:
+            return "no such acceptance criterion"
+        if not item.text or not item.text.strip():
+            return "inferred criterion needs text"
+        if len(item.text) > INFERRED_TEXT_LIMIT:
+            return "inferred criterion text is too long"
+        return None
 
     def on_added_line(self, file: str, line: int) -> bool:
         return line in self._added.get(file, frozenset())

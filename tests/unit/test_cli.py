@@ -130,3 +130,11 @@ def test_prompt_names_the_files_left_out_for_size(tmp_path: Path, capsys: pytest
 
     assert code == 0
     assert "bylaw: Left out of the review for size: huge.py." in capsys.readouterr().err
+
+
+def test_the_schema_asks_for_criterion_text(capsysbinary: pytest.CaptureFixture[bytes]) -> None:
+    main(["schema"])
+
+    schema = json.loads(capsysbinary.readouterr().out)
+    criterion = schema["$defs"]["OutCriterion"]
+    assert "text" in criterion["required"]
