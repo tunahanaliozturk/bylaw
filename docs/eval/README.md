@@ -1,0 +1,64 @@
+# Evaluation
+
+The README's quality numbers come from here: 50 labelled pull requests, a runner that reviews them with any model or host, and a scorer. Results are per model and date, not per release (ADR 0001), because the same bylaw gives different results with different models.
+
+## The set
+
+Each case is a small base project in `eval/projects/` plus the files one pull request changes, in `eval/cases/<id>/head/`, and a `case.toml` with the labels. bylaw builds a throwaway git repository per case (base commit, then the change) and collects the context exactly as `bylaw context --base` does, so the reviewer sees what it would see on a real pull request.
+
+There are four base projects, so the set is not only Python: `py-users` (Python), `ts-shop` (TypeScript), `go-api` (Go) and `cs-orders` (C#). Each has an `.editorconfig` and a `CONTRIBUTING.md` whose rules the cases break.
+
+| Kind | Cases | What is planted |
+| --- | --- | --- |
+| security | 10 | SQL injection (four languages), path traversal, hardcoded secret, shell injection, unpickling a cookie, weak reset token, reflected XSS, missing ownership check |
+| bug | 10 | mutable default, off-by-one page, swallowed exception, naive and aware datetimes, missing await, `reduce` without a start value, nil map write, ignored decode error, `async void`, null dereference |
+| rule | 10 | three `.editorconfig` breaks bylaw finds itself, and seven `CONTRIBUTING.md` rules |
+| requirement | 7 | a spec with acceptance criteria that the change meets, half meets or misses |
+| scope | 4 | a change that does what its spec asks and something it does not |
+| clean | 9 | changes with nothing to report, some of them built to look like the planted ones |
+
+Planted secrets are fake and shaped like no provider's key. Files under `eval/` keep their exact bytes: `.gitattributes` marks them `-text`, and `eval/.editorconfig` stops editors applying this repository's rules to them, because a tab, a trailing space or a missing final newline can be the label.
+
+## Labels
+
+A `case.toml` names the project, the kind, the pull request title and commit message, and:
+
+- `[[findings]]`: each planted defect, with the lines it covers, the categories that count as right (an SQL injection is `security`, and also `rule` where `CONTRIBUTING.md` forbids string-built SQL), a note, and for rule findings the rule line a reviewer should cite. `deterministic = true` marks the ones bylaw's own `.editorconfig` checks find.
+- `[[allowed]]`: spans where a finding is neither required nor a false alarm. Every non-clean case allows remarks on the code it adds, so a fair second comment on new code does not count against the reviewer. Clean cases allow nothing.
+- `[criteria]`: for each acceptance criterion, the statuses that count as right. Two statuses are accepted where reasonable reviewers differ, for example `partial` or `missing` for a threshold implemented with `>` where the spec says "100 or more".
+- `[[scope_creep]]`: the line where unrequested behaviour starts.
+
+`tests/integration/test_eval_set.py` keeps the labels honest: a reviewer that answers with exactly the labels must score perfectly, so a label on a line the change does not add, a rule line that does not exist, or a criterion key that bylaw does not collect fails the build.
+
+## Matching
+
+- A finding matches a label when the file is the same, its lines come within 2 lines of the label's lines, and its category is one the label accepts. Each label matches once.
+- A second finding that would have matched an already matched label is a duplicate: counted, not a false alarm.
+- A finding inside an `allowed` span is ignored.
+- Any other finding is a false alarm in its category. If it sits on an unmatched label with the wrong category, the label counts as located.
+- A label nothing matched is a miss in its first category.
+- A clean case has an inline comment when a finding of medium severity or above remains after the rules above.
+- A criterion is right when the run's status is one of the accepted statuses.
+- Scope creep matches on file and line within 2 lines.
+- A case with no run, or whose run failed, is listed under errors and scored with what bylaw's own checks found.
+
+Findings are scored after `bylaw validate`, together with bylaw's own `.editorconfig` findings: the score is for what would be posted, not for the raw model output. The report also gives how many model findings the validator dropped.
+
+## Running it
+
+A model run calls the model once per case, so it costs money. Start with a few cases to see the cost per case:
+
+```
+bylaw eval run --provider anthropic --only py-sqli --out runs/opus
+bylaw eval score --runs runs/opus --only py-sqli --label "claude-opus-5-5, 2026-10-15" --input-price <usd> --output-price <usd>
+```
+
+Then run the whole set into the same directory. A rerun skips cases that already have a result and retries only the failed ones, so an interrupted run never pays twice.
+
+Host models (Claude Code, Codex) review without an API key: `bylaw eval prepare --out host` writes `<id>.brief.txt` and `<id>.context.json` per case, the host writes `<id>.json` for each brief in the `bylaw schema` format, and `bylaw eval run --answers host --out runs/host` scores them like any other run.
+
+`bylaw eval run --no-model` gives the baseline of a repository without a model key: bylaw's own checks only.
+
+Prices are given on the command line, never stored in the code, because they change. Cost counts cached input as full input, so it is an upper bound.
+
+Committed results live in `eval/results/<name>/`: the per-case runs and `report.md`.

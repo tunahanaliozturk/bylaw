@@ -38,10 +38,11 @@ Each milestone ends with something a user can run. Design: [design.md](design.md
 - Codex install path verified against the Codex documentation.
 - Exit: the same demo pull request reviewed from Claude Code and from Codex with no extra key.
 
-## M5: evaluation
+## M5: evaluation (set and tooling done, 2026-10-15)
 
-- Labelled set of 40 to 50 pull requests, eval runner, results table per model and date.
-- Exit: README numbers come from a committed eval run.
+- Labelled set of 50 pull requests in four languages, `bylaw eval prepare`, `run` and `score`, results per
+  model and date ([docs/eval/README.md](eval/README.md), [ADR 0010](adr/0010-evaluation-on-planted-cases.md)).
+- Exit: README numbers come from a committed eval run. Waiting for the first paid model run.
 
 ## M6: v0.1.0 release
 
