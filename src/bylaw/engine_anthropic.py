@@ -6,7 +6,7 @@ import anthropic
 from anthropic.types.beta import BetaMessageParam, BetaOutputConfigParam, BetaTextBlockParam
 from pydantic import ValidationError
 
-from bylaw.engine import OutReview, ReviewError
+from bylaw.engine import OutReview, ReviewError, Usage
 from bylaw.model import ReviewResult
 
 DEFAULT_MODEL = "claude-opus-5-5"
@@ -31,6 +31,7 @@ class AnthropicReviewer:
         self._model = model
         self._effort = effort
         self._client = anthropic.Anthropic(api_key=api_key, http_client=http_client, max_retries=3)
+        self.last_usage: Usage | None = None
 
     def review(self, system: str, user: str) -> ReviewResult:
         fallback = self._model in _FALLBACK_MODELS
@@ -74,6 +75,13 @@ class AnthropicReviewer:
             raise ReviewError(f"the model declined to review this change ({category or 'no category'})")
         if response.stop_reason == "max_tokens":
             raise ReviewError("the model ran out of output tokens before finishing the review")
+        usage = response.usage
+        self.last_usage = Usage(
+            input_tokens=usage.input_tokens
+            + (usage.cache_read_input_tokens or 0)
+            + (usage.cache_creation_input_tokens or 0),
+            output_tokens=usage.output_tokens,
+        )
         text = "".join(block.text for block in response.content if block.type == "text")
         try:
             return OutReview.model_validate_json(text).to_result()
