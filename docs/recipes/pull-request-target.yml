@@ -13,16 +13,17 @@ permissions:
   pull-requests: write
   issues: read
 
-concurrency:
-  group: bylaw-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
-
 jobs:
   review:
     # Runs when the `bylaw` label is added, and on new pushes while it is on; other labels do not re-run it.
     if: >-
       contains(github.event.pull_request.labels.*.name, 'bylaw') &&
       (github.event.action != 'labeled' || github.event.label.name == 'bylaw')
+    # At job level: a run skipped by the condition above never takes the group, so it cannot cancel a
+    # review in progress.
+    concurrency:
+      group: bylaw-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     steps:
       - uses: tunahanaliozturk/bylaw@v0

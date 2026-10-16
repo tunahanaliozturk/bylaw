@@ -125,3 +125,10 @@ def test_the_skill_warns_about_uncommitted_work_and_a_stale_checkout() -> None:
 
     assert "git status --porcelain" in text
     assert "is not the pull request's head" in text
+
+
+def test_a_skipped_fork_run_cannot_cancel_a_running_review() -> None:
+    # Concurrency at workflow level would let a run for another label cancel the review, then skip itself.
+    recipe = (ROOT / "docs" / "recipes" / "pull-request-target.yml").read_text(encoding="utf-8")
+
+    assert recipe.index("concurrency:") > recipe.index("jobs:")
