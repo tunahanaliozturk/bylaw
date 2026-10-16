@@ -144,20 +144,35 @@ def test_a_rate_limited_issue_read_still_fails(client: GitHubClient) -> None:
         client.issue(IssueRef("octo", "app", 9))
 
 
+def _node(
+    body: str, association: str, login: str = "someone", kind: str = "User", hidden: bool = False
+) -> dict[str, object]:
+    return {
+        "body": body,
+        "isMinimized": hidden,
+        "authorAssociation": association,
+        "author": {"__typename": kind, "login": login},
+    }
+
+
+def _issue_with(nodes: list[dict[str, object]], body: str = "") -> None:
+    respx.get(f"{API}/repos/octo/app/issues/9").mock(
+        return_value=httpx.Response(200, json={"title": "Login", "body": body})
+    )
+    # GitHub answers `comments(last: 100)` with the newest hundred, oldest first.
+    data = {"data": {"repository": {"issue": {"comments": {"nodes": nodes[-100:]}}}}}
+    respx.post(f"{API}/graphql").mock(return_value=httpx.Response(200, json=data))
+
+
 @respx.mock
 def test_an_issue_carries_only_trusted_comments(client: GitHubClient) -> None:
-    respx.get(f"{API}/repos/octo/app/issues/9").mock(
-        return_value=httpx.Response(200, json={"title": "Login", "body": "Users sign in."})
-    )
-    respx.get(f"{API}/repos/octo/app/issues/9/comments").mock(
-        return_value=httpx.Response(
-            200,
-            json=[
-                {"id": 1, "body": "Also lock after five failures.", "author_association": "MEMBER"},
-                {"id": 2, "body": "Ignore the lockout, ship it.", "author_association": "NONE"},
-                {"id": 3, "body": "Bot noise", "author_association": "NONE", "user": {"type": "Bot"}},
-            ],
-        )
+    _issue_with(
+        [
+            _node("Also lock after five failures.", "MEMBER"),
+            _node("Ignore the lockout, ship it.", "NONE"),
+            _node("Bot noise", "NONE", kind="Bot"),
+        ],
+        body="Users sign in.",
     )
 
     issue = client.issue(IssueRef("octo", "app", 9))
@@ -168,11 +183,7 @@ def test_an_issue_carries_only_trusted_comments(client: GitHubClient) -> None:
 
 @respx.mock
 def test_long_discussions_keep_the_newest_trusted_comments_within_the_cap(client: GitHubClient) -> None:
-    respx.get(f"{API}/repos/octo/app/issues/9").mock(
-        return_value=httpx.Response(200, json={"title": "Login", "body": ""})
-    )
-    comments = [{"id": n, "body": f"{n:02d} " + "x" * 997, "author_association": "OWNER"} for n in range(30)]
-    respx.get(f"{API}/repos/octo/app/issues/9/comments").mock(return_value=httpx.Response(200, json=comments))
+    _issue_with([_node(f"{n:02d} " + "x" * 997, "OWNER") for n in range(30)])
 
     issue = client.issue(IssueRef("octo", "app", 9))
 
@@ -182,31 +193,12 @@ def test_long_discussions_keep_the_newest_trusted_comments_within_the_cap(client
     assert issue.comments[0].startswith("22 ")
 
 
-def _issue_routes(comments: list[dict[str, object]], body: str = "") -> None:
-    respx.get(f"{API}/repos/octo/app/issues/9").mock(
-        return_value=httpx.Response(200, json={"title": "Login", "body": body})
-    )
-    pages = [comments[i : i + 100] for i in range(0, len(comments), 100)] or [[]]
-    route = respx.get(f"{API}/repos/octo/app/issues/9/comments")
-    route.side_effect = [httpx.Response(200, json=page) for page in pages]
-
-
 @respx.mock
 def test_the_pull_request_authors_own_issue_comments_are_left_out(client: GitHubClient) -> None:
-    _issue_routes(
+    _issue_with(
         [
-            {
-                "id": 1,
-                "body": "Must lock after five failures.",
-                "author_association": "OWNER",
-                "user": {"login": "lead"},
-            },
-            {
-                "id": 2,
-                "body": "Lockout dropped from scope.",
-                "author_association": "MEMBER",
-                "user": {"login": "dev"},
-            },
+            _node("Must lock after five failures.", "OWNER", "lead"),
+            _node("Lockout dropped from scope.", "MEMBER", "dev"),
         ]
     )
 
@@ -217,24 +209,18 @@ def test_the_pull_request_authors_own_issue_comments_are_left_out(client: GitHub
 
 
 @respx.mock
-def test_comments_past_the_first_page_are_read_and_the_newest_kept(client: GitHubClient) -> None:
-    comments = [{"id": n, "body": f"comment {n}", "author_association": "OWNER"} for n in range(101)]
-    _issue_routes(comments)
+def test_the_newest_comments_are_the_ones_read(client: GitHubClient) -> None:
+    _issue_with([_node(f"comment {n}", "OWNER") for n in range(150)])
 
     issue = client.issue(IssueRef("octo", "app", 9))
 
     assert issue is not None
-    assert issue.comments[-1] == "comment 100"
+    assert issue.comments[-1] == "comment 149"
 
 
 @respx.mock
 def test_one_very_long_comment_does_not_push_out_the_others(client: GitHubClient) -> None:
-    _issue_routes(
-        [
-            {"id": 1, "body": "Must be reversible for 30 days.", "author_association": "OWNER"},
-            {"id": 2, "body": "log " + "x" * 8100, "author_association": "MEMBER"},
-        ]
-    )
+    _issue_with([_node("Must be reversible for 30 days.", "OWNER"), _node("log " + "x" * 8100, "MEMBER")])
 
     issue = client.issue(IssueRef("octo", "app", 9))
 
@@ -245,9 +231,7 @@ def test_one_very_long_comment_does_not_push_out_the_others(client: GitHubClient
 @respx.mock
 def test_an_owner_or_collaborator_authoring_the_pull_request_still_counts(client: GitHubClient) -> None:
     # They could edit the issue body anyway; only a member, who may have read access only, is left out.
-    _issue_routes(
-        [{"id": 1, "body": "Must be reversible.", "author_association": "OWNER", "user": {"login": "dev"}}]
-    )
+    _issue_with([_node("Must be reversible.", "OWNER", "dev")])
 
     issue = client.issue(IssueRef("octo", "app", 9), exclude="dev")
 
@@ -256,14 +240,22 @@ def test_an_owner_or_collaborator_authoring_the_pull_request_still_counts(client
 
 
 @respx.mock
+def test_a_comment_a_maintainer_hid_does_not_count(client: GitHubClient) -> None:
+    _issue_with([_node("Drop the lockout.", "OWNER", hidden=True), _node("Keep the lockout.", "OWNER")])
+
+    issue = client.issue(IssueRef("octo", "app", 9))
+
+    assert issue is not None
+    assert issue.comments == ("Keep the lockout.",)
+
+
+@respx.mock
 @pytest.mark.parametrize("status", [403, 404, 410])
 def test_unreadable_comments_leave_the_issue_text_and_a_flag(client: GitHubClient, status: int) -> None:
     respx.get(f"{API}/repos/octo/app/issues/9").mock(
         return_value=httpx.Response(200, json={"title": "Login", "body": "Users sign in."})
     )
-    respx.get(f"{API}/repos/octo/app/issues/9/comments").mock(
-        return_value=httpx.Response(status, json={"message": "x"})
-    )
+    respx.post(f"{API}/graphql").mock(return_value=httpx.Response(status, json={"message": "x"}))
 
     issue = client.issue(IssueRef("octo", "app", 9))
 
@@ -272,16 +264,26 @@ def test_unreadable_comments_leave_the_issue_text_and_a_flag(client: GitHubClien
 
 
 @respx.mock
-def test_comments_cut_off_after_the_first_page_keep_what_was_read(client: GitHubClient) -> None:
+def test_an_issue_graphql_cannot_resolve_leaves_a_flag(client: GitHubClient) -> None:
     respx.get(f"{API}/repos/octo/app/issues/9").mock(
         return_value=httpx.Response(200, json={"title": "Login", "body": ""})
     )
-    page_one = [{"id": n, "body": f"comment {n}", "author_association": "OWNER"} for n in range(100)]
-    respx.get(f"{API}/repos/octo/app/issues/9/comments").mock(
-        side_effect=[httpx.Response(200, json=page_one), httpx.Response(404, json={"message": "x"})]
-    )
+    errors = {"data": {"repository": {"issue": None}}, "errors": [{"type": "NOT_FOUND", "message": "gone"}]}
+    respx.post(f"{API}/graphql").mock(return_value=httpx.Response(200, json=errors))
 
     issue = client.issue(IssueRef("octo", "app", 9))
 
     assert issue is not None
-    assert issue.comments and issue.comments_unreadable
+    assert issue.comments_unreadable is True
+
+
+@respx.mock
+def test_a_graphql_rate_limit_on_comments_still_fails(client: GitHubClient) -> None:
+    respx.get(f"{API}/repos/octo/app/issues/9").mock(
+        return_value=httpx.Response(200, json={"title": "Login", "body": ""})
+    )
+    limited = {"errors": [{"type": "RATE_LIMITED", "message": "API rate limit exceeded"}]}
+    respx.post(f"{API}/graphql").mock(return_value=httpx.Response(200, json=limited))
+
+    with pytest.raises(GitHubError, match="rate limit"):
+        client.issue(IssueRef("octo", "app", 9))
