@@ -214,3 +214,45 @@ def test_threads_carry_their_current_and_original_lines(client: GitHubClient) ->
     (read,) = client.review_threads("octo/app", 5)
 
     assert (read.line, read.original_line) == (None, 7)
+
+
+@respx.mock
+def test_replies_in_the_middle_of_a_very_long_thread_are_read(client: GitHubClient) -> None:
+    def comment(cid: int, body: str, association: str = "NONE") -> dict[str, object]:
+        return {
+            "id": f"C{cid}",
+            "body": body,
+            "author": {"__typename": "User"},
+            "authorAssociation": association,
+        }
+
+    first = {"id": "C0", "body": "finding", "author": {"__typename": "Bot"}, "authorAssociation": "NONE"}
+    newest = {
+        "pageInfo": {"hasPreviousPage": True, "startCursor": "older"},
+        "nodes": [comment(n, f"reply {n}") for n in range(101, 201)],
+    }
+    thread = {"id": "T1", "isResolved": False, "comments": {"nodes": [first]}, "recent": newest}
+    older = {
+        "data": {
+            "node": {
+                "comments": {
+                    "pageInfo": {"hasPreviousPage": False, "startCursor": None},
+                    "nodes": [first, comment(1, "bylaw: ignore, accepted", "OWNER")]
+                    + [comment(n, f"reply {n}") for n in range(2, 101)],
+                }
+            }
+        }
+    }
+    route = respx.post(f"{API}/graphql")
+    route.side_effect = [
+        httpx.Response(200, json=_threads_page([thread], None)),
+        httpx.Response(200, json=older),
+    ]
+
+    (read,) = client.review_threads("octo/app", 5)
+
+    bodies = [c.body for c in read.comments]
+    assert bodies[0] == "finding"
+    assert "bylaw: ignore, accepted" in bodies
+    assert len(bodies) == 201
+    assert json.loads(route.calls[1].request.content)["variables"]["before"] == "older"

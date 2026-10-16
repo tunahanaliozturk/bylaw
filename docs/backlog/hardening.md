@@ -33,7 +33,7 @@ Small problems found by the milestone reviews. Each one is real but rare or mino
 - [x] **HRD-23** (S) Summary cells show 80 characters, so an inferred criterion of up to 300 is cut. Done when: criterion cells show the full text.
 - [x] **HRD-24** (S) Maintainer comments sit under an in-band heading that an issue body could imitate. Done when: comments in their own labelled block.
 - [x] **HRD-25** (S) Hidden (minimised) issue comments still count. Done when: read through GraphQL `isMinimized` and left out.
-- [ ] **HRD-26** (S) In a thread with more than 51 comments, replies between the first comment and the 50 newest are not read. Done when: long threads are paged.
+- [x] **HRD-26** (S) In a thread with more than 51 comments, replies between the first comment and the 50 newest are not read. Done when: long threads are paged.
 - [ ] **HRD-27** (S) A renamed file whose binary content also changed gets no note, and a copied file gets the generic one. Done when: both have their own note.
 - [x] **HRD-28** (S) A pull request that already had two threads with the same fingerprint keeps an orphan thread after the HRD-6 pairing change. Done when: the orphan is resolved on the next run.
 - [ ] **HRD-29** (S) An OpenAI answer cut off by the output limit fails inside `responses.parse`, so its billed tokens are not recorded. Done when: usage is recorded for it too.
