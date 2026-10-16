@@ -1,10 +1,11 @@
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
 
 from bylaw.engine import ReviewError, Usage
 from bylaw.evaluation.cases import Case, load_cases
-from bylaw.evaluation.run import AnswerReviewer, NoModel, prepare, run_all
+from bylaw.evaluation.run import AnswerReviewer, CaseRun, NoModel, prepare, run_all
 from bylaw.model import Category, Finding, ReviewResult, Severity
 
 
@@ -126,3 +127,26 @@ def test_a_failed_review_keeps_the_tokens_it_was_billed(root: Path, tmp_path: Pa
     runs = run_all(root, load_cases(root), lambda _: _BilledFailure(), tmp_path / "out", "fake")
 
     assert [(r.error is not None, r.input_tokens) for r in runs] == [(True, 100), (True, 100)]
+
+
+class _Priced:
+    def __init__(self) -> None:
+        self.calls = 0
+        self.last_usage: Usage | None = None
+
+    def review(self, system: str, user: str) -> ReviewResult:
+        self.calls += 1
+        self.last_usage = Usage(input_tokens=1_000_000, output_tokens=0)
+        return ReviewResult()
+
+
+def test_a_run_stops_at_the_spending_limit(root: Path, tmp_path: Path) -> None:
+    reviewer = _Priced()
+
+    def spent_enough(runs: Sequence[CaseRun]) -> bool:
+        return sum((r.input_tokens or 0) for r in runs) / 1_000_000 * 1.0 >= 1.0
+
+    runs = run_all(root, load_cases(root), lambda _: reviewer, tmp_path / "out", "fake", stop=spent_enough)
+
+    assert reviewer.calls == 1
+    assert len(runs) == 1

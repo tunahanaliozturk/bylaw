@@ -91,12 +91,14 @@ def run_case(
     )
 
 
-def run_all(
+def run_all(  # noqa: PLR0913 - the spending limit is an optional keyword
     root: Path,
     cases: Sequence[Case],
     make: Callable[[Case], Reviewer],
     out: Path,
     reviewer: str,
+    *,
+    stop: Callable[[Sequence[CaseRun]], bool] | None = None,
 ) -> tuple[CaseRun, ...]:
     out.mkdir(parents=True, exist_ok=True)
     runs: list[CaseRun] = []
@@ -114,6 +116,9 @@ def run_all(
                 if previous.error is None and previous.case_digest == digest:
                     runs.append(previous)
                     continue
+            if stop is not None and stop(runs):
+                # A spending limit: no new paid review starts once it is reached; saved ones still count.
+                break
             context = build_case_context(root, case, Path(work))
             run = run_case(context, case.id, make(case), identity=reviewer, digest=digest)
             # Write then rename: a run killed mid-write must not leave a file that breaks every rerun.
