@@ -47,6 +47,8 @@ class ChangedFile(_Frozen):
     missing_final_newline: bool = False
     patch_omitted: bool = False
     patch: str = ""
+    # Lines added plus removed as the host counts them; None when the diff came from local git.
+    changes: int | None = None
 
 
 class RuleSource(_Frozen):

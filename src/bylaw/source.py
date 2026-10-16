@@ -17,6 +17,8 @@ class ChangeInfo:
     title: str
     body: str
     commit_messages: tuple[str, ...]
+    # How many files the host says the change touches; GitHub's file listing stops at 3000.
+    file_count: int | None = None
 
 
 @dataclass(frozen=True, slots=True)

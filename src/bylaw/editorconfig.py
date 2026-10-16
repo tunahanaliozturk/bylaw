@@ -41,12 +41,16 @@ class _Section:
     properties: tuple[tuple[str, str, int], ...]
 
     @classmethod
-    def from_glob(cls, glob: str, properties: tuple[tuple[str, str, int], ...]) -> Self:
+    def from_glob(cls, glob: str, properties: tuple[tuple[str, str, int], ...]) -> Self | None:
+        """None for a pattern no editor could use, such as the reversed range `[z-a]`."""
         anchored = "/" in glob
         regex, ranges = _translate(glob.removeprefix("/"))
         if not anchored:
             regex = f"(?:.*/)?{regex}"
-        return cls(re.compile(regex), tuple(ranges), properties)
+        try:
+            return cls(re.compile(regex), tuple(ranges), properties)
+        except re.error:
+            return None
 
     def matches(self, relative_path: str) -> bool:
         match = self.pattern.fullmatch(relative_path)
@@ -65,6 +69,7 @@ class _File:
     text: str
     root: bool
     sections: tuple[_Section, ...]
+    invalid: tuple[str, ...] = ()
 
 
 class EditorConfigResolver:
@@ -75,6 +80,16 @@ class EditorConfigResolver:
     @property
     def files_read(self) -> tuple[tuple[str, str], ...]:
         return tuple((f.path, f.text) for f in self._cache.values() if f is not None)
+
+    @property
+    def problems(self) -> tuple[str, ...]:
+        """Sections that were ignored, worded for the review notes."""
+        return tuple(
+            f"{f.path}: section [{glob}] is not a valid pattern and was ignored."
+            for f in self._cache.values()
+            if f is not None
+            for glob in f.invalid
+        )
 
     def properties(self, path: str) -> dict[str, Property]:
         chain: list[_File] = []
@@ -127,8 +142,10 @@ def _parse(path: str, directory: str, text: str) -> _File:
             raw[-1][1].append((key, value, number))
         elif key == "root":
             root = value == "true"
-    sections = tuple(_Section.from_glob(glob, tuple(properties)) for glob, properties in raw)
-    return _File(path=path, directory=directory, text=text, root=root, sections=sections)
+    built = [(glob, _Section.from_glob(glob, tuple(properties))) for glob, properties in raw]
+    sections = tuple(section for _, section in built if section is not None)
+    invalid = tuple(glob for glob, section in built if section is None)
+    return _File(path=path, directory=directory, text=text, root=root, sections=sections, invalid=invalid)
 
 
 def _translate(glob: str) -> tuple[str, list[tuple[int, int]]]:  # noqa: PLR0912 - one branch per glob token
