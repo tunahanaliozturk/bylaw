@@ -99,6 +99,10 @@ every claim in the README stays measured. Dates are targets, not promises; the o
 - More model providers: Amazon Bedrock, Google Vertex AI, Azure, and local models through an
   OpenAI-compatible endpoint, for teams that cannot send code to a public API.
 - An MCP server wrapping the CLI, so any agent can ask for a bylaw review.
+- Compliance profiles, ISO/IEC 27001 first: a team switches a profile on in `.bylaw.toml`, and bylaw
+  reviews with the standard's development controls in mind, tags findings with the Annex A control they
+  touch, and leaves change-management evidence per pull request for audits. It helps with evidence; it
+  does not make anyone compliant. SOC 2, PCI DSS, OWASP ASVS, GDPR and KVKK can follow in the same format.
 
 ### Q4, August to October 2027: a reviewer that learns the repository (v1.0)
 
