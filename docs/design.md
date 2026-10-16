@@ -141,7 +141,7 @@ cannot drift apart.
 - **Claude Code plugin.** `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` (plugin source
   `.`), with `skills/bylaw-review/SKILL.md` and a `/bylaw-review` command. Install: `/plugin marketplace add
   tunahanaliozturk/bylaw`, then `/plugin install bylaw@bylaw`.
-- **Codex.** The same skill, through `.codex-plugin/plugin.json` and `.agents/plugins/marketplace.json`.
+- **Codex.** The same skill, through the portable root `plugin.json` (Codex settings under `extensions."com.openai"`) and `.agents/plugins/marketplace.json`.
   Install: `codex plugin marketplace add tunahanaliozturk/bylaw`, then `/plugins`. The skill alone also
   works from `~/.agents/skills/`. The host model reviews in both hosts; bylaw supplies the context, the
   output schema (`bylaw schema`), the validation and the comments ([docs/hosts.md](hosts.md)).
