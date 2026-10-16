@@ -79,3 +79,29 @@ def test_a_preview_shows_the_summary_and_each_new_comment() -> None:
     assert "## bylaw review" in text
     assert "**bug · high** Off by one." in text
     assert "`app.py:1`" in text
+
+
+def test_a_failed_thread_update_still_records_what_was_done() -> None:
+    import pytest  # noqa: PLC0415
+
+    from bylaw.github import GitHubError  # noqa: PLC0415
+    from bylaw.render import read_state  # noqa: PLC0415
+
+    def ours(thread_id: str, line: int) -> Thread:
+        fp = {"T1": "a" * 16, "T2": "b" * 16}[thread_id]
+        marker = ThreadComment(f"text\n<!-- bylaw:fp={fp} -->", trusted=True)
+        return Thread(id=thread_id, resolved=False, comments=(marker,), line=line)
+
+    class Flaky(FakeClient):
+        def set_thread_resolved(self, thread_id: str, *, resolved: bool) -> None:
+            if thread_id == "T2":
+                raise GitHubError("GitHub API rate limit reached")
+            super().set_thread_resolved(thread_id, resolved=resolved)
+
+    client = Flaky(threads=[ours("T1", 1), ours("T2", 2)])
+
+    with pytest.raises(GitHubError):
+        publish(client, "octo/app", 5, context=CONTEXT, result=ReviewResult(), config=Config())
+
+    assert client.resolved == [("T1", True)]
+    assert read_state(client.summaries[-1][1]).auto_resolved == frozenset({"T1"})
