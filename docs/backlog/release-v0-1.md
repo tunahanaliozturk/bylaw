@@ -13,7 +13,7 @@ Get bylaw into people's hands with numbers behind every claim: a measured evalua
 - [x] **REL-3** (S) README results table from REL-1 and REL-2. Done when: every number links to its report.
 - [x] **REL-4** (S) Live Action run on `bylaw-demo` with the `ANTHROPIC_API_KEY` secret. Done when: a demo pull request gets model findings, inline comments and the summary.
 - [x] **REL-5** (M) Real screenshots of `bylaw-demo` pull requests, taken by a script in `tools/`. Done when: inline security finding, suggestion block, summary with criteria and terminal output in `docs/images/`.
-- [ ] **REL-6** (S) Social preview card from the seal logo. Done when: 1280x640 PNG set in the repository settings.
+- [x] **REL-6** (S) Social preview card from the seal logo. Done when: 1280x640 PNG set in the repository settings.
 - [x] **REL-7** (M) PyPI trusted publishing on a version tag. Done when: `uvx bylaw --version` works on a machine without the repository.
 - [x] **REL-8** (S) `v0.1.0` tag, the moving `v0` tag and release notes from the changelog. Done when: the recipes work with `@v0`.
 - [x] **REL-9** (S) GitHub Marketplace listing for the Action. Done when: listed and installable from the Marketplace.
