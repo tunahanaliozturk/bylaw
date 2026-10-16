@@ -289,3 +289,25 @@ def test_openai_is_asked_not_to_store_the_review() -> None:
     OpenAIReviewer(model="gpt-test", effort=None, api_key=SECRET, http_client=client).review("s", "u")
 
     assert json.loads(sent[0].content)["store"] is False
+
+
+def test_a_truncated_openai_answer_still_reports_the_tokens_it_was_billed() -> None:
+    cut = _response('{"findings": [')
+    cut["status"] = "incomplete"
+    cut["incomplete_details"] = {"reason": "max_output_tokens"}
+    cut["usage"] = {
+        "input_tokens": 700,
+        "input_tokens_details": {"cached_tokens": 0},
+        "output_tokens": 4000,
+        "output_tokens_details": {"reasoning_tokens": 3000},
+        "total_tokens": 4700,
+    }
+    client = openai.DefaultHttpxClient(
+        transport=httpx2.MockTransport(lambda _: httpx2.Response(200, json=cut))
+    )
+    reviewer = OpenAIReviewer(model="gpt-test", effort=None, api_key=SECRET, http_client=client)
+
+    with pytest.raises(ReviewError):
+        reviewer.review("s", "u")
+
+    assert reviewer.last_usage == Usage(input_tokens=700, output_tokens=4000)
