@@ -96,6 +96,7 @@ class ReviewContext(_Frozen):
     # From .bylaw.toml on the base branch, so a preview made from this file matches what would be posted.
     severity_threshold: Severity = Severity.MEDIUM
     max_comments: int = 15
+    input_tokens: int = 300_000
 
 
 class CriterionStatus(StrEnum):

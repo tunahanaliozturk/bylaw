@@ -120,4 +120,5 @@ def build_context(source: RepoSource) -> ReviewContext:
         notes=(*notes, *requirement_notes),
         severity_threshold=config.severity_threshold,
         max_comments=config.max_comments,
+        input_tokens=config.input_token_budget,
     )
