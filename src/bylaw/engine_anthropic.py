@@ -10,9 +10,9 @@ from bylaw.engine import OutReview, ReviewError, Usage
 from bylaw.model import ReviewResult
 
 DEFAULT_MODEL = "claude-opus-5-5"
-# Non-streaming stays under the SDK's ten-minute request ceiling at this size; a review is a few
-# thousand tokens of JSON plus thinking.
-_MAX_TOKENS = 20_000
+# Streamed, so no request-time ceiling applies. A review is a few thousand tokens of JSON plus thinking;
+# the headroom is for large pull requests at high effort, where a cut-off answer would lose the review.
+_MAX_TOKENS = 64_000
 _FALLBACK_BETA = "server-side-fallback-2026-07-01"
 # Server-side fallback routes a safety refusal to another model; security review text can trip the
 # cyber classifier, so it is on wherever the model supports it.
@@ -50,9 +50,9 @@ class AnthropicReviewer:
         )
         fallbacks: Literal["default"] | anthropic.Omit = "default" if fallback else anthropic.omit
         try:
-            # create, not parse: parse validates the JSON before the stop reason can be read, so a
-            # refusal or a truncated answer would surface as a bare validation error.
-            response = self._client.beta.messages.create(
+            # Streamed without the SDK's parse helper: the stop reason is read before the JSON is validated,
+            # so a refusal or a truncated answer is reported as such, not as a bare validation error.
+            with self._client.beta.messages.stream(
                 model=self._model,
                 max_tokens=_MAX_TOKENS,
                 system=system_blocks,
@@ -61,7 +61,8 @@ class AnthropicReviewer:
                 output_config=output_config,
                 betas=[_FALLBACK_BETA] if fallback else anthropic.omit,
                 fallbacks=fallbacks,
-            )
+            ) as stream:
+                response = stream.get_final_message()
         except anthropic.APIStatusError as error:
             # Status and error type only: the message can quote request details and the note is public.
             raise ReviewError(
