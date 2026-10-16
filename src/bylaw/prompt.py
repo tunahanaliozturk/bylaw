@@ -77,7 +77,8 @@ def _requirement(requirement: Requirement) -> str:
             f"ones do not cover, labelled {labels}."
         )
     elif requirement.inferable:
-        criteria = f"- none listed. Derive up to 5 testable criteria from the text and label them {labels}."
+        source = "the text and its maintainer_comments" if requirement.comments else "the text"
+        criteria = f"- none listed. Derive up to 5 testable criteria from {source} and label them {labels}."
     elif not criteria:
         criteria = "- (none listed)"
     return f"{requirement.source}: {requirement.title}\nCriteria:\n{criteria}\nText:\n{requirement.text}"

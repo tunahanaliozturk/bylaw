@@ -1,3 +1,4 @@
+import json
 from collections.abc import Iterator
 
 import httpx
@@ -289,10 +290,12 @@ def test_a_graphql_rate_limit_on_comments_still_fails(client: GitHubClient) -> N
         client.issue(IssueRef("octo", "app", 9))
 
 
-def _moved(status: str, sha: str) -> list[dict[str, object]]:
-    return [
-        {"filename": "new.png", "previous_filename": "old.png", "status": status, "changes": 0, "sha": sha}
-    ]
+def _moved(status: str, sha: str, name: str = "new.png", old: str = "old.png") -> dict[str, object]:
+    return {"filename": name, "previous_filename": old, "status": status, "changes": 0, "sha": sha}
+
+
+def _tree(truncated: bool = False) -> dict[str, object]:
+    return {"truncated": truncated, "tree": [{"path": "old.png", "type": "blob", "sha": "same"}]}
 
 
 @respx.mock
@@ -302,6 +305,7 @@ def _moved(status: str, sha: str) -> list[dict[str, object]]:
         ("renamed", "same", False, 0),
         ("renamed", "edited", True, None),
         ("copied", "same", False, 0),
+        ("copied", "edited", True, None),
     ],
 )
 def test_a_moved_file_is_compared_with_its_old_blob(
@@ -309,7 +313,42 @@ def test_a_moved_file_is_compared_with_its_old_blob(
 ) -> None:
     respx.get(f"{API}/repos/octo/app/pulls/5").mock(return_value=httpx.Response(200, json=PULL))
     respx.get(url__startswith=f"{API}/repos/octo/app/pulls/5/files").mock(
-        return_value=httpx.Response(200, json=_moved(status, head_sha))
+        return_value=httpx.Response(200, json=[_moved(status, head_sha)])
+    )
+    respx.get(f"{API}/repos/octo/app/git/trees/b1").mock(return_value=httpx.Response(200, json=_tree()))
+
+    (moved,) = GitHubSource(client, "octo/app", 5).changed_files()
+
+    assert (moved.patch_omitted, moved.changes) == (omitted, changes)
+
+
+@respx.mock
+def test_moving_many_files_costs_one_tree_read(client: GitHubClient) -> None:
+    files = [_moved("renamed", "same", f"new/{n}.py", "old.png") for n in range(300)]
+    respx.get(f"{API}/repos/octo/app/pulls/5").mock(return_value=httpx.Response(200, json=PULL))
+    respx.get(url__startswith=f"{API}/repos/octo/app/pulls/5/files").mock(
+        side_effect=lambda request: httpx.Response(
+            200, json=files[(int(request.url.params["page"]) - 1) * 100 :][:100]
+        )
+    )
+    tree = respx.get(f"{API}/repos/octo/app/git/trees/b1").mock(
+        return_value=httpx.Response(200, json=_tree())
+    )
+
+    moved = GitHubSource(client, "octo/app", 5).changed_files()
+
+    assert len(moved) == 300
+    assert tree.call_count == 1
+
+
+@respx.mock
+def test_a_truncated_tree_falls_back_to_reading_the_one_blob(client: GitHubClient) -> None:
+    respx.get(f"{API}/repos/octo/app/pulls/5").mock(return_value=httpx.Response(200, json=PULL))
+    respx.get(url__startswith=f"{API}/repos/octo/app/pulls/5/files").mock(
+        return_value=httpx.Response(200, json=[_moved("renamed", "same")])
+    )
+    respx.get(f"{API}/repos/octo/app/git/trees/b1").mock(
+        return_value=httpx.Response(200, json={"truncated": True, "tree": []})
     )
     respx.get(f"{API}/repos/octo/app/contents/old.png").mock(
         return_value=httpx.Response(200, json={"sha": "same"})
@@ -317,4 +356,30 @@ def test_a_moved_file_is_compared_with_its_old_blob(
 
     (moved,) = GitHubSource(client, "octo/app", 5).changed_files()
 
-    assert (moved.patch_omitted, moved.changes) == (omitted, changes)
+    assert moved.patch_omitted is False
+
+
+@respx.mock
+def test_a_maintainer_comment_behind_a_hundred_outsider_comments_is_still_read(client: GitHubClient) -> None:
+    respx.get(f"{API}/repos/octo/app/issues/9").mock(
+        return_value=httpx.Response(200, json={"title": "Login", "body": ""})
+    )
+    newest = {
+        "pageInfo": {"hasPreviousPage": True, "startCursor": "c1"},
+        "nodes": [_node("+1", "NONE") for _ in range(100)],
+    }
+    older = {
+        "pageInfo": {"hasPreviousPage": False, "startCursor": None},
+        "nodes": [_node("AC-3 is out of scope.", "OWNER")],
+    }
+    route = respx.post(f"{API}/graphql")
+    route.side_effect = [
+        httpx.Response(200, json={"data": {"repository": {"issue": {"comments": page}}}})
+        for page in (newest, older)
+    ]
+
+    issue = client.issue(IssueRef("octo", "app", 9))
+
+    assert issue is not None
+    assert issue.comments == ("AC-3 is out of scope.",)
+    assert json.loads(route.calls[1].request.content)["variables"]["before"] == "c1"
