@@ -158,3 +158,13 @@ def test_muted_and_reviewer_resolved_findings_do_not_count_as_remaining() -> Non
     plan = make_plan(groups, [muted, resolved], NO_STATE, Severity.MEDIUM, 15)
 
     assert [f.line_start for f in remaining(plan)] == [3]
+
+
+def test_identical_lines_with_separate_findings_get_separate_fingerprints() -> None:
+    added = added_text(_context((3, "query(sql)"), (9, "query(sql)")))
+    first, second = _finding(3, message="injection here"), _finding(9, message="and here, unescaped")
+
+    groups = group_findings((first, second), added)
+
+    assert groups[0].fingerprint == fingerprint(added, first)
+    assert groups[0].fingerprint != groups[1].fingerprint

@@ -5,6 +5,7 @@ Pure functions over data, so every rule about re-runs is unit tested without Git
 
 import hashlib
 import re
+from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 
@@ -57,13 +58,14 @@ def added_text(context: ReviewContext) -> dict[str, dict[int, str]]:
     return {f.path: {a.number: a.text for a in f.added_lines} for f in context.files}
 
 
-def fingerprint(added: Mapping[str, Mapping[int, str]], finding: Finding) -> str:
+def fingerprint(added: Mapping[str, Mapping[int, str]], finding: Finding, occurrence: int = 0) -> str:
     """Hash of what the finding is about, not where it is, so moving code does not repost it."""
     lines = added.get(finding.file, {})
     snippet = " ".join(
         " ".join(lines.get(number, "").split()) for number in range(finding.line_start, finding.line_end + 1)
     )
-    raw = "\0".join((finding.file, finding.category, finding.evidence or "", snippet))
+    parts = (finding.file, finding.category, finding.evidence or "", snippet)
+    raw = "\0".join((*parts, str(occurrence)) if occurrence else parts)
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
 
 
@@ -71,10 +73,17 @@ def group_findings(findings: Iterable[Finding], added: Mapping[str, Mapping[int,
     grouped: dict[tuple[str, str, str], list[Finding]] = {}
     for finding in findings:
         grouped.setdefault((finding.category, finding.evidence or "", finding.message), []).append(finding)
-    return tuple(
-        Group(finding=members[0], fingerprint=fingerprint(added, members[0]), others=tuple(members[1:]))
-        for members in grouped.values()
-    )
+    groups: list[Group] = []
+    seen: Counter[str] = Counter()
+    for members in sorted(grouped.values(), key=lambda m: (m[0].file, m[0].line_start)):
+        base = fingerprint(added, members[0])
+        # Two findings on identical lines would share a hash and one would hide the other; later ones in
+        # file order get an occurrence number, the first keeps the plain hash.
+        occurrence = seen[base]
+        seen[base] += 1
+        fp = base if occurrence == 0 else fingerprint(added, members[0], occurrence)
+        groups.append(Group(finding=members[0], fingerprint=fp, others=tuple(members[1:])))
+    return tuple(groups)
 
 
 def make_plan(
