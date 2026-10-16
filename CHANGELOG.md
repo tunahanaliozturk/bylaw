@@ -4,6 +4,8 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## Unreleased
 
+- The Claude Code and Codex plugin moved to `plugin/`, so plugin directories scan only the files users install. The skill now always runs the bylaw release from PyPI that it names. Existing installs pick up the new path from the marketplace on their next update.
+
 ## 0.1.1 - 2026-10-16
 
 - The PyPI page shows the README with its images, and links to the repository, issues and changelog.
