@@ -19,7 +19,10 @@ concurrency:
 
 jobs:
   review:
-    if: contains(github.event.pull_request.labels.*.name, 'bylaw')
+    # Runs when the `bylaw` label is added, and on new pushes while it is on; other labels do not re-run it.
+    if: >-
+      contains(github.event.pull_request.labels.*.name, 'bylaw') &&
+      (github.event.action != 'labeled' || github.event.label.name == 'bylaw')
     runs-on: ubuntu-latest
     steps:
       - uses: tunahanaliozturk/bylaw@v0

@@ -89,3 +89,10 @@ def test_the_skill_passes_the_token_inline_and_never_prints_it() -> None:
     assert "GITHUB_TOKEN=$(gh auth token)" in text
     assert "$env:GITHUB_TOKEN = gh auth token" in text
     assert "Never print the token" in text
+
+
+def test_the_fork_recipe_runs_only_for_its_own_label() -> None:
+    # Another label added to an approved pull request must not start a paid review again.
+    recipe = (ROOT / "docs" / "recipes" / "pull-request-target.yml").read_text(encoding="utf-8")
+
+    assert "github.event.action != 'labeled' || github.event.label.name == 'bylaw'" in recipe

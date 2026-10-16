@@ -18,7 +18,7 @@ Small problems found by the milestone reviews. Each one is real but rare or mino
 - [ ] **HRD-8** (S) Thread replies past the first 50 are not read, so a late mute or resolve can be missed. Done when: replies paged.
 - [ ] **HRD-9** (M) The Anthropic call caps output at 20,000 tokens and does not stream. Done when: streaming with a higher cap.
 - [ ] **HRD-10** (M) The prompt budget counts characters, not tokens. Done when: token counting through the provider.
-- [ ] **HRD-11** (S) With the `pull_request_target` recipe, adding or removing a label re-runs the review. Done when: only the `bylaw` label triggers.
+- [x] **HRD-11** (S) With the `pull_request_target` recipe, adding or removing a label re-runs the review. Done when: only the `bylaw` label triggers.
 - [ ] **HRD-12** (S) `/bylaw-review` argument parsing: `post` as a base name, `#12` and URLs, fork `origin`, `master` default. Done when: command handles each case.
 - [ ] **HRD-13** (S) `--base` reviews committed changes only, and the skill does not tell the user so. Done when: skill says it.
 - [ ] **HRD-14** (S) In `--pr` mode the skill may open local files that differ from the pull request's head. Done when: skill checks out or warns.
