@@ -5,7 +5,6 @@ Pure functions over data, so every rule about re-runs is unit tested without Git
 
 import hashlib
 import re
-from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 
@@ -35,6 +34,8 @@ class Thread:
     id: str
     resolved: bool
     comments: tuple[ThreadComment, ...]
+    # The thread's current line on the head; None when GitHub marks it outdated.
+    line: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -58,14 +59,13 @@ def added_text(context: ReviewContext) -> dict[str, dict[int, str]]:
     return {f.path: {a.number: a.text for a in f.added_lines} for f in context.files}
 
 
-def fingerprint(added: Mapping[str, Mapping[int, str]], finding: Finding, occurrence: int = 0) -> str:
+def fingerprint(added: Mapping[str, Mapping[int, str]], finding: Finding) -> str:
     """Hash of what the finding is about, not where it is, so moving code does not repost it."""
     lines = added.get(finding.file, {})
     snippet = " ".join(
         " ".join(lines.get(number, "").split()) for number in range(finding.line_start, finding.line_end + 1)
     )
-    parts = (finding.file, finding.category, finding.evidence or "", snippet)
-    raw = "\0".join((*parts, str(occurrence)) if occurrence else parts)
+    raw = "\0".join((finding.file, finding.category, finding.evidence or "", snippet))
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
 
 
@@ -73,17 +73,10 @@ def group_findings(findings: Iterable[Finding], added: Mapping[str, Mapping[int,
     grouped: dict[tuple[str, str, str], list[Finding]] = {}
     for finding in findings:
         grouped.setdefault((finding.category, finding.evidence or "", finding.message), []).append(finding)
-    groups: list[Group] = []
-    seen: Counter[str] = Counter()
-    for members in sorted(grouped.values(), key=lambda m: (m[0].file, m[0].line_start)):
-        base = fingerprint(added, members[0])
-        # Two findings on identical lines would share a hash and one would hide the other; later ones in
-        # file order get an occurrence number, the first keeps the plain hash.
-        occurrence = seen[base]
-        seen[base] += 1
-        fp = base if occurrence == 0 else fingerprint(added, members[0], occurrence)
-        groups.append(Group(finding=members[0], fingerprint=fp, others=tuple(members[1:])))
-    return tuple(groups)
+    return tuple(
+        Group(finding=members[0], fingerprint=fingerprint(added, members[0]), others=tuple(members[1:]))
+        for members in grouped.values()
+    )
 
 
 def make_plan(
@@ -93,7 +86,7 @@ def make_plan(
     threshold: Severity,
     cap: int,
 ) -> Plan:
-    ours: dict[str, Thread] = {}
+    ours: dict[str, list[Thread]] = {}
     for thread in threads:
         # ADR 0008: a fingerprint counts only in a comment bylaw or a maintainer could have written.
         # bylaw writes its marker last, so an earlier one quoted in the message cannot take its place.
@@ -102,10 +95,10 @@ def make_plan(
             and thread.comments[0].trusted
             and (found := FINGERPRINT.findall(thread.comments[0].body))
         ):
-            ours.setdefault(found[-1], thread)
+            ours.setdefault(found[-1], []).append(thread)
 
-    current = {group.fingerprint for group in groups}
-    fixed = [(fp, thread) for fp, thread in ours.items() if fp not in current and not thread.resolved]
+    paired, unpaired = _pair(groups, ours)
+    fixed = [(fp, thread) for fp, thread in unpaired if not thread.resolved]
     auto_resolved = set(state.auto_resolved) | {fp for fp, _ in fixed}
 
     inline: list[Group] = []
@@ -114,8 +107,8 @@ def make_plan(
     reviewer_resolved: list[Group] = []
     open_threads: list[Group] = []
     unresolve: list[str] = []
-    for group in sorted(groups, key=_order):
-        existing = ours.get(group.fingerprint)
+    for index, group in sorted(enumerate(groups), key=lambda item: _order(item[1])):
+        existing = paired.get(index)
         if existing is None:
             if _RANK[group.finding.severity] > _RANK[threshold] or len(inline) >= cap:
                 summary_only.append(group)
@@ -140,8 +133,40 @@ def make_plan(
         open_threads=tuple(open_threads),
         resolve=tuple(thread.id for _, thread in fixed),
         unresolve=tuple(unresolve),
-        state=State(auto_resolved=frozenset(auto_resolved & ours.keys())),
+        state=State(auto_resolved=frozenset(auto_resolved & set(ours))),
     )
+
+
+_FAR = 10**9
+
+
+def _pair(
+    groups: Sequence[Group], ours: Mapping[str, list[Thread]]
+) -> tuple[dict[int, Thread], list[tuple[str, Thread]]]:
+    """Match findings to their threads; findings on identical lines share a fingerprint, so line decides.
+
+    Nearest line first, outdated threads last. A mute or resolve stays with the code it was written about:
+    deleting one copy resolves that copy's thread and never hands its mute to another.
+    """
+    indexes: dict[str, list[int]] = {}
+    for index, group in enumerate(groups):
+        indexes.setdefault(group.fingerprint, []).append(index)
+    paired: dict[int, Thread] = {}
+    unpaired: list[tuple[str, Thread]] = []
+    for fp, candidates in ours.items():
+        options = sorted(
+            (_FAR if thread.line is None else abs(thread.line - groups[index].finding.line_start), index, n)
+            for index in indexes.get(fp, [])
+            for n, thread in enumerate(candidates)
+        )
+        used: set[int] = set()
+        for _, index, n in options:
+            if index in paired or n in used:
+                continue
+            paired[index] = candidates[n]
+            used.add(n)
+        unpaired += [(fp, thread) for n, thread in enumerate(candidates) if n not in used]
+    return paired, unpaired
 
 
 def remaining(plan: Plan) -> tuple[Finding, ...]:
