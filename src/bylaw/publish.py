@@ -1,6 +1,7 @@
 """Publishes a validated review: one review with the new inline comments, thread changes, the summary."""
 
 from collections.abc import Sequence
+from dataclasses import replace
 from typing import Protocol
 
 from bylaw.config import Config
@@ -42,12 +43,31 @@ def publish(  # noqa: PLR0913 - one call site, every argument is a distinct inpu
             for g in plan.inline
         ]
         client.create_review(repo, number, context.head_sha, review_body(plan), comments)
-    for thread_id in plan.resolve:
-        client.set_thread_resolved(thread_id, resolved=True)
-    for thread_id in plan.unresolve:
-        client.set_thread_resolved(thread_id, resolved=False)
+    done: list[tuple[str, bool]] = []
+    try:
+        for thread_id, resolved in (
+            *((t, True) for t in plan.resolve),
+            *((t, False) for t in plan.unresolve),
+        ):
+            client.set_thread_resolved(thread_id, resolved=resolved)
+            done.append((thread_id, resolved))
+    except Exception:
+        # The summary holds the state of which threads bylaw resolved. Record what really happened before
+        # the error goes up, so the next run does not mistake bylaw's own resolves for a maintainer's.
+        actual = _state_after(plan, done)
+        body = summary_body(context, result, replace(plan, state=actual))
+        client.upsert_summary(repo, number, summary.id if summary else None, body)
+        raise
     client.upsert_summary(repo, number, summary.id if summary else None, summary_body(context, result, plan))
     return plan
+
+
+def _state_after(plan: Plan, done: Sequence[tuple[str, bool]]) -> State:
+    resolved = {thread_id for thread_id, closed in done if closed}
+    reopened = {thread_id for thread_id, closed in done if not closed}
+    not_resolved = set(plan.resolve) - resolved
+    not_reopened = set(plan.unresolve) - reopened
+    return State(auto_resolved=frozenset((plan.state.auto_resolved - not_resolved) | not_reopened))
 
 
 def preview(context: ReviewContext, result: ReviewResult, config: Config) -> str:

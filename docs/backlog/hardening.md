@@ -12,7 +12,7 @@ Small problems found by the milestone reviews. Each one is real but rare or mino
 - [x] **HRD-2** (S) An invalid glob such as `[z-a]` in a base `.editorconfig` ends the run with a traceback. Done when: the section is ignored with a note naming the file and section.
 - [x] **HRD-3** (S) The note about skipped lock, vendored and generated files gives a count, not the paths. Done when: paths listed, capped.
 - [x] **HRD-4** (S) Nothing says so when GitHub's 3000-file listing cap cuts a pull request short. Done when: a note in the summary.
-- [ ] **HRD-5** (M) If posting fails partway, the summary's saved state can disagree with the comments already posted. Done when: state written last and reconciled on the next run.
+- [x] **HRD-5** (M) If posting fails partway, the summary's saved state can disagree with the comments already posted. Done when: state written last and reconciled on the next run.
 - [x] **HRD-6** (M) Two findings on identical lines in one file share a fingerprint, so one can hide the other. Done when: findings sharing a fingerprint pair with their own threads by line, and the state remembers thread ids.
 - [x] **HRD-7** (S) `bylaw post --dry-run` previews with the default config, not the base branch's `.bylaw.toml`. Done when: dry run reads the base config.
 - [x] **HRD-8** (S) Thread replies past the first 50 are not read, so a late mute or resolve can be missed. Done when: the first comment and the 50 newest replies are read.
