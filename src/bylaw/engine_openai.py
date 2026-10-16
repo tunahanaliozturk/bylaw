@@ -28,7 +28,8 @@ class OpenAIReviewer:
         self.last_usage = None
         reasoning = cast(Reasoning, {"effort": self._effort}) if self._effort else openai.omit
         try:
-            response = self._client.responses.parse(
+            # Raw first: a truncated answer fails to parse, but its tokens were billed and are in the body.
+            raw = self._client.responses.with_raw_response.parse(
                 model=self._model,
                 instructions=system,
                 input=user,
@@ -37,6 +38,8 @@ class OpenAIReviewer:
                 # Reviews hold private code; nothing needs to stay on OpenAI's side after the answer.
                 store=False,
             )
+            self.last_usage = _usage(raw.http_response.json())
+            response = raw.parse()
         except openai.APIStatusError as error:
             # Status and error code only: OpenAI's message quotes part of a wrong key, and the note is public.
             raise ReviewError(
@@ -49,8 +52,16 @@ class OpenAIReviewer:
             raise ReviewError("the model returned output that is not a valid review") from error
         except (openai.OpenAIError, ValueError) as error:
             raise ReviewError(f"the OpenAI SDK rejected the request ({type(error).__name__})") from error
-        if response.usage is not None:
-            self.last_usage = Usage(response.usage.input_tokens, response.usage.output_tokens)
         if response.output_parsed is None:
             raise ReviewError("the model declined or returned no review")
         return response.output_parsed.to_result()
+
+
+def _usage(body: object) -> Usage | None:
+    usage = body.get("usage") if isinstance(body, dict) else None
+    if not isinstance(usage, dict):
+        return None
+    tokens_in, tokens_out = usage.get("input_tokens"), usage.get("output_tokens")
+    if isinstance(tokens_in, int) and isinstance(tokens_out, int):
+        return Usage(tokens_in, tokens_out)
+    return None
