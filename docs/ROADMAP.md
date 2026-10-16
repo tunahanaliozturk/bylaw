@@ -48,9 +48,9 @@ Each milestone ends with something a user can run. Design: [design.md](design.md
 
 - README with real screenshots, architecture diagram, logo and social preview.
 - PyPI trusted publishing, Action tags, Marketplace listing.
-- On going public: a ruleset on `main` (pull request required, `checks` and `tests` green, linear
-  history, no force push or deletion), secret scanning with push protection, private vulnerability
-  reporting and CodeQL. GitHub offers these on private repositories only with a paid plan.
+- Done on going public (2026-10-16): a ruleset on `main` (pull request required, `checks` and `tests`
+  green, linear history, no force push or deletion), secret scanning with push protection, private
+  vulnerability reporting, and a CodeQL workflow for Python and Actions that leaves `eval/` out.
 - Exit: `uvx bylaw` and `uses: tunahanaliozturk/bylaw@v0` work from a clean machine.
 
 ## M7: requirements from prose and maintainer comments (done, 2026-10-15)
@@ -61,14 +61,61 @@ Each milestone ends with something a user can run. Design: [design.md](design.md
 - Exit: `bylaw-demo` pull request 5 closes a prose issue with a maintainer comment; the summary lists four
   inferred criteria, including the one from the comment.
 
-## Later
+## The next twelve months (November 2026 to October 2027)
 
-Ideas, not commitments:
+The direction: be the reviewer that checks a change against what the team already wrote down, rules and
+requirements, with numbers to show it. Each quarter ends with a release and a fresh evaluation run, so
+every claim in the README stays measured. Dates are targets, not promises; the order matters more.
 
-- Jira and Azure DevOps work items as requirement sources.
-- Incremental review of only the new commits, to cut cost on long pull requests.
-- An MCP server wrapping the CLI.
-- A GitHub App for organisations that do not want to manage workflow files.
+### Q1, November 2026 to January 2027: launch and earn trust (v0.1, v0.2)
+
+- Finish M6: the first paid evaluation run, README numbers and real screenshots, PyPI with trusted
+  publishing, `v0` Action tag, GitHub Marketplace listing, Claude Code and Codex plugin listings.
+- Announce once, with the evaluation as the story: Show HN, the Claude Code and Codex communities.
+- Incremental review: on a new push, review only the commits since the last run and carry the rest of
+  the summary over. Cuts cost on long pull requests, which is the first complaint any paid reviewer gets.
+- Close the "Known gaps" list below that users are most likely to meet.
+- Measure: installs, stars, cost per pull request, false alarms on the clean evaluation cases.
+
+### Q2, February to April 2027: deeper rules and requirements (v0.3, v0.4)
+
+- Linter configuration as structured rules: read the enabled rule ids from Ruff, ESLint, golangci-lint and
+  .NET analyzers configs, so findings cite the rule id, not only the file line.
+- Nested instructions in monorepos: the closest `AGENTS.md`, `CONTRIBUTING.md` or `.editorconfig` applies
+  to each changed file.
+- ADR conformance: flag a change that contradicts an accepted ADR in the repository, cited by file and
+  line.
+- Requirement sources beyond GitHub issues: Jira, Linear and Azure DevOps work items, read only for
+  references the pull request makes, each behind an explicit opt-in like `issue_repos` (ADR 0007).
+- Evaluation set v2: add 20 to 30 real pull requests from permissive open-source projects with labels
+  agreed by two people, next to the planted set (the alternative ADR 0010 deferred).
+
+### Q3, May to July 2027: more places to run (v0.5, v0.6)
+
+- A GitHub App, for organisations that do not want a workflow file per repository: one install, central
+  configuration, the same deterministic core.
+- GitLab merge requests, then Bitbucket if users ask: the context and publish layers are the only parts
+  that change (ADR 0001).
+- More model providers: Amazon Bedrock, Google Vertex AI, Azure, and local models through an
+  OpenAI-compatible endpoint, for teams that cannot send code to a public API.
+- An MCP server wrapping the CLI, so any agent can ask for a bylaw review.
+
+### Q4, August to October 2027: a reviewer that learns the repository (v1.0)
+
+- Learn from maintainers: when a finding is muted or resolved without a change several times, suggest a
+  `.bylaw.toml` suppression or a rule clarification in a pull request, never silently.
+- A per-repository report: findings by category, how many were fixed, muted or ignored, and criteria met
+  over time, as a static page the Action can publish.
+- v1.0: a stable configuration and result schema with versioning, a deprecation policy, and the
+  evaluation published for every supported model.
+
+### What would change this plan
+
+- If the paid evaluation shows high false alarm rates, precision work moves ahead of everything in Q2.
+- If most users come through Claude Code or Codex rather than the Action, the plugin path gets the
+  incremental review and the reports first.
+- If organisations ask for it, the GitHub App moves to Q2. A hosted, paid service stays out of scope until
+  the open-source tool has steady users.
 
 Known gaps from reviews, small and not yet scheduled:
 
