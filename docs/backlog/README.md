@@ -10,7 +10,7 @@ One file per roadmap feature. Each item has an id, a size and what "done" means,
 | --- | --- | --- | --- | --- |
 | [v0.1.0 release](release-v0-1.md) | Q1 (M6) | v0.1.0 | 12 | 0 |
 | [Incremental review](incremental-review.md) | Q1 | v0.2 | 7 | 0 |
-| [Hardening: known gaps from reviews](hardening.md) | Q1, then ongoing | patch releases | 25 | 0 |
+| [Hardening: known gaps from reviews](hardening.md) | Q1, then ongoing | patch releases | 28 | 20 |
 | [Linter configuration as structured rules](linter-rules.md) | Q2 | v0.3 | 6 | 0 |
 | [Nested instructions in monorepos](nested-instructions.md) | Q2 | v0.3 | 4 | 0 |
 | [ADR conformance](adr-conformance.md) | Q2 | v0.4 | 4 | 0 |

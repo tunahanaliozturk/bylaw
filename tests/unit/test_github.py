@@ -269,3 +269,19 @@ def test_unreadable_comments_leave_the_issue_text_and_a_flag(client: GitHubClien
 
     assert issue is not None
     assert (issue.body, issue.comments, issue.comments_unreadable) == ("Users sign in.", (), True)
+
+
+@respx.mock
+def test_comments_cut_off_after_the_first_page_keep_what_was_read(client: GitHubClient) -> None:
+    respx.get(f"{API}/repos/octo/app/issues/9").mock(
+        return_value=httpx.Response(200, json={"title": "Login", "body": ""})
+    )
+    page_one = [{"id": n, "body": f"comment {n}", "author_association": "OWNER"} for n in range(100)]
+    respx.get(f"{API}/repos/octo/app/issues/9/comments").mock(
+        side_effect=[httpx.Response(200, json=page_one), httpx.Response(404, json={"message": "x"})]
+    )
+
+    issue = client.issue(IssueRef("octo", "app", 9))
+
+    assert issue is not None
+    assert issue.comments and issue.comments_unreadable
