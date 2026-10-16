@@ -1,0 +1,71 @@
+{
+  "case_id": "py-req-missing-lockout",
+  "result": {
+    "findings": [
+      {
+        "file": "app/login.py",
+        "line_start": 14,
+        "line_end": 14,
+        "category": "requirement",
+        "severity": "high",
+        "message": "Failed attempts are neither counted nor persisted, so five failures never lock the account and a correct password still succeeds.",
+        "suggestion": null,
+        "evidence": "docs/specs/login.md/AC-3"
+      }
+    ],
+    "criteria": [
+      {
+        "criterion": "docs/specs/login.md/AC-1",
+        "status": "met",
+        "text": null,
+        "code": [
+          {
+            "file": "app/login.py",
+            "line": 11
+          },
+          {
+            "file": "app/login.py",
+            "line": 16
+          }
+        ],
+        "tests": [],
+        "note": ""
+      },
+      {
+        "criterion": "docs/specs/login.md/AC-2",
+        "status": "met",
+        "text": null,
+        "code": [
+          {
+            "file": "app/login.py",
+            "line": 14
+          },
+          {
+            "file": "app/login.py",
+            "line": 15
+          }
+        ],
+        "tests": [],
+        "note": ""
+      },
+      {
+        "criterion": "docs/specs/login.md/AC-3",
+        "status": "missing",
+        "text": null,
+        "code": [],
+        "tests": [],
+        "note": "No failure counter or locked-account check is present."
+      }
+    ],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "answers:answers-codex",
+  "case_digest": "df275cadac25bedd70c6fc7bb7246a76033728ed6e5021c9dbe01c8a98402feb",
+  "dropped_findings": 0
+}

@@ -1,0 +1,38 @@
+{
+  "case_id": "py-command-injection",
+  "result": {
+    "findings": [
+      {
+        "file": "app/thumbnails.py",
+        "line_start": 11,
+        "line_end": 11,
+        "category": "security",
+        "severity": "critical",
+        "message": "A client-controlled filename is interpolated into a shell command, allowing command injection through shell metacharacters.",
+        "suggestion": null,
+        "evidence": null
+      },
+      {
+        "file": "app/thumbnails.py",
+        "line_start": 10,
+        "line_end": 10,
+        "category": "security",
+        "severity": "high",
+        "message": "client_name can contain ../ or an absolute path, so the source image path can escape UPLOAD_DIR.",
+        "suggestion": null,
+        "evidence": null
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 2,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "answers:answers-codex",
+  "case_digest": "b598ebdd753ba6ebd47ca755e9b48c44e15e3781ef454ed201223ffd1c2cf166",
+  "dropped_findings": 0
+}

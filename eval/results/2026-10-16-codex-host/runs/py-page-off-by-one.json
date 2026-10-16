@@ -1,0 +1,48 @@
+{
+  "case_id": "py-page-off-by-one",
+  "result": {
+    "findings": [
+      {
+        "file": "app/users.py",
+        "line_start": 34,
+        "line_end": 34,
+        "category": "bug",
+        "severity": "high",
+        "message": "The slice ends at start + size + 1, so each full page returns one more user than requested.",
+        "suggestion": "    return [User(r[\"id\"], r[\"email\"], r[\"name\"]) for r in rows[start : start + size]]",
+        "evidence": null
+      },
+      {
+        "file": "app/users.py",
+        "line_start": 32,
+        "line_end": 32,
+        "category": "bug",
+        "severity": "medium",
+        "message": "Every page now fetches the entire users table before slicing, so pagination work and memory grow with the total number of users.",
+        "suggestion": null,
+        "evidence": null
+      },
+      {
+        "file": "app/users.py",
+        "line_start": 32,
+        "line_end": 32,
+        "category": "rule",
+        "severity": "medium",
+        "message": "The changed paging behavior has no new test, contrary to the repository's test rule.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:15"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 3,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "answers:answers-codex",
+  "case_digest": "08791fbd4b6e58b1b668974059b9f613bda08ad083b883f25cfba573d823b735",
+  "dropped_findings": 0
+}

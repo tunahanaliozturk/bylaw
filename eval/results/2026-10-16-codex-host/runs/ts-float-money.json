@@ -1,0 +1,28 @@
+{
+  "case_id": "ts-float-money",
+  "result": {
+    "findings": [
+      {
+        "file": "src/cart.ts",
+        "line_start": 28,
+        "line_end": 28,
+        "category": "rule",
+        "severity": "high",
+        "message": "Dividing cents by 100 and multiplying by 1.18 returns a floating-point dollar amount, violating the rule that prices and totals stay in integer cents.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:7"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "answers:answers-codex",
+  "case_digest": "286906407b21ff7bf4b0362b4431a089f705eca8e46356ae5e9a379fa0b814c0",
+  "dropped_findings": 0
+}

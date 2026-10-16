@@ -1,0 +1,28 @@
+{
+  "case_id": "cs-blocking-result",
+  "result": {
+    "findings": [
+      {
+        "file": "OrdersController.cs",
+        "line_start": 19,
+        "line_end": 19,
+        "category": "rule",
+        "severity": "high",
+        "message": "Blocking on FindAsync.Result violates the async rule and can tie up request threads; make the action async and await the lookup.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:7"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "answers:answers-codex",
+  "case_digest": "ba3cd323f3920dbcbc39a3327e9a2bef7c96375c54b093289418e0ca23630fc0",
+  "dropped_findings": 0
+}

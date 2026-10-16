@@ -1,0 +1,28 @@
+{
+  "case_id": "cs-sqli-fromsqlraw",
+  "result": {
+    "findings": [
+      {
+        "file": "OrderService.cs",
+        "line_start": 24,
+        "line_end": 24,
+        "category": "security",
+        "severity": "critical",
+        "message": "The customer value is concatenated into raw SQL, allowing a caller to inject a predicate and read other customers' orders.",
+        "suggestion": "        return db.Orders.FromSql($\"SELECT * FROM Orders WHERE Customer = {customer}\").ToListAsync(cancellationToken);",
+        "evidence": "CONTRIBUTING.md:9"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "answers:answers-codex",
+  "case_digest": "d843f63dbc07b2338cf206df26828024a56aa3fc48034daa4b5a887ddd977310",
+  "dropped_findings": 0
+}

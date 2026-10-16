@@ -1,0 +1,62 @@
+{
+  "case_id": "cs-creep-discount",
+  "result": {
+    "findings": [],
+    "criteria": [
+      {
+        "criterion": "docs/specs/order-notes.md/AC-1",
+        "status": "met",
+        "text": null,
+        "code": [
+          {
+            "file": "Order.cs",
+            "line": 9
+          },
+          {
+            "file": "OrderService.cs",
+            "line": 33
+          },
+          {
+            "file": "OrderService.cs",
+            "line": 34
+          }
+        ],
+        "tests": [],
+        "note": "No test is included."
+      },
+      {
+        "criterion": "docs/specs/order-notes.md/AC-2",
+        "status": "met",
+        "text": null,
+        "code": [
+          {
+            "file": "OrderService.cs",
+            "line": 28
+          },
+          {
+            "file": "OrderService.cs",
+            "line": 30
+          }
+        ],
+        "tests": [],
+        "note": "No test is included."
+      }
+    ],
+    "scope_creep": [
+      {
+        "file": "OrderService.cs",
+        "line": 15,
+        "message": "Applies a 20% discount to staff email addresses, outside the order note requirement."
+      }
+    ]
+  },
+  "dropped": [],
+  "model_findings": 0,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "answers:answers-codex",
+  "case_digest": "a8e2ba9b356a9e5b6e15ef5f9fa23eda9c34ede27ca816f82bfe05a76580efd9",
+  "dropped_findings": 0
+}

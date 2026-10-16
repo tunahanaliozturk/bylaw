@@ -1,0 +1,55 @@
+{
+  "case_id": "cs-req-threshold",
+  "result": {
+    "findings": [
+      {
+        "file": "OrderService.cs",
+        "line_start": 22,
+        "line_end": 22,
+        "category": "requirement",
+        "severity": "medium",
+        "message": "The threshold uses > 100, so an order totaling exactly 100 is charged 4.99 instead of shipping free.",
+        "suggestion": "    public static decimal ShippingFor(decimal total) => total >= 100m ? 0m : 4.99m;",
+        "evidence": "docs/specs/free-shipping.md/AC-1"
+      }
+    ],
+    "criteria": [
+      {
+        "criterion": "docs/specs/free-shipping.md/AC-1",
+        "status": "partial",
+        "text": null,
+        "code": [
+          {
+            "file": "OrderService.cs",
+            "line": 22
+          }
+        ],
+        "tests": [],
+        "note": "The exactly-100 boundary is wrong."
+      },
+      {
+        "criterion": "docs/specs/free-shipping.md/AC-2",
+        "status": "met",
+        "text": null,
+        "code": [
+          {
+            "file": "OrderService.cs",
+            "line": 22
+          }
+        ],
+        "tests": [],
+        "note": ""
+      }
+    ],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "answers:answers-codex",
+  "case_digest": "2fe67bff7d87de28b49a682d232b619a282053bc834028b9ce64672d6e1a22a8",
+  "dropped_findings": 0
+}

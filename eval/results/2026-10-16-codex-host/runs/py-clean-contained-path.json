@@ -1,0 +1,28 @@
+{
+  "case_id": "py-clean-contained-path",
+  "result": {
+    "findings": [
+      {
+        "file": "app/files.py",
+        "line_start": 23,
+        "line_end": 23,
+        "category": "bug",
+        "severity": "medium",
+        "message": "The target is resolved but UPLOAD_DIR is not. If UPLOAD_DIR is relative or a symlink, even a valid upload fails this containment check.",
+        "suggestion": "    if not target.is_relative_to(UPLOAD_DIR.resolve()):",
+        "evidence": null
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "answers:answers-codex",
+  "case_digest": "0ce913d7ea7e2bd68d521b851f70dae8249d1cd62745a20bc350dca59bcafcc4",
+  "dropped_findings": 0
+}

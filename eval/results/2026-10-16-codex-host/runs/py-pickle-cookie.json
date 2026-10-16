@@ -1,0 +1,48 @@
+{
+  "case_id": "py-pickle-cookie",
+  "result": {
+    "findings": [
+      {
+        "file": "app/web.py",
+        "line_start": 37,
+        "line_end": 37,
+        "category": "security",
+        "severity": "critical",
+        "message": "The cookie is client-controlled, and pickle.loads can execute arbitrary code while deserializing it. Reading preferences can therefore give an attacker code execution on the server.",
+        "suggestion": null,
+        "evidence": null
+      },
+      {
+        "file": "app/web.py",
+        "line_start": 37,
+        "line_end": 37,
+        "category": "bug",
+        "severity": "medium",
+        "message": "A missing or malformed prefs cookie raises an exception instead of returning the default light theme.",
+        "suggestion": null,
+        "evidence": null
+      },
+      {
+        "file": "app/web.py",
+        "line_start": 35,
+        "line_end": 35,
+        "category": "rule",
+        "severity": "medium",
+        "message": "The new preference behavior has no test, contrary to the repository's test rule.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:15"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 3,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "answers:answers-codex",
+  "case_digest": "5e0f0fa01c01c5614e978d46637e1b8949029c74f94acbf7b59a37a3c8f83180",
+  "dropped_findings": 0
+}

@@ -1,0 +1,38 @@
+{
+  "case_id": "py-mutable-default",
+  "result": {
+    "findings": [
+      {
+        "file": "app/users.py",
+        "line_start": 38,
+        "line_end": 38,
+        "category": "bug",
+        "severity": "high",
+        "message": "The default recipients list is shared across calls, so a later batch inherits earlier users' email addresses and may send mail to the wrong people.",
+        "suggestion": null,
+        "evidence": null
+      },
+      {
+        "file": "app/users.py",
+        "line_start": 38,
+        "line_end": 38,
+        "category": "rule",
+        "severity": "medium",
+        "message": "The new recipient collection behavior has no test, contrary to the repository's test rule.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:15"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 2,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "answers:answers-codex",
+  "case_digest": "7b409ab90ca93566067ae05caa02c37cd87d4b03a8017659caea83853e9461d1",
+  "dropped_findings": 0
+}

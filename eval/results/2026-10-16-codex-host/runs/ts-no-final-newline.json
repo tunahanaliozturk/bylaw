@@ -1,0 +1,38 @@
+{
+  "case_id": "ts-no-final-newline",
+  "result": {
+    "findings": [
+      {
+        "file": "src/money.ts",
+        "line_start": 3,
+        "line_end": 3,
+        "category": "rule",
+        "severity": "low",
+        "message": "No newline at the end of the file on line 3.",
+        "suggestion": null,
+        "evidence": ".editorconfig:4"
+      },
+      {
+        "file": "src/money.ts",
+        "line_start": 2,
+        "line_end": 2,
+        "category": "bug",
+        "severity": "medium",
+        "message": "Negative cents format incorrectly: -1 becomes -1.0-1 because floor and remainder carry opposite signs.",
+        "suggestion": null,
+        "evidence": null
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "answers:answers-codex",
+  "case_digest": "1a03ff51db7142ebc8ecbdc476d325a8b4d79d8c533c95da07b3c214678b71f6",
+  "dropped_findings": 0
+}
