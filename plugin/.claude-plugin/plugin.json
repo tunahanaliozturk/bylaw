@@ -2,8 +2,21 @@
   "name": "bylaw",
   "version": "0.1.1",
   "description": "Review pull requests against your repository's own rules and the requirements they claim to implement.",
-  "author": { "name": "Tunahan Ali Ozturk" },
+  "author": {
+    "name": "Tunahan Ali Ozturk"
+  },
+  "homepage": "https://github.com/tunahanaliozturk/bylaw",
   "repository": "https://github.com/tunahanaliozturk/bylaw",
   "license": "MIT",
-  "keywords": ["code-review", "pull-requests", "editorconfig", "requirements", "github"]
+  "keywords": [
+    "code-review",
+    "pull-requests",
+    "editorconfig",
+    "requirements",
+    "github"
+  ],
+  "documentationUrl": "https://github.com/tunahanaliozturk/bylaw#readme",
+  "supportUrl": "https://github.com/tunahanaliozturk/bylaw/issues",
+  "privacyPolicyUrl": "https://github.com/tunahanaliozturk/bylaw/blob/main/docs/privacy.md",
+  "termsOfServiceUrl": "https://github.com/tunahanaliozturk/bylaw/blob/main/LICENSE"
 }
