@@ -1,0 +1,58 @@
+{
+  "case_id": "py-creep-token-lifetime",
+  "result": {
+    "findings": [
+      {
+        "file": "app/auth.py",
+        "line_start": 8,
+        "line_end": 8,
+        "category": "security",
+        "severity": "high",
+        "message": "This raises the password-reset token lifetime from 1 hour to 24 hours, so a leaked or intercepted reset link stays usable 24 times longer. The change is unrelated to the welcome email and nothing in the spec asks for it.",
+        "suggestion": "RESET_TOKEN_LIFETIME = timedelta(hours=1)",
+        "evidence": null
+      },
+      {
+        "file": "app/mail.py",
+        "line_start": 6,
+        "line_end": 8,
+        "category": "rule",
+        "severity": "medium",
+        "message": "The PR adds the new `welcome_message` behaviour without a test. The contributing guide requires a test for every behaviour change.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:15"
+      }
+    ],
+    "criteria": [
+      {
+        "criterion": "docs/specs/welcome-email.md/AC-1",
+        "status": "met",
+        "text": null,
+        "code": [
+          {
+            "file": "app/mail.py",
+            "line": 8
+          }
+        ],
+        "tests": [],
+        "note": "The implementation returns the subject 'Welcome' and a body that greets the user by name, but no test covers it."
+      }
+    ],
+    "scope_creep": [
+      {
+        "file": "app/auth.py",
+        "line": 8,
+        "message": "The PR changes the password-reset token lifetime from 1 hour to 24 hours. The welcome-email spec does not ask for this."
+      }
+    ]
+  },
+  "dropped": [],
+  "model_findings": 2,
+  "seconds": 8.388225000002421,
+  "input_tokens": 4043,
+  "output_tokens": 734,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "32473cf27923d7a4b771597bf57806e4bf388650d45c073a7ca5e221ad525666",
+  "dropped_findings": 0
+}

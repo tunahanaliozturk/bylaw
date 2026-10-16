@@ -42,7 +42,7 @@ Each milestone ends with something a user can run. Design: [design.md](design.md
 
 - Labelled set of 50 pull requests in four languages, `bylaw eval prepare`, `run` and `score`, results per
   model and date ([docs/eval/README.md](eval/README.md), [ADR 0010](adr/0010-evaluation-on-planted-cases.md)).
-- Exit: README numbers come from a committed eval run. Waiting for the first paid model run.
+- Exit: README numbers come from a committed eval run: done 2026-10-16 with `claude-opus-5-5` (eval/results/2026-10-16-opus-5-5).
 
 ## M6: v0.1.0 release
 

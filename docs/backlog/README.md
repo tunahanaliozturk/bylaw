@@ -8,9 +8,9 @@ One file per roadmap feature. Each item has an id, a size and what "done" means,
 
 | Feature | Roadmap | Target | Items | Done |
 | --- | --- | --- | --- | --- |
-| [v0.1.0 release](release-v0-1.md) | Q1 (M6) | v0.1.0 | 12 | 1 |
+| [v0.1.0 release](release-v0-1.md) | Q1 (M6) | v0.1.0 | 12 | 3 |
 | [Incremental review](incremental-review.md) | Q1 | v0.2 | 7 | 0 |
-| [Spending limits](budget.md) | Q1 | v0.2 | 5 | 1 |
+| [Spending limits](budget.md) | Q1 | v0.2 | 5 | 2 |
 | [Hardening: known gaps from reviews](hardening.md) | Q1, then ongoing | patch releases | 34 | 31 |
 | [Linter configuration as structured rules](linter-rules.md) | Q2 | v0.3 | 6 | 0 |
 | [Nested instructions in monorepos](nested-instructions.md) | Q2 | v0.3 | 4 | 0 |

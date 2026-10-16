@@ -1,0 +1,28 @@
+{
+  "case_id": "ts-missing-ownership",
+  "result": {
+    "findings": [
+      {
+        "file": "src/server.ts",
+        "line_start": 32,
+        "line_end": 37,
+        "category": "security",
+        "severity": "critical",
+        "message": "The DELETE /orders/:id handler cancels any order by ID without checking that it belongs to the signed-in user. Any caller who knows or guesses an order ID can delete another user's order.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:10"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": 6.203721800004132,
+  "input_tokens": 4045,
+  "output_tokens": 349,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "254da376d43c37b9d5b474ca62af8f6c8c031c8001785ddaf8bf14745dce132f",
+  "dropped_findings": 0
+}

@@ -1,0 +1,68 @@
+{
+  "case_id": "go-req-not-found",
+  "result": {
+    "findings": [
+      {
+        "file": "handlers.go",
+        "line_start": 71,
+        "line_end": 75,
+        "category": "requirement",
+        "severity": "high",
+        "message": "Every error from `Rename` becomes a 500, so an unknown id returns 500 instead of the required 404. The UPDATE affects no rows and the following `s.Widget` lookup fails, but that failure is reported as an internal error.",
+        "suggestion": null,
+        "evidence": "docs/specs/rename.md/AC-2"
+      },
+      {
+        "file": "store.go",
+        "line_start": 46,
+        "line_end": 49,
+        "category": "bug",
+        "severity": "low",
+        "message": "`Rename` ignores `RowsAffected`, so it cannot report a distinct not-found error. It also re-reads the row in a separate statement, which can race with a concurrent delete or rename.",
+        "suggestion": null,
+        "evidence": null
+      }
+    ],
+    "criteria": [
+      {
+        "criterion": "docs/specs/rename.md/AC-1",
+        "status": "met",
+        "text": null,
+        "code": [
+          {
+            "file": "main.go",
+            "line": 19
+          },
+          {
+            "file": "handlers.go",
+            "line": 57
+          },
+          {
+            "file": "store.go",
+            "line": 45
+          }
+        ],
+        "tests": [],
+        "note": "Implemented, but no test covers the rename endpoint."
+      },
+      {
+        "criterion": "docs/specs/rename.md/AC-2",
+        "status": "missing",
+        "text": null,
+        "code": [],
+        "tests": [],
+        "note": "An unknown id gets a 500 response because `Rename` has no not-found error for the handler to map to 404."
+      }
+    ],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 2,
+  "seconds": 8.838316800014582,
+  "input_tokens": 4694,
+  "output_tokens": 744,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "4d7ec543d3b53b584256756613a74412975d079b2ce5ce4928c0c07069953198",
+  "dropped_findings": 0
+}
