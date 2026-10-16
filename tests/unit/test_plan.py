@@ -160,11 +160,48 @@ def test_muted_and_reviewer_resolved_findings_do_not_count_as_remaining() -> Non
     assert [f.line_start for f in remaining(plan)] == [3]
 
 
-def test_identical_lines_with_separate_findings_get_separate_fingerprints() -> None:
-    added = added_text(_context((3, "query(sql)"), (9, "query(sql)")))
-    first, second = _finding(3, message="injection here"), _finding(9, message="and here, unescaped")
+MUTE = ThreadComment(body="bylaw: ignore, accepted", trusted=True)
 
-    groups = group_findings((first, second), added)
 
-    assert groups[0].fingerprint == fingerprint(added, first)
-    assert groups[0].fingerprint != groups[1].fingerprint
+def _at(fp: str, thread_id: str, line: int | None, *replies: ThreadComment) -> Thread:
+    first = ThreadComment(body=f"text\n<!-- bylaw:fp={fp} -->", trusted=True)
+    return Thread(id=thread_id, resolved=False, comments=(first, *replies), line=line)
+
+
+def _plan_for(groups: list[Group], threads: list[Thread]):  # type: ignore[no-untyped-def]
+    return make_plan(groups, threads, NO_STATE, Severity.LOW, 10)
+
+
+def test_identical_findings_pair_with_their_own_threads_by_line() -> None:
+    plan = _plan_for([_group(FP, line=3), _group(FP, line=9)], [_at(FP, "T3", 3), _at(FP, "T9", 9)])
+
+    assert (plan.inline, plan.resolve) == ((), ())
+    assert sorted(g.finding.line_start for g in plan.open_threads) == [3, 9]
+
+
+def test_deleting_the_muted_copy_does_not_move_the_mute_to_the_other() -> None:
+    # Line 3 was muted and then deleted; the other copy moved up to line 8 and is still a problem.
+    plan = _plan_for([_group(FP, line=8)], [_at(FP, "T3", None, MUTE), _at(FP, "T9", 8)])
+
+    assert plan.muted == ()
+    assert [g.finding.line_start for g in plan.open_threads] == [8]
+    assert plan.resolve == ("T3",)
+    assert [f.line_start for f in remaining(plan)] == [8]
+
+
+def test_fixing_one_copy_resolves_that_copy_only() -> None:
+    plan = _plan_for([_group(FP, line=9)], [_at(FP, "T3", 3), _at(FP, "T9", 9)])
+
+    assert plan.resolve == ("T3",)
+    assert [g.finding.line_start for g in plan.open_threads] == [9]
+
+
+def test_a_new_copy_above_gets_its_own_comment_and_the_mute_stays_put() -> None:
+    groups = [_group(FP, line=1), _group(FP, line=4), _group(FP, line=10)]
+    threads = [_at(FP, "T3", 4), _at(FP, "T9", 10, MUTE)]
+
+    plan = _plan_for(groups, threads)
+
+    assert [g.finding.line_start for g in plan.inline] == [1]
+    assert [g.finding.line_start for g in plan.muted] == [10]
+    assert [g.finding.line_start for g in plan.open_threads] == [4]
