@@ -30,6 +30,7 @@ def render_input(
             _block(
                 tag, "requirements", "\n\n".join(_requirement(r) for r in context.requirements) or "(none)"
             ),
+            _block(tag, "maintainer_comments", _comments(context) or "(none)"),
             _block(tag, "already_found", "\n".join(_known(f) for f in context.findings) or "(none)"),
         ]
     )
@@ -45,6 +46,14 @@ def render_input(
     body = "\n\n".join(_file(f) for f in reviewable if f.path in chosen) or "(no reviewable changes)"
     closing = "Return your review as the JSON object described in your instructions."
     return f"{head}\n\n{_block(tag, 'changes', body)}\n\n{closing}", left_out
+
+
+def _comments(context: ReviewContext) -> str:
+    return "\n\n".join(
+        f"{requirement.source}:\n" + "\n\n".join(requirement.comments)
+        for requirement in context.requirements
+        if requirement.comments
+    )
 
 
 def _block(tag: str, kind: str, body: str) -> str:

@@ -137,12 +137,12 @@ def _requirement(
     source: str, title: str, text: str, comments: tuple[str, ...] = (), *, issue: bool = False
 ) -> Requirement:
     # Criteria come from the body only, so their keys stay stable as the discussion grows.
-    discussion = "\n\n".join(comments)
-    full = f"{text}\n\n## Comments from maintainers\n\n{discussion}" if comments else text
     criteria = extract_criteria(text)
     # Specs are left as written: a prose ADR in the change is context, not a list of things to check.
     inferable = issue and (not criteria or bool(comments))
-    return Requirement(source=source, title=title, text=full, criteria=criteria, inferable=inferable)
+    return Requirement(
+        source=source, title=title, text=text, criteria=criteria, comments=comments, inferable=inferable
+    )
 
 
 def _title(markdown: str, fallback: str) -> str:

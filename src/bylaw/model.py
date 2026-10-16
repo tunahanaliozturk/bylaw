@@ -67,6 +67,8 @@ class Requirement(_Frozen):
     title: str
     text: str
     criteria: tuple[Criterion, ...]
+    # Trusted authors' comments on a linked issue, kept apart from the text so the text cannot pose as one.
+    comments: tuple[str, ...] = ()
     # A reviewer may add inferred criteria (ADR 0011): issues with no checklist or with maintainer comments.
     inferable: bool = False
 
