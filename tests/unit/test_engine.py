@@ -357,7 +357,7 @@ def test_a_truncated_openai_answer_still_reports_the_tokens_it_was_billed() -> N
     )
     reviewer = OpenAIReviewer(model="gpt-test", effort=None, api_key=SECRET, http_client=client)
 
-    with pytest.raises(ReviewError):
+    with pytest.raises(ReviewError, match="ran out of output tokens"):
         reviewer.review("s", "u")
 
     assert reviewer.last_usage == Usage(input_tokens=700, output_tokens=4000)
@@ -375,3 +375,42 @@ def test_anthropic_streams_with_room_for_a_long_review() -> None:
     body = json.loads(sent[0].content)
     assert (body["stream"], body["max_tokens"]) == (True, 64000)
     assert result.criteria[0].criterion == "issue#1/AC-1"
+
+
+class _Dropping(httpx2.SyncByteStream):
+    """The first event arrives, then the connection resets."""
+
+    def __iter__(self):  # type: ignore[no-untyped-def]
+        yield _sse(_message(json.dumps(REVIEW)))[:200]
+        raise httpx2.RemoteProtocolError("peer closed connection")
+
+
+def _dropping_then(*, recover: bool) -> tuple[AnthropicReviewer, list[httpx2.Request]]:
+    sent: list[httpx2.Request] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        sent.append(request)
+        if len(sent) == 1 or not recover:
+            return httpx2.Response(200, stream=_Dropping(), headers={"content-type": "text/event-stream"})
+        return httpx2.Response(
+            200, content=_sse(_message(json.dumps(REVIEW))), headers={"content-type": "text/event-stream"}
+        )
+
+    client = anthropic.DefaultHttpxClient(transport=httpx2.MockTransport(handler))
+    return AnthropicReviewer(model="claude-opus-5-5", effort="high", api_key=SECRET, http_client=client), sent
+
+
+def test_a_dropped_stream_is_tried_once_more() -> None:
+    reviewer, sent = _dropping_then(recover=True)
+
+    result = reviewer.review("s", "u")
+
+    assert len(sent) == 2
+    assert result.criteria[0].criterion == "issue#1/AC-1"
+
+
+def test_a_stream_that_keeps_dropping_is_a_review_error() -> None:
+    reviewer, _ = _dropping_then(recover=False)
+
+    with pytest.raises(ReviewError, match="connection to the Anthropic API dropped"):
+        reviewer.review("s", "u")

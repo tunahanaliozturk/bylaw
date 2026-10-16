@@ -39,6 +39,9 @@ Small problems found by the milestone reviews. Each one is real but rare or mino
 - [x] **HRD-29** (S) An OpenAI answer cut off by the output limit fails inside `responses.parse`, so its billed tokens are not recorded. Done when: usage is recorded for it too.
 - [x] **HRD-30** (S) When the comments that could be read were all untrusted, the note says none could be read. Done when: the note depends on whether any page was read.
 - [x] **HRD-31** (S) Current Codex docs put the interface under `extensions."com.openai"` in a root `plugin.json`; bylaw uses the `.codex-plugin/plugin.json` fallback. Done when: moved, and the install re-checked.
+- [ ] **HRD-32** (S) The test SSE stream has no thinking blocks, `ping` events or `stop_details`, so a refusal category and a stream that starts with thinking are untested. Done when: the adapter models them and tests cover both.
+- [ ] **HRD-33** (S) A moved file with no `sha` whose base lookup also returns nothing counts as unchanged. Done when: that pair gets the binary note, with a test.
+- [ ] **HRD-34** (S) A GraphQL error on the older-replies query of a long thread ends the run. Done when: the thread is read without its older replies, with a note.
 
 ## Notes
 

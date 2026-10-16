@@ -38,7 +38,10 @@ class OpenAIReviewer:
                 # Reviews hold private code; nothing needs to stay on OpenAI's side after the answer.
                 store=False,
             )
-            self.last_usage = _usage(raw.http_response.json())
+            body = raw.http_response.json()
+            self.last_usage = _usage(body)
+            if _ran_out(body):
+                raise ReviewError("the model ran out of output tokens before finishing the review")
             response = raw.parse()
         except openai.APIStatusError as error:
             # Status and error code only: OpenAI's message quotes part of a wrong key, and the note is public.
@@ -65,3 +68,8 @@ def _usage(body: object) -> Usage | None:
     if isinstance(tokens_in, int) and isinstance(tokens_out, int):
         return Usage(tokens_in, tokens_out)
     return None
+
+
+def _ran_out(body: object) -> bool:
+    details = body.get("incomplete_details") if isinstance(body, dict) else None
+    return isinstance(details, dict) and details.get("reason") == "max_output_tokens"

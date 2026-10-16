@@ -111,10 +111,13 @@ class _GqlResponse(_Model):
 
 
 _ISSUE_COMMENTS_QUERY = """
-query($owner: String!, $name: String!, $number: Int!) {
+query($owner: String!, $name: String!, $number: Int!, $before: String) {
   repository(owner: $owner, name: $name) {
     issue(number: $number) {
-      comments(last: 100) { nodes { body isMinimized authorAssociation author { __typename login } } }
+      comments(last: 100, before: $before) {
+        pageInfo { hasPreviousPage startCursor }
+        nodes { body isMinimized authorAssociation author { __typename login } }
+      }
     }
   }
 }
@@ -130,6 +133,7 @@ class _GqlIssueComment(_Model):
 
 class _GqlIssueComments(_Model):
     nodes: list[_GqlIssueComment]
+    page_info: "_GqlCommentPage | None" = Field(default=None, alias="pageInfo")
 
 
 class _GqlIssueWithComments(_Model):
@@ -348,6 +352,20 @@ class GitHubClient:
         )
         return None if response is None else response.content.decode("utf-8", errors="replace")
 
+    def tree_shas(self, repo: str, sha: str) -> dict[str, str] | None:
+        """Every blob's id at a commit in one call; None when GitHub truncated the listing."""
+        body = self._get(f"/repos/{repo}/git/trees/{sha}", {"recursive": "1"}).json()
+        if not isinstance(body, dict) or body.get("truncated"):
+            return None
+        entries = body.get("tree")
+        if not isinstance(entries, list):
+            return None
+        return {
+            e["path"]: e["sha"]
+            for e in entries
+            if isinstance(e, dict) and e.get("type") == "blob" and isinstance(e.get("path"), str)
+        }
+
     def blob_sha(self, repo: str, path: str, ref: str) -> str | None:
         response = self._get_optional(f"/repos/{repo}/contents/{quote(path)}", {"ref": ref})
         sha = response.json().get("sha") if response is not None else None
@@ -365,7 +383,7 @@ class GitHubClient:
         data = _IssueResponse.model_validate(response.json())
         if data.pull_request is not None:
             return None
-        comments, unreadable = self._issue_comments(ref)
+        comments, unreadable = self._issue_comments(ref, exclude)
         # Bots post status, not requirements, and nobody outside the project may rescope the issue. The pull
         # request author is left out only as a member: an owner or collaborator could edit the issue body
         # anyway, but a member may have read access only (ADR 0008).
@@ -378,29 +396,46 @@ class GitHubClient:
             comments_unreadable=unreadable,
         )
 
-    def _issue_comments(self, ref: IssueRef) -> tuple[list[_GqlIssueComment], bool]:
-        """The newest hundred comments, oldest first, and whether they could not be read at all.
+    def _issue_comments(self, ref: IssueRef, exclude: str | None) -> tuple[list[_GqlIssueComment], bool]:
+        """Comments from the newest back, oldest first, and whether they could not be read at all.
 
-        GraphQL rather than REST: it returns the newest comments in one call and says which ones a
-        maintainer hid as off-topic or outdated.
+        GraphQL rather than REST: it pages from the newest comment and says which ones a maintainer hid.
+        Paging stops once enough trusted comments are in hand, so a flood of outside comments on a popular
+        issue cannot push a maintainer's earlier word out of reach.
         """
-        variables = {"owner": ref.owner, "name": ref.repo, "number": ref.number}
-        response = self._send(
-            "POST", self._graphql_url, json={"query": _ISSUE_COMMENTS_QUERY, "variables": variables}
-        )
-        if response.status_code in _UNREADABLE_ISSUE and response.headers.get("x-ratelimit-remaining") != "0":
-            return [], True
-        _raise_for_status(response)
-        payload = _GqlIssueCommentsResponse.model_validate(response.json())
-        if any(error.get("type") == "RATE_LIMITED" for error in payload.errors or []):
-            raise GitHubError(
-                f"GitHub GraphQL rate limit reached while reading the comments on {ref.label(None)}"
+        comments: list[_GqlIssueComment] = []
+        before: str | None = None
+        for _ in range(_MAX_COMMENT_PAGES):
+            variables = {"owner": ref.owner, "name": ref.repo, "number": ref.number, "before": before}
+            response = self._send(
+                "POST", self._graphql_url, json={"query": _ISSUE_COMMENTS_QUERY, "variables": variables}
             )
-        repository = payload.data.repository if payload.data else None
-        if repository is None or repository.issue is None:
-            # Moved, deleted or hidden since the issue itself was read: go on with the issue text alone.
-            return [], True
-        return repository.issue.comments.nodes, False
+            if (
+                response.status_code in _UNREADABLE_ISSUE
+                and response.headers.get("x-ratelimit-remaining") != "0"
+            ):
+                return comments, not comments
+            _raise_for_status(response)
+            payload = _GqlIssueCommentsResponse.model_validate(response.json())
+            if any(error.get("type") == "RATE_LIMITED" for error in payload.errors or []):
+                raise GitHubError(
+                    f"GitHub GraphQL rate limit reached while reading the comments on {ref.label(None)}"
+                )
+            repository = payload.data.repository if payload.data else None
+            if repository is None or repository.issue is None:
+                # Moved, deleted or hidden since the issue itself was read: go on without its comments.
+                return comments, not comments
+            page = repository.issue.comments
+            comments = [*page.nodes, *comments]
+            trusted = sum(1 for c in comments if c.body and _counts(c, exclude))
+            if (
+                trusted >= _MAX_ISSUE_COMMENTS
+                or page.page_info is None
+                or not page.page_info.has_previous_page
+            ):
+                break
+            before = page.page_info.start_cursor
+        return comments, False
 
     def closing_issue_refs(self, repo: str, number: int) -> tuple[IssueRef, ...]:
         owner, _, name = repo.partition("/")
@@ -578,6 +613,7 @@ def _raise_for_status(response: httpx.Response) -> None:
 
 
 _MAX_ISSUE_COMMENTS = 20
+_MAX_COMMENT_PAGES = 10
 _MAX_COMMENT_CHARS = 8000
 
 
@@ -620,6 +656,8 @@ class GitHubSource:
         self._client = client
         self._repo = repo.lower()
         self._number = number
+        self._base_tree: dict[str, str] | None = None
+        self._tree_complete = False
 
     @property
     def repo(self) -> str:
@@ -645,7 +683,7 @@ class GitHubSource:
             if omitted and changes == 0 and item.status in {"renamed", "copied"} and item.previous_filename:
                 # GitHub reports 0 changes both for a pure move and for a binary file that changed on the
                 # way; the old blob tells them apart.
-                before = self._client.blob_sha(self._repo, item.previous_filename, self._pull.base.sha)
+                before = self._base_blob(item.previous_filename)
                 if before == item.sha:
                     omitted = False  # moved or copied unchanged: nothing to review
                 else:
@@ -663,6 +701,15 @@ class GitHubSource:
                 )
             )
         return tuple(files)
+
+    def _base_blob(self, path: str) -> str | None:
+        # One tree read covers every moved file; per-file reads only when GitHub truncates the tree.
+        if self._base_tree is None:
+            self._base_tree = self._client.tree_shas(self._repo, self._pull.base.sha) or {}
+            self._tree_complete = bool(self._base_tree)
+        if self._tree_complete:
+            return self._base_tree.get(path)
+        return self._client.blob_sha(self._repo, path, self._pull.base.sha)
 
     def read_base(self, path: str) -> str | None:
         return self._client.file_text(self._repo, path, self._pull.base.sha)

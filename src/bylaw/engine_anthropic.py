@@ -3,6 +3,7 @@
 from typing import Literal, cast
 
 import anthropic
+import httpx2
 from anthropic.types.beta import BetaMessageParam, BetaOutputConfigParam, BetaTextBlockParam
 from pydantic import ValidationError
 
@@ -13,6 +14,7 @@ DEFAULT_MODEL = "claude-opus-5-5"
 # Streamed, so no request-time ceiling applies. A review is a few thousand tokens of JSON plus thinking;
 # the headroom is for large pull requests at high effort, where a cut-off answer would lose the review.
 _MAX_TOKENS = 64_000
+_STREAM_ATTEMPTS = 2
 _FALLBACK_BETA = "server-side-fallback-2026-07-01"
 # Server-side fallback routes a safety refusal to another model; security review text can trip the
 # cyber classifier, so it is on wherever the model supports it.
@@ -50,19 +52,28 @@ class AnthropicReviewer:
         )
         fallbacks: Literal["default"] | anthropic.Omit = "default" if fallback else anthropic.omit
         try:
-            # Streamed without the SDK's parse helper: the stop reason is read before the JSON is validated,
-            # so a refusal or a truncated answer is reported as such, not as a bare validation error.
-            with self._client.beta.messages.stream(
-                model=self._model,
-                max_tokens=_MAX_TOKENS,
-                system=system_blocks,
-                messages=messages,
-                thinking={"type": "adaptive"},
-                output_config=output_config,
-                betas=[_FALLBACK_BETA] if fallback else anthropic.omit,
-                fallbacks=fallbacks,
-            ) as stream:
-                response = stream.get_final_message()
+            for attempt in range(_STREAM_ATTEMPTS):
+                try:
+                    # Streamed without the SDK's parse helper: the stop reason is read before the JSON is
+                    # validated, so a refusal or a truncated answer is reported as such.
+                    with self._client.beta.messages.stream(
+                        model=self._model,
+                        max_tokens=_MAX_TOKENS,
+                        system=system_blocks,
+                        messages=messages,
+                        thinking={"type": "adaptive"},
+                        output_config=output_config,
+                        betas=[_FALLBACK_BETA] if fallback else anthropic.omit,
+                        fallbacks=fallbacks,
+                    ) as stream:
+                        response = stream.get_final_message()
+                    break
+                except httpx2.TransportError as error:
+                    # A connection lost mid-stream is not retried by the SDK; one more try, then a clear note.
+                    if attempt == _STREAM_ATTEMPTS - 1:
+                        raise ReviewError(
+                            "the connection to the Anthropic API dropped before the review finished"
+                        ) from error
         except anthropic.APIStatusError as error:
             # Status and error type only: the message can quote request details and the note is public.
             raise ReviewError(

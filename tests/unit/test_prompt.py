@@ -151,3 +151,19 @@ def test_the_input_budget_is_counted_in_tokens_from_the_context() -> None:
     _, left_out = render_input(small, nonce="feedc0de")
 
     assert "big.py" in left_out
+
+
+def test_criteria_for_a_discussed_prose_issue_come_from_its_text_and_its_comments() -> None:
+    discussed = Requirement(
+        source="issue#9",
+        title="Login",
+        text="Users sign in.",
+        criteria=(),
+        comments=("Lock after five.",),
+        inferable=True,
+    )
+    context = CONTEXT.model_copy(update={"requirements": (discussed,)})
+
+    text, _ = render_input(context, nonce="feedc0de")
+
+    assert "from the text and its maintainer_comments" in text
