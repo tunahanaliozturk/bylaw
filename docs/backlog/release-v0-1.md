@@ -14,11 +14,11 @@ Get bylaw into people's hands with numbers behind every claim: a measured evalua
 - [x] **REL-4** (S) Live Action run on `bylaw-demo` with the `ANTHROPIC_API_KEY` secret. Done when: a demo pull request gets model findings, inline comments and the summary.
 - [x] **REL-5** (M) Real screenshots of `bylaw-demo` pull requests, taken by a script in `tools/`. Done when: inline security finding, suggestion block, summary with criteria and terminal output in `docs/images/`.
 - [ ] **REL-6** (S) Social preview card from the seal logo. Done when: 1280x640 PNG set in the repository settings.
-- [ ] **REL-7** (M) PyPI trusted publishing on a version tag. Done when: `uvx bylaw --version` works on a machine without the repository.
-- [ ] **REL-8** (S) `v0.1.0` tag, the moving `v0` tag and release notes from the changelog. Done when: the recipes work with `@v0`.
-- [ ] **REL-9** (S) GitHub Marketplace listing for the Action. Done when: listed and installable from the Marketplace.
+- [x] **REL-7** (M) PyPI trusted publishing on a version tag. Done when: `uvx bylaw --version` works on a machine without the repository.
+- [x] **REL-8** (S) `v0.1.0` tag, the moving `v0` tag and release notes from the changelog. Done when: the recipes work with `@v0`.
+- [x] **REL-9** (S) GitHub Marketplace listing for the Action. Done when: listed and installable from the Marketplace.
 - [ ] **REL-10** (S) Claude Code and Codex plugin directory listings. Done when: both listings live; needs HRD-15.
-- [ ] **REL-11** (S) Skill and docs move from `git+` to `uvx bylaw==<version>`. Done when: no doc tells users to run `main`.
+- [x] **REL-11** (S) Skill and docs move from `git+` to `uvx bylaw==<version>`. Done when: no doc tells users to run `main`.
 - [ ] **REL-12** (S) Launch post with the evaluation as the story. Done when: Show HN and the Claude Code and Codex communities.
 
 ## Notes

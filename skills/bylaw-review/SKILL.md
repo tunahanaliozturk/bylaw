@@ -9,7 +9,7 @@ You do the reviewing; bylaw gathers the context, tells you the output rules, che
 
 ## Run bylaw
 
-bylaw's source ships with this skill. The plugin root is the directory two levels above this SKILL.md; it holds `pyproject.toml`. Run every command below as `uvx --from <plugin root> bylaw <command>`, with the plugin root as an absolute path, so the bylaw you run is the version you installed. If there is no `pyproject.toml` there (the skill was copied on its own), use `uvx --from git+https://github.com/tunahanaliozturk/bylaw bylaw <command>` instead and tell the user it runs the latest unreleased bylaw.
+bylaw's source ships with this skill. The plugin root is the directory two levels above this SKILL.md; it holds `pyproject.toml`. Run every command below as `uvx --from <plugin root> bylaw <command>`, with the plugin root as an absolute path, so the bylaw you run is the version you installed. If there is no `pyproject.toml` there (the skill was copied on its own), use `uvx bylaw@0.1.0 <command>` instead, the released version on PyPI.
 
 If `uvx` is missing, tell the user to install uv (`https://docs.astral.sh/uv/getting-started/installation/`) and stop.
 
