@@ -141,8 +141,8 @@ def test_maintainer_comments_join_the_requirement_text_but_not_its_criteria() ->
 
     (requirement,), _ = collect_requirements(source, source.info(), (), (), ())
 
-    assert "## Comments from maintainers" in requirement.text
-    assert "Lock after five failures" in requirement.text
+    assert requirement.comments == ("- [ ] Lock after five failures",)
+    assert "Lock after five failures" not in requirement.text
     assert [c.text for c in requirement.criteria] == ["Email sign in"]
 
 
