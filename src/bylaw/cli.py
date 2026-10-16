@@ -211,7 +211,8 @@ def _post(args: argparse.Namespace) -> None:
     for reason in checked.dropped:
         _say(f"dropped {reason}")
     if args.dry_run:
-        _write(preview(context, checked.result, Config()))
+        settings = Config(severity_threshold=context.severity_threshold, max_comments=context.max_comments)
+        _write(preview(context, checked.result, settings))
         return
     repo, token = _repo_and_token(args.repo)
     api_url = os.environ.get("GITHUB_API_URL", "https://api.github.com")

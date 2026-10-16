@@ -91,6 +91,9 @@ class ReviewContext(_Frozen):
     requirements: tuple[Requirement, ...]
     findings: tuple[Finding, ...]
     notes: tuple[str, ...]
+    # From .bylaw.toml on the base branch, so a preview made from this file matches what would be posted.
+    severity_threshold: Severity = Severity.MEDIUM
+    max_comments: int = 15
 
 
 class CriterionStatus(StrEnum):
