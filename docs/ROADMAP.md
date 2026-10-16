@@ -61,7 +61,7 @@ Each milestone ends with something a user can run. Design: [design.md](design.md
 - Exit: `bylaw-demo` pull request 5 closes a prose issue with a maintainer comment; the summary lists four
   inferred criteria, including the one from the comment.
 
-## The next twelve months (November 2026 to October 2027)
+## The next fourteen months (November 2026 to December 2027)
 
 The direction: be the reviewer that checks a change against what the team already wrote down, rules and
 requirements, with numbers to show it. Each quarter ends with a release and a fresh evaluation run, so
@@ -109,11 +109,51 @@ every claim in the README stays measured. Dates are targets, not promises; the o
 - v1.0: a stable configuration and result schema with versioning, a deprecation policy, and the
   evaluation published for every supported model.
 
+### End of 2027, November and December: fixes, when you turn them on (v1.1)
+
+Everything above comments; from here bylaw may also change code, but only where a maintainer switched it
+on. One setting in `.bylaw.toml`, read from the base branch like every other setting (ADR 0004), so a
+pull request cannot turn it on for itself:
+
+```toml
+[fix]
+mode = "off"            # off (default) | suggest | commit | pull-request
+scope = ["editorconfig"] # what may be fixed: editorconfig, rule, bug, security
+max_lines = 40          # a fix larger than this stays a comment
+```
+
+- `suggest`: what bylaw does today, a GitHub suggestion block a person applies with one click.
+- `commit`: bylaw pushes one commit with the fixes to the pull request branch, after the checks in the
+  repository pass on it, and lists in the summary what it changed. Only for branches in the same
+  repository, never forks.
+- `pull-request`: the same commit goes to a separate pull request against the author's branch, for teams
+  that want a person to merge every change.
+- A maintainer can also ask for one run by commenting `/bylaw fix` on the pull request.
+
+What stays true in every mode:
+
+- Off by default. Deterministic fixes come first (tabs, trailing whitespace, final newlines), model fixes
+  only for the categories listed in `scope`.
+- A fix is only committed when it is the exact `suggestion` a validated finding carried, applies cleanly,
+  and leaves the repository's own checks green. Anything else stays a comment.
+- bylaw never edits workflow files, rule files, `.bylaw.toml`, lock files or anything the pull request
+  did not touch, and never force-pushes.
+- Every fix commit is separate, labelled as bylaw's and easy to revert; reverting it mutes that fix on the
+  next run.
+- Running the repository's checks means running the pull request's code, so `commit` mode is only
+  available with the `pull_request` trigger and a token limited to that repository, never with
+  `pull_request_target`. This gets its own ADR before any code.
+
+The learning work in Q4 feeds this: a fix that maintainers keep reverting is turned back into a comment for
+that repository, and the summary says why.
+
 ### What would change this plan
 
 - If the paid evaluation shows high false alarm rates, precision work moves ahead of everything in Q2.
 - If most users come through Claude Code or Codex rather than the Action, the plugin path gets the
   incremental review and the reports first.
+- If fix commits turn out to break builds or annoy maintainers in the evaluation, `commit` mode waits
+  and only `suggest` and `pull-request` ship.
 - If organisations ask for it, the GitHub App moves to Q2. A hosted, paid service stays out of scope until
   the open-source tool has steady users.
 
