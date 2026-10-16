@@ -242,3 +242,14 @@ def test_inferred_rows_follow_the_listed_criteria() -> None:
     assert body.index("`issue#1/AC-2` Lockout") < body.index(
         "`issue#1/IC-1` Reversible for 30 days (inferred)"
     )
+
+
+def test_an_inferred_criterion_is_shown_in_full_up_to_its_limit() -> None:
+    long_text = "Deactivation " + "x" * 230 + " end"
+    result = ReviewResult(
+        criteria=(CriterionResult(criterion="issue#7/IC-1", status=CriterionStatus.MET, text=long_text),)
+    )
+
+    body = summary_body(PROSE, result, _plan())
+
+    assert long_text in body

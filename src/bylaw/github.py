@@ -282,11 +282,21 @@ class GitHubClient:
             return None
         path = f"/repos/{ref.owner}/{ref.repo}/issues/{ref.number}/comments"
         comments: list[_IssueComment] = []
+        unreadable = False
         # Oldest first; every page is read so the newest comments, which usually settle the scope, are kept.
         for page in range(1, _MAX_FILE_PAGES + 1):
-            batch = _ISSUE_COMMENTS.validate_python(
-                self._get(path, {"per_page": _PAGE_SIZE, "page": page}).json()
+            response = self._send(
+                "GET", f"{self._api_url}{path}", params={"per_page": _PAGE_SIZE, "page": page}
             )
+            if (
+                response.status_code in _UNREADABLE_ISSUE
+                and response.headers.get("x-ratelimit-remaining") != "0"
+            ):
+                # Moved or hidden since the issue itself was read: go on with the issue text alone.
+                unreadable = True
+                break
+            _raise_for_status(response)
+            batch = _ISSUE_COMMENTS.validate_python(response.json())
             comments.extend(batch)
             if len(batch) < _PAGE_SIZE:
                 break
@@ -294,7 +304,13 @@ class GitHubClient:
         # request author is left out only as a member: an owner or collaborator could edit the issue body
         # anyway, but a member may have read access only (ADR 0008).
         trusted = [c.body for c in comments if c.body and _counts(c, exclude)]
-        return Issue(ref=ref, title=data.title, body=data.body or "", comments=_newest_within(trusted))
+        return Issue(
+            ref=ref,
+            title=data.title,
+            body=data.body or "",
+            comments=_newest_within(trusted),
+            comments_unreadable=unreadable,
+        )
 
     def closing_issue_refs(self, repo: str, number: int) -> tuple[IssueRef, ...]:
         owner, _, name = repo.partition("/")

@@ -29,8 +29,8 @@ Small problems found by the milestone reviews. Each one is real but rare or mino
 - [ ] **HRD-19** (S) Rule findings in the evaluation are matched by place and category, not by the rule line they cite. Done when: citation scored.
 - [ ] **HRD-20** (S) `cs-async-void` accepts only the declaration as the place of the defect. Done when: the call site also accepted.
 - [ ] **HRD-21** (S) Throwaway evaluation repositories run the user's global git hooks. Done when: hooks disabled in those repositories.
-- [ ] **HRD-22** (S) A linked issue whose comments cannot be read ends the review. Done when: review goes on without the comments, with a note.
-- [ ] **HRD-23** (S) Summary cells show 80 characters, so an inferred criterion of up to 300 is cut. Done when: criterion cells show the full text.
+- [x] **HRD-22** (S) A linked issue whose comments cannot be read ends the review. Done when: review goes on without the comments, with a note.
+- [x] **HRD-23** (S) Summary cells show 80 characters, so an inferred criterion of up to 300 is cut. Done when: criterion cells show the full text.
 - [ ] **HRD-24** (S) Maintainer comments sit under an in-band heading that an issue body could imitate. Done when: comments in their own labelled block.
 - [ ] **HRD-25** (S) Hidden (minimised) issue comments still count. Done when: read through GraphQL `isMinimized` and left out.
 

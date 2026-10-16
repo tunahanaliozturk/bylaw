@@ -179,3 +179,15 @@ def test_a_prose_spec_file_gets_no_inferred_criteria() -> None:
     (requirement,), _ = collect_requirements(source, source.info(), (spec,), ("docs/specs/**",), ())
 
     assert requirement.inferable is False
+
+
+def test_unreadable_comments_are_noted() -> None:
+    linked = IssueRef("octo", "app", 7)
+    source = FakeSource(
+        commits=("Closes #7",),
+        issues={linked: Issue(linked, "Login", "- [ ] Email sign in", comments_unreadable=True)},
+    )
+
+    _, notes = collect_requirements(source, source.info(), (), (), ())
+
+    assert "issue#7: its comments could not be read; only the issue text is used." in notes
