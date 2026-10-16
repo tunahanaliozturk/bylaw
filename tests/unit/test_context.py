@@ -42,7 +42,10 @@ def test_lock_vendored_and_generated_files_are_skipped_with_a_note() -> None:
     context = build_context(source)
 
     assert [f.path for f in context.files] == ["src/app.py"]
-    assert "Skipped 3 lock, vendored or generated file(s)." in context.notes
+    assert (
+        "Skipped 3 lock, vendored or generated file(s): uv.lock, vendor/lib/a.go, api/client.gen.py."
+        in context.notes
+    )
 
 
 def test_editorconfig_findings_and_rule_sources_are_included() -> None:
@@ -84,3 +87,49 @@ def test_config_defaults_match_the_design() -> None:
     config = load_config(None)
 
     assert (config.severity_threshold, config.max_comments, config.issue_repos) == ("medium", 15, ())
+
+
+def test_an_invalid_editorconfig_glob_is_ignored_with_a_note() -> None:
+    source = FakeSource(
+        base={".editorconfig": "root = true\n[[z-a].py]\nindent_style = tab\n[*.py]\nindent_style = space\n"},
+        files=(_file("src/app.py", "def run():", "\treturn 1"),),
+    )
+
+    context = build_context(source)
+
+    assert [f.line_start for f in context.findings] == [2]
+    assert ".editorconfig: section [[z-a].py] is not a valid pattern and was ignored." in context.notes
+
+
+def test_a_long_skip_list_is_capped() -> None:
+    source = FakeSource(files=tuple(_file(f"vendor/p{n}.go", "x") for n in range(12)))
+
+    context = build_context(source)
+
+    (note,) = context.notes
+    assert note.startswith("Skipped 12 lock, vendored or generated file(s): vendor/p0.go,")
+    assert note.endswith("and 2 more.")
+
+
+def test_files_without_a_patch_get_a_note_that_says_why() -> None:
+    files = (
+        ChangedFile(path="logo.png", status="modified", patch_omitted=True, changes=0),
+        ChangedFile(path="moved.py", status="renamed", previous_path="old.py", patch_omitted=True, changes=0),
+        ChangedFile(path="huge.sql", status="added", patch_omitted=True, changes=90000),
+        ChangedFile(path="blob.bin", status="added", patch_omitted=True),
+    )
+
+    notes = build_context(FakeSource(files=files)).notes
+
+    assert "logo.png: binary, empty or permission-only change, nothing to review." in notes
+    assert not any("moved.py" in note for note in notes)
+    assert "huge.sql: diff too large for GitHub to show, not reviewed." in notes
+    assert "blob.bin: binary file, not reviewed." in notes
+
+
+def test_a_pull_request_cut_short_by_the_file_listing_cap_says_so() -> None:
+    source = FakeSource(files=(_file("a.py", "x"),), file_count=3200)
+
+    notes = build_context(source).notes
+
+    assert "GitHub lists at most 3000 files: 1 of 3200 changed files were read." in notes

@@ -9,7 +9,13 @@ from bylaw.source import IssueRef
 
 API = "https://api.github.com"
 TOKEN = "ghp_secret_token"  # noqa: S105 - a fake token the error message must not echo
-PULL = {"title": "Add parser", "body": "Closes #12", "base": {"sha": "b1"}, "head": {"sha": "h1"}}
+PULL = {
+    "title": "Add parser",
+    "body": "Closes #12",
+    "base": {"sha": "b1"},
+    "head": {"sha": "h1"},
+    "changed_files": 7,
+}
 
 
 @pytest.fixture
@@ -39,12 +45,14 @@ def test_every_page_of_changed_files_is_collected(client: GitHubClient) -> None:
 @respx.mock
 def test_a_file_without_a_patch_is_marked_omitted(client: GitHubClient) -> None:
     respx.get(url__startswith=f"{API}/repos/octo/app/pulls/5/files").mock(
-        return_value=httpx.Response(200, json=[{"filename": "big.json", "status": "modified"}])
+        return_value=httpx.Response(
+            200, json=[{"filename": "big.json", "status": "modified", "changes": 70000}]
+        )
     )
 
     files = GitHubSource(client, "octo/app", 5).changed_files()
 
-    assert files[0].patch_omitted is True
+    assert (files[0].patch_omitted, files[0].changes) == (True, 70000)
 
 
 @respx.mock
@@ -69,6 +77,7 @@ def test_info_carries_title_body_shas_and_commit_messages(client: GitHubClient) 
 
     assert (info.base_sha, info.head_sha, info.title, info.body) == ("b1", "h1", "Add parser", "Closes #12")
     assert info.commit_messages == ("Fixes #3",)
+    assert info.file_count == 7
 
 
 @respx.mock

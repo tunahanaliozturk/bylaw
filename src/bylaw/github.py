@@ -51,6 +51,7 @@ class _Ref(_Model):
 class PullRequest(_Model):
     title: str
     body: str | None = None
+    changed_files: int | None = None
     user: "_User | None" = None
     base: _Ref
     head: _Ref
@@ -61,6 +62,7 @@ class PullFile(_Model):
     status: str
     previous_filename: str | None = None
     patch: str | None = None
+    changes: int = 0
 
 
 class _CommitDetail(_Model):
@@ -494,7 +496,9 @@ class GitHubSource:
     def info(self) -> ChangeInfo:
         pull = self._pull
         messages = tuple(self._client.pull_commit_messages(self._repo, self._number))
-        return ChangeInfo(pull.base.sha, pull.head.sha, pull.title, pull.body or "", messages)
+        return ChangeInfo(
+            pull.base.sha, pull.head.sha, pull.title, pull.body or "", messages, pull.changed_files
+        )
 
     def changed_files(self) -> tuple[ChangedFile, ...]:
         files: list[ChangedFile] = []
@@ -509,6 +513,7 @@ class GitHubSource:
                     missing_final_newline=missing,
                     patch_omitted=item.patch is None,
                     patch=item.patch or "",
+                    changes=item.changes,
                 )
             )
         return tuple(files)
