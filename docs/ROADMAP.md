@@ -142,12 +142,36 @@ What stays true:
   another, and closes it when the fixes are no longer needed.
 - Every fix is its own commit, labelled as bylaw's; closing the fix pull request unmerged mutes those
   fixes on the next run.
+- The fix pull request links back: it names the reviewed pull request and the issues and work items that
+  pull request implements (`Refs #12`, the Jira or Azure DevOps key), so the trail from requirement to
+  fix stays in one place. It never uses a closing keyword; closing the issue stays with the original pull
+  request.
 - Opening branches and pull requests needs a token with `contents: write`, so this mode works only with
   the `pull_request` trigger or a maintainer's `/bylaw fix` comment, never with `pull_request_target` on a
   fork. This gets its own ADR before any code.
 
 The learning work in Q4 feeds this: fixes that maintainers keep closing unmerged turn back into comments
 for that repository, and the summary says why.
+
+### Beyond 2027: the tracker as both input and output
+
+Q2 makes Jira, Linear and Azure DevOps sources bylaw reads requirements from. The next step uses the same
+connections in both directions, again only where a maintainer turns it on:
+
+- **Follow-up tasks.** Findings that should not block the pull request (a missing test for an old path, a
+  rule broken in code the change only touched, a criterion left `partial` on purpose) can become a GitHub
+  issue, a Jira issue or an Azure DevOps task when the pull request merges, linked to the pull request and
+  the original requirement. Each task carries the finding's fingerprint, so a later run updates it instead
+  of opening a duplicate, and closes it when the fix lands.
+- **Fix tasks.** A work item that a maintainer labels for bylaw (for example `bylaw:fix`) and that names a
+  finding or a file becomes a fix pull request, with the same limits as the fix setting above: a pull
+  request, never a push; the repository's CI runs on it; a person merges it.
+- **Status back to the tracker.** The work item a pull request implements gets a short note with the
+  criteria bylaw found met, partly met or missing, so a project manager sees it without opening GitHub.
+
+Writing to a tracker needs a token for that tracker and sends repository text to it, so each of these is
+a separate opt-in in `.bylaw.toml` on the base branch, with its own ADR covering what is sent and who can
+trigger it.
 
 ### What would change this plan
 
