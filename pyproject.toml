@@ -1,6 +1,6 @@
 [project]
 name = "bylaw"
-version = "0.0.1"
+version = "0.1.0"
 description = "Reviews pull requests against your repository's own rules and requirements."
 requires-python = ">=3.13"
 license = "MIT"
@@ -23,6 +23,10 @@ dev = ["pytest>=9.1.1", "pytest-cov>=7.1.0", "respx>=0.23.1", "ruff>=0.17.0", "m
 [build-system]
 requires = ["hatchling>=1.32.4"]
 build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.sdist]
+# The evaluation set holds deliberately vulnerable code; it stays in the repository, not the package.
+exclude = ["eval", "docs", "assets", ".github", ".agents", ".claude-plugin"]
 
 [tool.ruff]
 line-length = 110
