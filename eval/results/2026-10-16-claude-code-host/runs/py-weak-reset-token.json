@@ -1,0 +1,28 @@
+{
+  "case_id": "py-weak-reset-token",
+  "result": {
+    "findings": [
+      {
+        "file": "app/auth.py",
+        "line_start": 29,
+        "line_end": 29,
+        "category": "security",
+        "severity": "high",
+        "message": "Password reset tokens now come from `random`, a Mersenne Twister PRNG that is not cryptographically secure; an attacker who observes enough outputs can predict future tokens and take over accounts. Use the `secrets` module, which is already imported.",
+        "suggestion": "    token = \"\".join(secrets.choice(alphabet) for _ in range(32))",
+        "evidence": null
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "answers:answers-claude",
+  "case_digest": "e3bb5bbad6a0aaa36623913d53c4fe61d6b862112bbd169bbe992dc2c9c65906",
+  "dropped_findings": 0
+}

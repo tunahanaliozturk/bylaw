@@ -1,0 +1,62 @@
+{
+  "case_id": "cs-creep-discount",
+  "result": {
+    "findings": [],
+    "criteria": [
+      {
+        "criterion": "docs/specs/order-notes.md/AC-1",
+        "status": "met",
+        "text": null,
+        "code": [
+          {
+            "file": "OrderService.cs",
+            "line": 26
+          },
+          {
+            "file": "OrderService.cs",
+            "line": 33
+          },
+          {
+            "file": "Order.cs",
+            "line": 9
+          }
+        ],
+        "tests": [],
+        "note": "No test in the change proves the note is stored."
+      },
+      {
+        "criterion": "docs/specs/order-notes.md/AC-2",
+        "status": "met",
+        "text": null,
+        "code": [
+          {
+            "file": "OrderService.cs",
+            "line": 28
+          },
+          {
+            "file": "OrderService.cs",
+            "line": 30
+          }
+        ],
+        "tests": [],
+        "note": "No test in the change covers the 200-character limit."
+      }
+    ],
+    "scope_creep": [
+      {
+        "file": "OrderService.cs",
+        "line": 15,
+        "message": "A 20% discount for customers ending in `@staff.example` changes order pricing; the order-notes spec asks for nothing like it, and it should be its own reviewed change."
+      }
+    ]
+  },
+  "dropped": [],
+  "model_findings": 0,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "answers:answers-claude",
+  "case_digest": "a8e2ba9b356a9e5b6e15ef5f9fa23eda9c34ede27ca816f82bfe05a76580efd9",
+  "dropped_findings": 0
+}

@@ -1,0 +1,48 @@
+{
+  "case_id": "py-pickle-cookie",
+  "result": {
+    "findings": [
+      {
+        "file": "app/web.py",
+        "line_start": 37,
+        "line_end": 37,
+        "category": "security",
+        "severity": "critical",
+        "message": "The `prefs` cookie is fully controlled by the client and is passed to `pickle.loads`, so anyone can send a crafted pickle and run arbitrary code on the server. Store the preferences as JSON (or a signed value) instead of a pickle.",
+        "suggestion": null,
+        "evidence": null
+      },
+      {
+        "file": "app/web.py",
+        "line_start": 37,
+        "line_end": 37,
+        "category": "bug",
+        "severity": "medium",
+        "message": "When the request has no `prefs` cookie the default is an empty string, and `pickle.loads(b\"\")` raises `EOFError`, so first-time visitors get a server error instead of the `light` theme. Malformed cookies crash the handler the same way.",
+        "suggestion": null,
+        "evidence": null
+      },
+      {
+        "file": "app/web.py",
+        "line_start": 35,
+        "line_end": 35,
+        "category": "rule",
+        "severity": "low",
+        "message": "The new `preferences` handler adds behaviour but the pull request adds no test for it.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:15"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 3,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "answers:answers-claude",
+  "case_digest": "5e0f0fa01c01c5614e978d46637e1b8949029c74f94acbf7b59a37a3c8f83180",
+  "dropped_findings": 0
+}
