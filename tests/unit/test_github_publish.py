@@ -175,3 +175,32 @@ def test_replies_by_the_pull_request_author_are_marked(client: GitHubClient) -> 
     threads = client.review_threads("octo/app", 5)
 
     assert threads[0].comments[0].by_pr_author is True
+
+
+@respx.mock
+def test_a_late_reply_in_a_long_thread_is_read(client: GitHubClient) -> None:
+    def comment(cid: str, body: str, typename: str, association: str) -> dict[str, object]:
+        return {"id": cid, "body": body, "author": {"__typename": typename}, "authorAssociation": association}
+
+    first = comment("C0", "finding", "Bot", "NONE")
+    recent = [comment(f"C{n}", f"reply {n}", "User", "NONE") for n in range(31, 80)]
+    recent.append(comment("C80", "bylaw: ignore, accepted risk", "User", "OWNER"))
+    thread = {"id": "T1", "isResolved": False, "comments": {"nodes": [first]}, "recent": {"nodes": recent}}
+    respx.post(f"{API}/graphql").mock(return_value=httpx.Response(200, json=_threads_page([thread], None)))
+
+    (read,) = client.review_threads("octo/app", 5)
+
+    assert read.comments[0].body == "finding"
+    assert read.comments[-1].body == "bylaw: ignore, accepted risk"
+    assert len(read.comments) == 51
+
+
+@respx.mock
+def test_a_short_thread_is_not_read_twice(client: GitHubClient) -> None:
+    only = {"id": "C0", "body": "finding", "author": {"__typename": "Bot"}, "authorAssociation": "NONE"}
+    thread = {"id": "T1", "isResolved": False, "comments": {"nodes": [only]}, "recent": {"nodes": [only]}}
+    respx.post(f"{API}/graphql").mock(return_value=httpx.Response(200, json=_threads_page([thread], None)))
+
+    (read,) = client.review_threads("octo/app", 5)
+
+    assert len(read.comments) == 1

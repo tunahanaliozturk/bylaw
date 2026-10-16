@@ -123,7 +123,8 @@ query($owner: String!, $name: String!, $number: Int!, $after: String) {
         nodes {
           id
           isResolved
-          comments(first: 50) { nodes { body authorAssociation author { __typename login } } }
+          comments: comments(first: 1) { nodes { id body authorAssociation author { __typename login } } }
+          recent: comments(last: 50) { nodes { id body authorAssociation author { __typename login } } }
         }
       }
     }
@@ -140,6 +141,7 @@ class _GqlAuthor(_Model):
 
 
 class _GqlComment(_Model):
+    id: str = ""
     body: str
     author_association: str = Field(alias="authorAssociation")
     author: _GqlAuthor | None = None
@@ -152,7 +154,9 @@ class _GqlComments(_Model):
 class _GqlThread(_Model):
     id: str
     is_resolved: bool = Field(alias="isResolved")
+    # The finding itself and the newest replies: a mute or resolve is usually late in a long thread.
     comments: _GqlComments
+    recent: _GqlComments = Field(default_factory=lambda: _GqlComments(nodes=[]))
 
 
 class _GqlPageInfo(_Model):
@@ -352,7 +356,7 @@ class GitHubClient:
                         trusted=_trusted(c.author.typename if c.author else "", c.author_association),
                         by_pr_author=c.author is not None and c.author.login == pr_author,
                     )
-                    for c in node.comments.nodes
+                    for c in _first_and_recent(node)
                 )
                 threads.append(Thread(id=node.id, resolved=node.is_resolved, comments=comments))
             if not pull.review_threads.page_info.has_next_page:
@@ -488,6 +492,11 @@ def _counts(comment: _IssueComment, pr_author: str | None) -> bool:
     if comment.user.kind == "Bot":
         return False
     return not (comment.author_association == "MEMBER" and comment.user.login == pr_author)
+
+
+def _first_and_recent(thread: _GqlThread) -> list[_GqlComment]:
+    seen = {c.id for c in thread.comments.nodes if c.id}
+    return [*thread.comments.nodes, *(c for c in thread.recent.nodes if not c.id or c.id not in seen)]
 
 
 def _trusted(kind: str, association: str) -> bool:
