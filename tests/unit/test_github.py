@@ -287,3 +287,34 @@ def test_a_graphql_rate_limit_on_comments_still_fails(client: GitHubClient) -> N
 
     with pytest.raises(GitHubError, match="rate limit"):
         client.issue(IssueRef("octo", "app", 9))
+
+
+def _moved(status: str, sha: str) -> list[dict[str, object]]:
+    return [
+        {"filename": "new.png", "previous_filename": "old.png", "status": status, "changes": 0, "sha": sha}
+    ]
+
+
+@respx.mock
+@pytest.mark.parametrize(
+    ("status", "head_sha", "omitted", "changes"),
+    [
+        ("renamed", "same", False, 0),
+        ("renamed", "edited", True, None),
+        ("copied", "same", False, 0),
+    ],
+)
+def test_a_moved_file_is_compared_with_its_old_blob(
+    client: GitHubClient, status: str, head_sha: str, omitted: bool, changes: int | None
+) -> None:
+    respx.get(f"{API}/repos/octo/app/pulls/5").mock(return_value=httpx.Response(200, json=PULL))
+    respx.get(url__startswith=f"{API}/repos/octo/app/pulls/5/files").mock(
+        return_value=httpx.Response(200, json=_moved(status, head_sha))
+    )
+    respx.get(f"{API}/repos/octo/app/contents/old.png").mock(
+        return_value=httpx.Response(200, json={"sha": "same"})
+    )
+
+    (moved,) = GitHubSource(client, "octo/app", 5).changed_files()
+
+    assert (moved.patch_omitted, moved.changes) == (omitted, changes)

@@ -63,6 +63,7 @@ class PullFile(_Model):
     previous_filename: str | None = None
     patch: str | None = None
     changes: int = 0
+    sha: str | None = None
 
 
 class _CommitDetail(_Model):
@@ -346,6 +347,11 @@ class GitHubClient:
             f"/repos/{repo}/contents/{quote(path)}", {"ref": ref}, accept="application/vnd.github.raw+json"
         )
         return None if response is None else response.content.decode("utf-8", errors="replace")
+
+    def blob_sha(self, repo: str, path: str, ref: str) -> str | None:
+        response = self._get_optional(f"/repos/{repo}/contents/{quote(path)}", {"ref": ref})
+        sha = response.json().get("sha") if response is not None else None
+        return sha if isinstance(sha, str) else None
 
     def issue(self, ref: IssueRef, exclude: str | None = None) -> Issue | None:
         """The issue with its trusted comments; `exclude` names the pull request author, never trusted."""
@@ -634,6 +640,16 @@ class GitHubSource:
         files: list[ChangedFile] = []
         for item in self._client.pull_files(self._repo, self._number):
             added, missing = parse_patch(item.patch) if item.patch is not None else ((), False)
+            omitted = item.patch is None
+            changes: int | None = item.changes
+            if omitted and changes == 0 and item.status in {"renamed", "copied"} and item.previous_filename:
+                # GitHub reports 0 changes both for a pure move and for a binary file that changed on the
+                # way; the old blob tells them apart.
+                before = self._client.blob_sha(self._repo, item.previous_filename, self._pull.base.sha)
+                if before == item.sha:
+                    omitted = False  # moved or copied unchanged: nothing to review
+                else:
+                    changes = None  # content changed and has no text diff: a binary file
             files.append(
                 ChangedFile(
                     path=item.filename,
@@ -641,9 +657,9 @@ class GitHubSource:
                     previous_path=item.previous_filename if item.status == "renamed" else None,
                     added_lines=added,
                     missing_final_newline=missing,
-                    patch_omitted=item.patch is None,
+                    patch_omitted=omitted,
                     patch=item.patch or "",
-                    changes=item.changes,
+                    changes=changes,
                 )
             )
         return tuple(files)
