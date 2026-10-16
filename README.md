@@ -23,6 +23,22 @@ Most AI reviewers give general advice. bylaw reviews a pull request against what
 
 Findings go on the changed lines as review comments. A re-run never repeats a comment and resolves the threads of findings that were fixed.
 
+## What a review looks like
+
+Real output on [bylaw-demo pull request 7](https://github.com/tunahanaliozturk/bylaw-demo/pull/7). An inline finding with its rule citation and a one-click fix:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/screenshot-inline-dark.png">
+  <img src="docs/images/screenshot-inline-light.png" alt="A critical SQL injection finding citing CONTRIBUTING.md line 3, with a suggested change" width="600">
+</picture>
+
+The summary checks the change against the acceptance criteria of the issue it closes:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/screenshot-summary-dark.png">
+  <img src="docs/images/screenshot-summary-light.png" alt="The bylaw summary with a requirements table: one criterion partly met, two missing" width="600">
+</picture>
+
 ## Quick start
 
 **GitHub Action.** Add `.github/workflows/bylaw.yml`:
