@@ -13,7 +13,7 @@ Small problems found by the milestone reviews. Each one is real but rare or mino
 - [x] **HRD-3** (S) The note about skipped lock, vendored and generated files gives a count, not the paths. Done when: paths listed, capped.
 - [x] **HRD-4** (S) Nothing says so when GitHub's 3000-file listing cap cuts a pull request short. Done when: a note in the summary.
 - [ ] **HRD-5** (M) If posting fails partway, the summary's saved state can disagree with the comments already posted. Done when: state written last and reconciled on the next run.
-- [x] **HRD-6** (M) Two findings on identical lines in one file share a fingerprint, so one can hide the other. Done when: fingerprint includes an occurrence index.
+- [x] **HRD-6** (M) Two findings on identical lines in one file share a fingerprint, so one can hide the other. Done when: findings sharing a fingerprint pair with their own threads by line, and the state remembers thread ids.
 - [x] **HRD-7** (S) `bylaw post --dry-run` previews with the default config, not the base branch's `.bylaw.toml`. Done when: dry run reads the base config.
 - [x] **HRD-8** (S) Thread replies past the first 50 are not read, so a late mute or resolve can be missed. Done when: the first comment and the 50 newest replies are read.
 - [ ] **HRD-9** (M) The Anthropic call caps output at 20,000 tokens and does not stream. Done when: streaming with a higher cap.
@@ -33,10 +33,13 @@ Small problems found by the milestone reviews. Each one is real but rare or mino
 - [x] **HRD-23** (S) Summary cells show 80 characters, so an inferred criterion of up to 300 is cut. Done when: criterion cells show the full text.
 - [ ] **HRD-24** (S) Maintainer comments sit under an in-band heading that an issue body could imitate. Done when: comments in their own labelled block.
 - [ ] **HRD-25** (S) Hidden (minimised) issue comments still count. Done when: read through GraphQL `isMinimized` and left out.
+- [ ] **HRD-26** (S) In a thread with more than 51 comments, replies between the first comment and the 50 newest are not read. Done when: long threads are paged.
+- [ ] **HRD-27** (S) A renamed file whose binary content also changed gets no note, and a copied file gets the generic one. Done when: both have their own note.
+- [x] **HRD-28** (S) A pull request that already had two threads with the same fingerprint keeps an orphan thread after the HRD-6 pairing change. Done when: the orphan is resolved on the next run.
+- [ ] **HRD-29** (S) An OpenAI answer cut off by the output limit fails inside `responses.parse`, so its billed tokens are not recorded. Done when: usage is recorded for it too.
+- [ ] **HRD-30** (S) When the comments that could be read were all untrusted, the note says none could be read. Done when: the note depends on whether any page was read.
+- [ ] **HRD-31** (S) Current Codex docs put the interface under `extensions."com.openai"` in a root `plugin.json`; bylaw uses the `.codex-plugin/plugin.json` fallback. Done when: moved, and the install re-checked.
 
 ## Notes
 
 Pick these up between features. Each fix comes with a test that fails first.
-- [ ] **HRD-26** (S) In a thread with more than 51 comments, replies between the first comment and the 50 newest are not read. Done when: long threads are paged.
-- [ ] **HRD-27** (S) A renamed file whose binary content also changed gets no note, and a copied file gets the generic one. Done when: both have their own note.
-- [ ] **HRD-28** (S) A pull request that already had two threads with the same fingerprint keeps an orphan thread after the HRD-6 pairing change. Done when: the orphan is resolved on the next run.

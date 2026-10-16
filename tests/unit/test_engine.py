@@ -276,3 +276,16 @@ def test_a_refused_review_still_reports_the_tokens_it_was_billed() -> None:
         reviewer.review("s", "u")
 
     assert reviewer.last_usage == Usage(input_tokens=10, output_tokens=5)
+
+
+def test_openai_is_asked_not_to_store_the_review() -> None:
+    sent: list[httpx2.Request] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        sent.append(request)
+        return httpx2.Response(200, json=_response(json.dumps(REVIEW)))
+
+    client = openai.DefaultHttpxClient(transport=httpx2.MockTransport(handler))
+    OpenAIReviewer(model="gpt-test", effort=None, api_key=SECRET, http_client=client).review("s", "u")
+
+    assert json.loads(sent[0].content)["store"] is False

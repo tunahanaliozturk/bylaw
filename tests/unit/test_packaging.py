@@ -114,7 +114,8 @@ def test_the_codex_manifest_is_ready_for_a_listing() -> None:
 def test_the_command_finds_the_repository_and_default_branch_from_github_not_origin() -> None:
     text = (ROOT / "commands" / "bylaw-review.md").read_text(encoding="utf-8")
 
-    assert "gh repo view --json nameWithOwner,defaultBranchRef" in text
+    assert "gh repo view --json nameWithOwner,defaultBranchRef,isFork,parent" in text
+    assert "`parent`" in text
     assert "git remote get-url origin" not in text
     assert "#12" in text and "pull request URL" in text
     assert "`post` alone" in text
@@ -132,3 +133,11 @@ def test_a_skipped_fork_run_cannot_cancel_a_running_review() -> None:
     recipe = (ROOT / "docs" / "recipes" / "pull-request-target.yml").read_text(encoding="utf-8")
 
     assert recipe.index("concurrency:") > recipe.index("jobs:")
+
+
+def test_the_skill_itself_says_how_to_find_the_repository_and_the_pull_request() -> None:
+    # Codex loads only the skill, so the target steps cannot live in the Claude Code command alone.
+    text = SKILL.read_text(encoding="utf-8")
+
+    assert "gh repo view --json nameWithOwner,defaultBranchRef,isFork,parent" in text
+    assert "gh pr view --json number" in text

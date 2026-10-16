@@ -5,7 +5,7 @@ argument-hint: "[pr-number | #pr | pull request URL | base-branch] [post]"
 
 Use the bylaw-review skill to review this target: $ARGUMENTS
 
-First run `gh repo view --json nameWithOwner,defaultBranchRef`. It gives the repository as `owner/name` and its default branch; on a fork it is the repository the fork came from, not `origin`. Without the GitHub CLI, ask the user for `owner/name`.
+First run `gh repo view --json nameWithOwner,defaultBranchRef,isFork,parent`. When `isFork` is true, the pull request usually lives in `parent`, the repository the fork came from: use `parent`'s `owner/name` unless the user says otherwise. Otherwise use `nameWithOwner`. Without the GitHub CLI, ask the user for `owner/name`.
 
 Read the arguments like this:
 

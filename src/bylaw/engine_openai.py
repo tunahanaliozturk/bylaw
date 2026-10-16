@@ -34,6 +34,8 @@ class OpenAIReviewer:
                 input=user,
                 text_format=OutReview,
                 reasoning=reasoning,
+                # Reviews hold private code; nothing needs to stay on OpenAI's side after the answer.
+                store=False,
             )
         except openai.APIStatusError as error:
             # Status and error code only: OpenAI's message quotes part of a wrong key, and the note is public.
