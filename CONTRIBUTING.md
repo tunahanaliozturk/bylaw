@@ -2,6 +2,8 @@
 
 Thanks for helping. Bug reports, rule sources bylaw should read, evaluation cases and fixes are all welcome.
 
+Looking for something to do? The [backlog](docs/backlog/README.md) lists every planned item with an id and what done means; the [hardening](docs/backlog/hardening.md) items are a good start.
+
 ## Set up
 
 You need [uv](https://docs.astral.sh/uv/) and git.

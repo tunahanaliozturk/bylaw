@@ -1,0 +1,39 @@
+# Hardening: known gaps from reviews
+
+Roadmap: Q1, then ongoing in [ROADMAP.md](../ROADMAP.md). Target: patch releases. Item ids: `HRD-n`.
+
+Small problems found by the milestone reviews. Each one is real but rare or minor; they are fixed in order of how likely a user meets them.
+
+**Done when** the list is empty or every open item has a reason to wait.
+
+## Items
+
+- [ ] **HRD-1** (S) Renamed-only, mode-only and empty files get the "binary or too large" note. Done when: a precise note per case.
+- [ ] **HRD-2** (S) An invalid glob such as `[z-a]` in a base `.editorconfig` ends the run with a traceback. Done when: a `bylaw:` error naming the file.
+- [ ] **HRD-3** (S) The note about skipped lock, vendored and generated files gives a count, not the paths. Done when: paths listed, capped.
+- [ ] **HRD-4** (S) Nothing says so when GitHub's 3000-file listing cap cuts a pull request short. Done when: a note in the summary.
+- [ ] **HRD-5** (M) If posting fails partway, the summary's saved state can disagree with the comments already posted. Done when: state written last and reconciled on the next run.
+- [ ] **HRD-6** (M) Two findings on identical lines in one file share a fingerprint, so one can hide the other. Done when: fingerprint includes an occurrence index.
+- [ ] **HRD-7** (S) `bylaw post --dry-run` previews with the default config, not the base branch's `.bylaw.toml`. Done when: dry run reads the base config.
+- [ ] **HRD-8** (S) Thread replies past the first 50 are not read, so a late mute or resolve can be missed. Done when: replies paged.
+- [ ] **HRD-9** (M) The Anthropic call caps output at 20,000 tokens and does not stream. Done when: streaming with a higher cap.
+- [ ] **HRD-10** (M) The prompt budget counts characters, not tokens. Done when: token counting through the provider.
+- [ ] **HRD-11** (S) With the `pull_request_target` recipe, adding or removing a label re-runs the review. Done when: only the `bylaw` label triggers.
+- [ ] **HRD-12** (S) `/bylaw-review` argument parsing: `post` as a base name, `#12` and URLs, fork `origin`, `master` default. Done when: command handles each case.
+- [ ] **HRD-13** (S) `--base` reviews committed changes only, and the skill does not tell the user so. Done when: skill says it.
+- [ ] **HRD-14** (S) In `--pr` mode the skill may open local files that differ from the pull request's head. Done when: skill checks out or warns.
+- [ ] **HRD-15** (S) Codex manifest default prompt names pull request 12; listing fields missing (`websiteURL`, `privacyPolicyURL`, `logo`, `composerIcon`). Done when: manifest ready for a listing.
+- [ ] **HRD-16** (S) A failed paid evaluation attempt is billed but its tokens are not recorded. Done when: usage recorded on failure.
+- [ ] **HRD-17** (S) `bylaw eval run` exits 0 when cases failed, does not mention `BYLAW_API_KEY`, and does not show the case count first. Done when: exit code, message and count.
+- [ ] **HRD-18** (S) An evaluation case directory without `case.toml` is skipped silently; kind and labels are not cross-checked. Done when: load error.
+- [ ] **HRD-19** (S) Rule findings in the evaluation are matched by place and category, not by the rule line they cite. Done when: citation scored.
+- [ ] **HRD-20** (S) `cs-async-void` accepts only the declaration as the place of the defect. Done when: the call site also accepted.
+- [ ] **HRD-21** (S) Throwaway evaluation repositories run the user's global git hooks. Done when: hooks disabled in those repositories.
+- [ ] **HRD-22** (S) A linked issue whose comments cannot be read ends the review. Done when: review goes on without the comments, with a note.
+- [ ] **HRD-23** (S) Summary cells show 80 characters, so an inferred criterion of up to 300 is cut. Done when: criterion cells show the full text.
+- [ ] **HRD-24** (S) Maintainer comments sit under an in-band heading that an issue body could imitate. Done when: comments in their own labelled block.
+- [ ] **HRD-25** (S) Hidden (minimised) issue comments still count. Done when: read through GraphQL `isMinimized` and left out.
+
+## Notes
+
+Pick these up between features. Each fix comes with a test that fails first.
