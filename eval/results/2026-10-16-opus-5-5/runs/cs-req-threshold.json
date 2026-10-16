@@ -1,0 +1,55 @@
+{
+  "case_id": "cs-req-threshold",
+  "result": {
+    "findings": [
+      {
+        "file": "OrderService.cs",
+        "line_start": 22,
+        "line_end": 22,
+        "category": "requirement",
+        "severity": "high",
+        "message": "The comparison `total > 100m` charges 4.99 for an order of exactly 100, but the spec says orders of 100 or more ship free.",
+        "suggestion": "    public static decimal ShippingFor(decimal total) => total >= 100m ? 0m : 4.99m;",
+        "evidence": "docs/specs/free-shipping.md/AC-1"
+      }
+    ],
+    "criteria": [
+      {
+        "criterion": "docs/specs/free-shipping.md/AC-1",
+        "status": "partial",
+        "text": null,
+        "code": [
+          {
+            "file": "OrderService.cs",
+            "line": 22
+          }
+        ],
+        "tests": [],
+        "note": "Totals above 100 ship free, but a total of exactly 100 is charged 4.99 because the check uses `>` instead of `>=`. No tests cover this."
+      },
+      {
+        "criterion": "docs/specs/free-shipping.md/AC-2",
+        "status": "partial",
+        "text": null,
+        "code": [
+          {
+            "file": "OrderService.cs",
+            "line": 22
+          }
+        ],
+        "tests": [],
+        "note": "Orders under 100 pay 4.99 as required, but so does an order of exactly 100, which should ship free. No tests cover this."
+      }
+    ],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": 9.130829100031406,
+  "input_tokens": 3928,
+  "output_tokens": 639,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "2fe67bff7d87de28b49a682d232b619a282053bc834028b9ce64672d6e1a22a8",
+  "dropped_findings": 0
+}

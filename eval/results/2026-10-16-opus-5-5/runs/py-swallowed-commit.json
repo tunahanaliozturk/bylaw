@@ -1,0 +1,38 @@
+{
+  "case_id": "py-swallowed-commit",
+  "result": {
+    "findings": [
+      {
+        "file": "app/db.py",
+        "line_start": 20,
+        "line_end": 21,
+        "category": "bug",
+        "severity": "critical",
+        "message": "The `except` block now swallows every exception instead of rolling back and re-raising. Because this is a generator-based context manager, errors raised in the caller's `with` block and failures in `commit()` are suppressed. Callers carry on as if the write succeeded while the data is silently discarded when the connection closes, and nothing retries it.",
+        "suggestion": "        connection.rollback()\n        raise",
+        "evidence": null
+      },
+      {
+        "file": "app/db.py",
+        "line_start": 20,
+        "line_end": 21,
+        "category": "rule",
+        "severity": "medium",
+        "message": "This changes error-handling behaviour for every database write, but the pull request adds no test for it.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:15"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 2,
+  "seconds": 11.294849800004158,
+  "input_tokens": 3608,
+  "output_tokens": 695,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "a274de5d66b0204b2f3c67929df44a4817d369197d3901539fda8ae923d19fd5",
+  "dropped_findings": 0
+}

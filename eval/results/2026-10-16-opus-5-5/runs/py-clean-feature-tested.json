@@ -1,0 +1,17 @@
+{
+  "case_id": "py-clean-feature-tested",
+  "result": {
+    "findings": [],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 0,
+  "seconds": 2.7607050000224262,
+  "input_tokens": 3969,
+  "output_tokens": 26,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "8dc1bdec7edff6bdb7b1828e5bafb57965219194f2da93cde26394102f6e6d98",
+  "dropped_findings": 0
+}

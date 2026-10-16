@@ -1,0 +1,38 @@
+{
+  "case_id": "cs-blocking-result",
+  "result": {
+    "findings": [
+      {
+        "file": "OrdersController.cs",
+        "line_start": 17,
+        "line_end": 19,
+        "category": "rule",
+        "severity": "medium",
+        "message": "The action blocks on `FindAsync` with `.Result`, which violates the async-all-the-way rule and can exhaust thread-pool threads under load. It also ignores the request's cancellation token.",
+        "suggestion": "    public async Task<ActionResult<decimal>> Total(int id, CancellationToken cancellationToken)\n    {\n        var order = await orders.FindAsync(id, cancellationToken);",
+        "evidence": "CONTRIBUTING.md:7"
+      },
+      {
+        "file": "OrdersController.cs",
+        "line_start": 22,
+        "line_end": 22,
+        "category": "rule",
+        "severity": "low",
+        "message": "This added blank line contains trailing whitespace, which the editorconfig forbids.",
+        "suggestion": "",
+        "evidence": ".editorconfig:5"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 2,
+  "seconds": 4.563491299981251,
+  "input_tokens": 3659,
+  "output_tokens": 317,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "ba3cd323f3920dbcbc39a3327e9a2bef7c96375c54b093289418e0ca23630fc0",
+  "dropped_findings": 0
+}

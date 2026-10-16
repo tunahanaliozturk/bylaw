@@ -1,0 +1,48 @@
+{
+  "case_id": "go-nil-map",
+  "result": {
+    "findings": [
+      {
+        "file": "handlers.go",
+        "line_start": 57,
+        "line_end": 57,
+        "category": "bug",
+        "severity": "high",
+        "message": "`widgetViews` is declared but never initialised, so `widgetViews[id]++` writes to a nil map and panics on the first request. That also breaks CONTRIBUTING.md:9, which forbids panicking in a handler.",
+        "suggestion": "var widgetViews = map[int64]int{}",
+        "evidence": "CONTRIBUTING.md:9"
+      },
+      {
+        "file": "handlers.go",
+        "line_start": 65,
+        "line_end": 65,
+        "category": "bug",
+        "severity": "high",
+        "message": "HTTP handlers run concurrently, and this package-level map is written without synchronisation. Concurrent requests trigger a data race or the runtime's fatal 'concurrent map writes' error, which crashes the process. Guard it with a mutex (ideally on `Server`) or use atomic counters.",
+        "suggestion": null,
+        "evidence": null
+      },
+      {
+        "file": "handlers.go",
+        "line_start": 65,
+        "line_end": 65,
+        "category": "security",
+        "severity": "medium",
+        "message": "Any client can send arbitrary ids, each of which adds a map entry that is never removed. An attacker can grow memory without bound. Check that the widget exists before counting, or bound the map.",
+        "suggestion": null,
+        "evidence": null
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 3,
+  "seconds": 8.528060699987691,
+  "input_tokens": 3707,
+  "output_tokens": 778,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "b76700484f7e1cc835c3834458fb37bd0e9735c02e5c1e32d729d2681c55531e",
+  "dropped_findings": 0
+}

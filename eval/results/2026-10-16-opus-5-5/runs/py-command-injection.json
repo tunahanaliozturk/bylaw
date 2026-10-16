@@ -1,0 +1,48 @@
+{
+  "case_id": "py-command-injection",
+  "result": {
+    "findings": [
+      {
+        "file": "app/thumbnails.py",
+        "line_start": 11,
+        "line_end": 11,
+        "category": "security",
+        "severity": "critical",
+        "message": "The client-supplied `client_name` is interpolated into a shell command run with `shell=True`. A name such as `x; rm -rf ~` executes arbitrary commands on the server.",
+        "suggestion": "    subprocess.run([\"convert\", str(UPLOAD_DIR / client_name), \"-resize\", \"128x128\", str(UPLOAD_DIR / target)], check=True)",
+        "evidence": null
+      },
+      {
+        "file": "app/thumbnails.py",
+        "line_start": 10,
+        "line_end": 10,
+        "category": "security",
+        "severity": "high",
+        "message": "`client_name` is never validated, so values containing `/` or `..` make ImageMagick read files outside `UPLOAD_DIR`. The same values make it write the thumbnail outside `UPLOAD_DIR`. Resolve the path and reject anything that is not a plain file name inside `UPLOAD_DIR`.",
+        "suggestion": null,
+        "evidence": null
+      },
+      {
+        "file": "app/thumbnails.py",
+        "line_start": 8,
+        "line_end": 8,
+        "category": "rule",
+        "severity": "medium",
+        "message": "This adds new behaviour (thumbnail generation) without any test. The contributing rules require a test for every change in behaviour.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:15"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 3,
+  "seconds": 8.490980200003833,
+  "input_tokens": 3733,
+  "output_tokens": 825,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "b598ebdd753ba6ebd47ca755e9b48c44e15e3781ef454ed201223ffd1c2cf166",
+  "dropped_findings": 0
+}

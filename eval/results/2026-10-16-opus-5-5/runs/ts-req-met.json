@@ -1,0 +1,54 @@
+{
+  "case_id": "ts-req-met",
+  "result": {
+    "findings": [],
+    "criteria": [
+      {
+        "criterion": "docs/specs/remove-item.md/AC-1",
+        "status": "met",
+        "text": null,
+        "code": [
+          {
+            "file": "src/cart.ts",
+            "line": 27
+          }
+        ],
+        "tests": [
+          {
+            "file": "test/cart.test.ts",
+            "line": 17
+          }
+        ],
+        "note": ""
+      },
+      {
+        "criterion": "docs/specs/remove-item.md/AC-2",
+        "status": "met",
+        "text": null,
+        "code": [
+          {
+            "file": "src/cart.ts",
+            "line": 28
+          }
+        ],
+        "tests": [
+          {
+            "file": "test/cart.test.ts",
+            "line": 22
+          }
+        ],
+        "note": ""
+      }
+    ],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 0,
+  "seconds": 4.00790580001194,
+  "input_tokens": 4512,
+  "output_tokens": 198,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "3a29a2ad8bd41cb73808af5962579d7d781a58ec7c11e7bfce041ba97ef6e29c",
+  "dropped_findings": 0
+}

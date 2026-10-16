@@ -95,6 +95,26 @@ input_token_budget = 300000     # model input in tokens; the largest files are l
 
 bylaw is measured on 50 labelled pull requests in Python, TypeScript, Go and C#: planted security problems, bugs, rule breaks, missed acceptance criteria, scope creep, and clean changes. Results are per model and date: [docs/eval/README.md](docs/eval/README.md).
 
+Latest run, `claude-opus-5-5` at effort `high`, 16 October 2026 ([report](eval/results/2026-10-16-opus-5-5/report.md)):
+
+| | Result |
+| --- | --- |
+| Planted security problems found | 10 of 10 |
+| Planted bugs found | 10 of 10 |
+| Rule breaks found, citing the right rule line | 10 of 10, 8 of 8 citations |
+| Acceptance criteria judged correctly | 21 of 21 |
+| Scope creep found | 4 of 4 |
+| Clean pull requests with an inline comment | 1 of 9 |
+| Model findings dropped by validation | 1 of 74 |
+| Median review time | 6.5 s |
+| Cost per pull request | about $0.03 |
+
+These are small, planted changes; real pull requests are larger and messier ([ADR 0010](docs/adr/0010-evaluation-on-planted-cases.md)), so treat the numbers as an upper bound on what the model catches.
+
+## Costs
+
+A review is one model call. On the evaluation above it used about 3,900 input and 520 output tokens per pull request, about $0.03 at Claude Opus 5.5 prices; a large pull request costs more, up to the input budget (`input_token_budget`, 300,000 tokens by default). To cap spending, set a monthly limit for the key or workspace in the provider's console; bylaw cannot see your balance.
+
 ## Contributing and security
 
 Contributions are welcome: [CONTRIBUTING.md](CONTRIBUTING.md). Please report vulnerabilities privately as described in [SECURITY.md](SECURITY.md), not in a public issue.

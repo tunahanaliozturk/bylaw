@@ -1,0 +1,38 @@
+{
+  "case_id": "py-naive-aware-compare",
+  "result": {
+    "findings": [
+      {
+        "file": "app/auth.py",
+        "line_start": 31,
+        "line_end": 31,
+        "category": "bug",
+        "severity": "high",
+        "message": "`datetime.now()` returns a naive local time. If `expires_at` is timezone-aware, as the previous `datetime.now(UTC)` comparison implies, this comparison raises `TypeError` and token validation crashes. If `expires_at` is naive UTC instead, tokens expire early or late by the server's UTC offset.",
+        "suggestion": "    return datetime.now(UTC) < expires_at",
+        "evidence": null
+      },
+      {
+        "file": "app/auth.py",
+        "line_start": 31,
+        "line_end": 31,
+        "category": "rule",
+        "severity": "low",
+        "message": "This change alters how token expiry is checked, but it adds no test. The contributing guide requires a test with every change in behaviour.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:15"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 2,
+  "seconds": 8.675534499983769,
+  "input_tokens": 3622,
+  "output_tokens": 509,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "554ad50bf8251a4c76e0d0c3099d802b42e4eada4ba3a04e99ce653615be88c9",
+  "dropped_findings": 0
+}
