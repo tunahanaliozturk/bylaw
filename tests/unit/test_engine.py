@@ -41,8 +41,58 @@ Handler = Callable[[httpx2.Request], httpx2.Response]
 
 
 def _anthropic(handler: Handler, model: str = "claude-opus-5-5") -> AnthropicReviewer:
-    client = anthropic.DefaultHttpxClient(transport=httpx2.MockTransport(handler))
+    client = anthropic.DefaultHttpxClient(transport=httpx2.MockTransport(_streamed(handler)))
     return AnthropicReviewer(model=model, effort="high", api_key=SECRET, http_client=client)
+
+
+def _streamed(handler: Handler) -> Handler:
+    """Serve a canned message as server-sent events when the request asks to stream, as the API does."""
+
+    def serve(request: httpx2.Request) -> httpx2.Response:
+        response = handler(request)
+        if response.status_code != 200 or not json.loads(request.content).get("stream"):
+            return response
+        return httpx2.Response(
+            200, content=_sse(json.loads(response.content)), headers={"content-type": "text/event-stream"}
+        )
+
+    return serve
+
+
+def _sse(message: dict[str, object]) -> bytes:
+    usage = dict(message["usage"])  # type: ignore[call-overload]
+    start = {**message, "content": [], "stop_reason": None, "usage": {**usage, "output_tokens": 0}}
+    events: list[tuple[str, object]] = [("message_start", {"type": "message_start", "message": start})]
+    blocks: list[dict[str, str]] = message["content"]  # type: ignore[assignment]
+    for index, block in enumerate(blocks):
+        events += [
+            (
+                "content_block_start",
+                {
+                    "type": "content_block_start",
+                    "index": index,
+                    "content_block": {"type": "text", "text": ""},
+                },
+            ),
+            (
+                "content_block_delta",
+                {
+                    "type": "content_block_delta",
+                    "index": index,
+                    "delta": {"type": "text_delta", "text": block["text"]},
+                },
+            ),
+            ("content_block_stop", {"type": "content_block_stop", "index": index}),
+        ]
+    delta = {"stop_reason": message["stop_reason"], "stop_sequence": None}
+    events += [
+        (
+            "message_delta",
+            {"type": "message_delta", "delta": delta, "usage": {"output_tokens": usage["output_tokens"]}},
+        ),
+        ("message_stop", {"type": "message_stop"}),
+    ]
+    return "".join(f"event: {name}\ndata: {json.dumps(data)}\n\n" for name, data in events).encode("utf-8")
 
 
 def _message(text: str, stop_reason: str = "end_turn") -> dict[str, object]:
@@ -197,9 +247,9 @@ def test_any_other_sdk_failure_is_a_review_error(monkeypatch: pytest.MonkeyPatch
     reviewer = _anthropic(lambda _request: httpx2.Response(500))
 
     def boom(**_kwargs: object) -> None:
-        raise ValueError("expected time exceeds the non-streaming limit")
+        raise ValueError("the SDK refused the parameters")
 
-    monkeypatch.setattr(reviewer._client.beta.messages, "create", boom)
+    monkeypatch.setattr(reviewer._client.beta.messages, "stream", boom)
 
     with pytest.raises(ReviewError, match="rejected the request"):
         reviewer.review("s", "u")
@@ -311,3 +361,17 @@ def test_a_truncated_openai_answer_still_reports_the_tokens_it_was_billed() -> N
         reviewer.review("s", "u")
 
     assert reviewer.last_usage == Usage(input_tokens=700, output_tokens=4000)
+
+
+def test_anthropic_streams_with_room_for_a_long_review() -> None:
+    sent: list[httpx2.Request] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        sent.append(request)
+        return httpx2.Response(200, json=_message(json.dumps(REVIEW)))
+
+    result = _anthropic(handler).review("system text", "user text")
+
+    body = json.loads(sent[0].content)
+    assert (body["stream"], body["max_tokens"]) == (True, 64000)
+    assert result.criteria[0].criterion == "issue#1/AC-1"
