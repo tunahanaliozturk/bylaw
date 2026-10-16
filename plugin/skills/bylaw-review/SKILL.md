@@ -9,9 +9,9 @@ You do the reviewing; bylaw gathers the context, tells you the output rules, che
 
 ## Run bylaw
 
-bylaw's source ships with this skill. The plugin root is the directory two levels above this SKILL.md; it holds `pyproject.toml`. Run every command below as `uvx --from <plugin root> bylaw <command>`, with the plugin root as an absolute path, so the bylaw you run is the version you installed. If there is no `pyproject.toml` there (the skill was copied on its own), use `uvx bylaw@0.1.1 <command>` instead, the released version on PyPI.
+Run every command below as `uvx bylaw@0.1.1 <command>`: the released version on PyPI that this skill was written for.
 
-If `uvx` is missing, tell the user to install uv (`https://docs.astral.sh/uv/getting-started/installation/`) and stop.
+If `uvx` is missing, tell the user to install uv, the Python package manager from Astral, and stop.
 
 Create a fresh temporary directory first (`mktemp -d` in a POSIX shell, `New-Item -ItemType Directory (Join-Path ([IO.Path]::GetTempPath()) (New-Guid))` in PowerShell) and use its absolute path, called `<work>` below, in every command: shell variables do not survive between your commands. Never write bylaw's files into the user's repository. bylaw writes its own files through `--output`; do not use a shell redirect, which re-encodes the file on Windows. In a sandbox where uv cannot write its own cache ("Could not acquire lock", "Access is denied"), set `UV_CACHE_DIR` to a folder inside `<work>` for these commands.
 

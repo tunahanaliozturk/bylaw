@@ -41,8 +41,8 @@ Two modes share the core:
 
 - **Action and CLI.** Pull request event, then `context`, then `engine` calls the LLM with the user's own
   key, then `validate`, then `publish`.
-- **Claude Code and Codex.** The skill runs the bylaw source installed with the plugin
-  (`uvx --from <plugin root> bylaw`), so the CLI matches the skill's version. `bylaw context` and
+- **Claude Code and Codex.** The skill runs the PyPI release it was written for
+  (`uvx bylaw@<version>`), so the CLI matches the skill's version. `bylaw context` and
   `bylaw prompt` write the context and the brief to files, the host model reviews against `bylaw
   schema`, and `bylaw validate` checks the result. `bylaw post --dry-run` shows the review; `bylaw
   post --pr` publishes it. No extra API key.
@@ -138,10 +138,11 @@ cannot drift apart.
   code with its own lock file ([ADR 0009](adr/0009-action-runs-from-its-own-source.md)). Inputs:
   `api-key`, `provider`, `model`, `effort`, `fail-on`, `github-token`. Without a key it runs the
   deterministic checks only. Listed on the GitHub Marketplace and versioned by tags (`v1`, `v1.2.0`).
-- **Claude Code plugin.** `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` (plugin source
-  `.`), with `skills/bylaw-review/SKILL.md` and a `/bylaw-review` command. Install: `/plugin marketplace add
+- **Claude Code plugin.** The plugin lives in `plugin/`, apart from the source, so the plugin directories
+  scan only what users install: `plugin/.claude-plugin/plugin.json`, `plugin/skills/bylaw-review/SKILL.md`
+  and a `/bylaw-review` command. `.claude-plugin/marketplace.json` at the root points at it. Install: `/plugin marketplace add
   tunahanaliozturk/bylaw`, then `/plugin install bylaw@bylaw`.
-- **Codex.** The same skill, through the portable root `plugin.json` (Codex settings under `extensions."com.openai"`) and `.agents/plugins/marketplace.json`.
+- **Codex.** The same skill, through the portable `plugin/plugin.json` (Codex settings under `extensions."com.openai"`) and `.agents/plugins/marketplace.json`.
   Install: `codex plugin marketplace add tunahanaliozturk/bylaw`, then `/plugins`. The skill alone also
   works from `~/.agents/skills/`. The host model reviews in both hosts; bylaw supplies the context, the
   output schema (`bylaw schema`), the validation and the comments ([docs/hosts.md](hosts.md)).

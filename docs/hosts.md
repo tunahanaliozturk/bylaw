@@ -27,7 +27,7 @@ codex plugin marketplace add tunahanaliozturk/bylaw
 
 Then open `/plugins` in Codex, install `bylaw`, and start a new session. Ask "review pull request 12 with bylaw".
 
-To use only the skill without the plugin, copy `skills/bylaw-review` into `~/.agents/skills/` (all your projects) or into `.agents/skills/` in one repository. A skill copied on its own has no bylaw source next to it, so it runs the released version from PyPI that the skill names.
+To use only the skill without the plugin, copy `plugin/skills/bylaw-review` into `~/.agents/skills/` (all your projects) or into `.agents/skills/` in one repository. The skill runs the released version from PyPI that it names.
 
 ## What every host needs
 

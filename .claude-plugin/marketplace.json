@@ -7,7 +7,7 @@
   "plugins": [
     {
       "name": "bylaw",
-      "source": ".",
+      "source": "./plugin",
       "description": "Review pull requests against your repository's own rules and the requirements they claim to implement."
     }
   ]

@@ -42,7 +42,7 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.sdist]
 # The evaluation set holds deliberately vulnerable code; it stays in the repository, not the package.
-exclude = ["eval", "docs", "assets", ".github", ".agents", ".claude-plugin"]
+exclude = ["eval", "docs", "plugin", ".github", ".agents", ".claude-plugin"]
 
 [tool.ruff]
 line-length = 110
