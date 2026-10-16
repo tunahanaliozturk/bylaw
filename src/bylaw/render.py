@@ -22,6 +22,8 @@ _MAX_STATE_ENTRIES = 1000
 _MAX_PLACES = 5
 _TRIMMED = "\n\n_Summary trimmed to fit GitHub's comment size limit._"
 _MAX_CELL = 80
+# A criterion is the one cell a reader needs whole; inferred ones are capped at 300 characters (validate).
+_CRITERION_CELL = 300
 _BACKTICKS = re.compile(r"`+")
 
 
@@ -106,14 +108,18 @@ def _requirements(context: ReviewContext, result: ReviewResult) -> str:
     results = {item.criterion: item for item in result.criteria}
     rows = ["| Criterion | Status | Code | Tests |", "| --- | --- | --- | --- |"]
     for requirement in context.requirements:
-        listed = [(f"{requirement.source}/{c.key}", _cell(c.text)) for c in requirement.criteria]
+        listed = [
+            (f"{requirement.source}/{c.key}", _cell(c.text, _CRITERION_CELL)) for c in requirement.criteria
+        ]
         # ADR 0011: criteria the reviewer inferred from prose or maintainer comments follow, marked.
         prefix = f"{requirement.source}/IC-"
         inferred = sorted(
             (item for key, item in results.items() if key.startswith(prefix)),
             key=lambda item: int(item.criterion.removeprefix(prefix)),
         )
-        listed += [(item.criterion, f"{_cell(item.text or '')} (inferred)") for item in inferred]
+        listed += [
+            (item.criterion, f"{_cell(item.text or '', _CRITERION_CELL)} (inferred)") for item in inferred
+        ]
         if not listed:
             rows.append(
                 f"| {_code(requirement.source)} {_cell(requirement.title)} | no criteria listed |  |  |"
@@ -169,9 +175,9 @@ def _locations(locations: Iterable[Location]) -> str:
     return ", ".join(_code(f"{location.file}:{location.line}") for location in locations)
 
 
-def _cell(text: str) -> str:
+def _cell(text: str, limit: int = _MAX_CELL) -> str:
     flat = _text(" ".join(text.split())).replace("|", "\\|")
-    return flat if len(flat) <= _MAX_CELL else flat[: _MAX_CELL - 3] + "..."
+    return flat if len(flat) <= limit else flat[: limit - 3] + "..."
 
 
 def _text(text: str) -> str:

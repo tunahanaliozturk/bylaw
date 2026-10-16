@@ -253,3 +253,19 @@ def test_an_owner_or_collaborator_authoring_the_pull_request_still_counts(client
 
     assert issue is not None
     assert issue.comments == ("Must be reversible.",)
+
+
+@respx.mock
+@pytest.mark.parametrize("status", [403, 404, 410])
+def test_unreadable_comments_leave_the_issue_text_and_a_flag(client: GitHubClient, status: int) -> None:
+    respx.get(f"{API}/repos/octo/app/issues/9").mock(
+        return_value=httpx.Response(200, json={"title": "Login", "body": "Users sign in."})
+    )
+    respx.get(f"{API}/repos/octo/app/issues/9/comments").mock(
+        return_value=httpx.Response(status, json={"message": "x"})
+    )
+
+    issue = client.issue(IssueRef("octo", "app", 9))
+
+    assert issue is not None
+    assert (issue.body, issue.comments, issue.comments_unreadable) == ("Users sign in.", (), True)

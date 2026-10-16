@@ -41,6 +41,7 @@ class Issue:
     body: str
     # Trusted authors' comments, oldest first (ADR 0011).
     comments: tuple[str, ...] = ()
+    comments_unreadable: bool = False
 
 
 class RepoSource(Protocol):
