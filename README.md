@@ -97,6 +97,7 @@ bylaw is measured on 50 labelled pull requests in Python, TypeScript, Go and C#:
 ## Contributing and security
 
 Contributions are welcome: [CONTRIBUTING.md](CONTRIBUTING.md). Please report vulnerabilities privately as described in [SECURITY.md](SECURITY.md), not in a public issue.
+bylaw has no server and collects no data; what it sends where is in [docs/privacy.md](docs/privacy.md).
 
 ## Licence
 
