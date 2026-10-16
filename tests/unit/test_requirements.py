@@ -191,13 +191,3 @@ def test_unreadable_comments_are_noted() -> None:
     _, notes = collect_requirements(source, source.info(), (), (), ())
 
     assert "issue#7: its comments could not be read; only the issue text is used." in notes
-
-
-def test_partly_read_comments_are_noted_as_partial() -> None:
-    linked = IssueRef("octo", "app", 7)
-    issue = Issue(linked, "Login", "- [ ] Email sign in", ("Also lock.",), comments_unreadable=True)
-    source = FakeSource(commits=("Closes #7",), issues={linked: issue})
-
-    _, notes = collect_requirements(source, source.info(), (), (), ())
-
-    assert "issue#7: only some of its comments could be read." in notes

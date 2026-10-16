@@ -121,9 +121,7 @@ def collect_requirements(
             notes.append(f"Could not read {label}; it is left out of the requirement check.")
             continue
         requirements.append(_requirement(label, issue.title, issue.body, issue.comments, issue=True))
-        if issue.comments_unreadable and issue.comments:
-            notes.append(f"{label}: only some of its comments could be read.")
-        elif issue.comments_unreadable:
+        if issue.comments_unreadable:
             notes.append(f"{label}: its comments could not be read; only the issue text is used.")
     for path in spec_paths(changed, info.body, spec_globs, source.repo):
         text = source.read_head(path)

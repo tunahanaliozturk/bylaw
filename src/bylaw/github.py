@@ -109,6 +109,45 @@ class _GqlResponse(_Model):
     errors: list[dict[str, object]] | None = None
 
 
+_ISSUE_COMMENTS_QUERY = """
+query($owner: String!, $name: String!, $number: Int!) {
+  repository(owner: $owner, name: $name) {
+    issue(number: $number) {
+      comments(last: 100) { nodes { body isMinimized authorAssociation author { __typename login } } }
+    }
+  }
+}
+"""
+
+
+class _GqlIssueComment(_Model):
+    body: str = ""
+    is_minimized: bool = Field(default=False, alias="isMinimized")
+    author_association: str = Field(default="NONE", alias="authorAssociation")
+    author: "_GqlAuthor | None" = None
+
+
+class _GqlIssueComments(_Model):
+    nodes: list[_GqlIssueComment]
+
+
+class _GqlIssueWithComments(_Model):
+    comments: _GqlIssueComments
+
+
+class _GqlIssueRepository(_Model):
+    issue: _GqlIssueWithComments | None = None
+
+
+class _GqlIssueCommentsData(_Model):
+    repository: _GqlIssueRepository | None = None
+
+
+class _GqlIssueCommentsResponse(_Model):
+    data: _GqlIssueCommentsData | None = None
+    errors: list[dict[str, object]] | None = None
+
+
 _PULL_FILES = TypeAdapter(list[PullFile])
 _COMMITS = TypeAdapter(list[_Commit])
 
@@ -288,26 +327,7 @@ class GitHubClient:
         data = _IssueResponse.model_validate(response.json())
         if data.pull_request is not None:
             return None
-        path = f"/repos/{ref.owner}/{ref.repo}/issues/{ref.number}/comments"
-        comments: list[_IssueComment] = []
-        unreadable = False
-        # Oldest first; every page is read so the newest comments, which usually settle the scope, are kept.
-        for page in range(1, _MAX_FILE_PAGES + 1):
-            response = self._send(
-                "GET", f"{self._api_url}{path}", params={"per_page": _PAGE_SIZE, "page": page}
-            )
-            if (
-                response.status_code in _UNREADABLE_ISSUE
-                and response.headers.get("x-ratelimit-remaining") != "0"
-            ):
-                # Moved or hidden since the issue itself was read: go on with the issue text alone.
-                unreadable = True
-                break
-            _raise_for_status(response)
-            batch = _ISSUE_COMMENTS.validate_python(response.json())
-            comments.extend(batch)
-            if len(batch) < _PAGE_SIZE:
-                break
+        comments, unreadable = self._issue_comments(ref)
         # Bots post status, not requirements, and nobody outside the project may rescope the issue. The pull
         # request author is left out only as a member: an owner or collaborator could edit the issue body
         # anyway, but a member may have read access only (ADR 0008).
@@ -319,6 +339,30 @@ class GitHubClient:
             comments=_newest_within(trusted),
             comments_unreadable=unreadable,
         )
+
+    def _issue_comments(self, ref: IssueRef) -> tuple[list[_GqlIssueComment], bool]:
+        """The newest hundred comments, oldest first, and whether they could not be read at all.
+
+        GraphQL rather than REST: it returns the newest comments in one call and says which ones a
+        maintainer hid as off-topic or outdated.
+        """
+        variables = {"owner": ref.owner, "name": ref.repo, "number": ref.number}
+        response = self._send(
+            "POST", self._graphql_url, json={"query": _ISSUE_COMMENTS_QUERY, "variables": variables}
+        )
+        if response.status_code in _UNREADABLE_ISSUE and response.headers.get("x-ratelimit-remaining") != "0":
+            return [], True
+        _raise_for_status(response)
+        payload = _GqlIssueCommentsResponse.model_validate(response.json())
+        if any(error.get("type") == "RATE_LIMITED" for error in payload.errors or []):
+            raise GitHubError(
+                f"GitHub GraphQL rate limit reached while reading the comments on {ref.label(None)}"
+            )
+        repository = payload.data.repository if payload.data else None
+        if repository is None or repository.issue is None:
+            # Moved, deleted or hidden since the issue itself was read: go on with the issue text alone.
+            return [], True
+        return repository.issue.comments.nodes, False
 
     def closing_issue_refs(self, repo: str, number: int) -> tuple[IssueRef, ...]:
         owner, _, name = repo.partition("/")
@@ -496,14 +540,14 @@ def _newest_within(bodies: list[str]) -> tuple[str, ...]:
     return tuple(reversed(kept))
 
 
-def _counts(comment: _IssueComment, pr_author: str | None) -> bool:
-    if comment.author_association not in TRUSTED_ASSOCIATIONS:
+def _counts(comment: _GqlIssueComment, pr_author: str | None) -> bool:
+    if comment.is_minimized or comment.author_association not in TRUSTED_ASSOCIATIONS:
         return False
-    if comment.user is None:
+    if comment.author is None:
         return True
-    if comment.user.kind == "Bot":
+    if comment.author.typename == "Bot":
         return False
-    return not (comment.author_association == "MEMBER" and comment.user.login == pr_author)
+    return not (comment.author_association == "MEMBER" and comment.author.login == pr_author)
 
 
 def _first_and_recent(thread: _GqlThread) -> list[_GqlComment]:
