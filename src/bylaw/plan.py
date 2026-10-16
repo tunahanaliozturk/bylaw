@@ -34,12 +34,15 @@ class Thread:
     id: str
     resolved: bool
     comments: tuple[ThreadComment, ...]
-    # The thread's current line on the head; None when GitHub marks it outdated.
+    # The thread's current end line on the head; None when GitHub marks it outdated.
     line: int | None = None
+    # The end line it was posted on, for pairing outdated threads.
+    original_line: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
 class State:
+    # Ids of the threads bylaw resolved itself. States saved before this held fingerprints instead.
     auto_resolved: frozenset[str]
 
 
@@ -99,7 +102,7 @@ def make_plan(
 
     paired, unpaired = _pair(groups, ours)
     fixed = [(fp, thread) for fp, thread in unpaired if not thread.resolved]
-    auto_resolved = set(state.auto_resolved) | {fp for fp, _ in fixed}
+    auto_resolved = set(state.auto_resolved) | {thread.id for _, thread in fixed}
 
     inline: list[Group] = []
     summary_only: list[Group] = []
@@ -116,8 +119,9 @@ def make_plan(
                 inline.append(group)
         elif any(_mutes(reply) for reply in existing.comments[1:]):
             muted.append(group)
-        elif existing.resolved and group.fingerprint in auto_resolved:
+        elif existing.resolved and _resolved_by_bylaw(existing, group.fingerprint, auto_resolved, ours):
             unresolve.append(existing.id)
+            auto_resolved.discard(existing.id)
             auto_resolved.discard(group.fingerprint)
             open_threads.append(group)
         elif existing.resolved:
@@ -133,11 +137,27 @@ def make_plan(
         open_threads=tuple(open_threads),
         resolve=tuple(thread.id for _, thread in fixed),
         unresolve=tuple(unresolve),
-        state=State(auto_resolved=frozenset(auto_resolved & set(ours))),
+        state=State(auto_resolved=frozenset(auto_resolved & {t.id for ts in ours.values() for t in ts})),
     )
 
 
 _FAR = 10**9
+
+
+def _distance(thread: Thread, finding: Finding) -> int:
+    # GitHub's `line` is the end line of a comment, and bylaw anchors comments on `line_end`.
+    if thread.line is not None:
+        return abs(thread.line - finding.line_end)
+    if thread.original_line is not None:
+        return _FAR + abs(thread.original_line - finding.line_end)
+    return 2 * _FAR
+
+
+def _resolved_by_bylaw(
+    thread: Thread, fp: str, auto_resolved: set[str], ours: Mapping[str, list[Thread]]
+) -> bool:
+    # A fingerprint from an older state is trusted only when it names a single thread.
+    return thread.id in auto_resolved or (fp in auto_resolved and len(ours.get(fp, [])) == 1)
 
 
 def _pair(
@@ -155,7 +175,7 @@ def _pair(
     unpaired: list[tuple[str, Thread]] = []
     for fp, candidates in ours.items():
         options = sorted(
-            (_FAR if thread.line is None else abs(thread.line - groups[index].finding.line_start), index, n)
+            (_distance(thread, groups[index].finding), index, n)
             for index in indexes.get(fp, [])
             for n, thread in enumerate(candidates)
         )

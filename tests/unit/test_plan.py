@@ -105,11 +105,11 @@ def test_a_fixed_finding_resolves_its_thread_and_is_remembered() -> None:
     plan = make_plan([], [_ours(FP)], NO_STATE, Severity.MEDIUM, 15)
 
     assert plan.resolve == ("T1",)
-    assert plan.state.auto_resolved == frozenset({FP})
+    assert plan.state.auto_resolved == frozenset({"T1"})
 
 
 def test_a_finding_that_comes_back_reopens_the_thread_bylaw_resolved() -> None:
-    plan = make_plan([_group(FP)], [_ours(FP, "T1", True)], State(frozenset({FP})), Severity.MEDIUM, 15)
+    plan = make_plan([_group(FP)], [_ours(FP, "T1", True)], State(frozenset({"T1"})), Severity.MEDIUM, 15)
 
     assert plan.unresolve == ("T1",)
     assert plan.state.auto_resolved == frozenset()
@@ -205,3 +205,43 @@ def test_a_new_copy_above_gets_its_own_comment_and_the_mute_stays_put() -> None:
     assert [g.finding.line_start for g in plan.inline] == [1]
     assert [g.finding.line_start for g in plan.muted] == [10]
     assert [g.finding.line_start for g in plan.open_threads] == [4]
+
+
+def test_a_state_saved_before_threads_were_tracked_still_reopens_an_unambiguous_thread() -> None:
+    plan = make_plan([_group(FP)], [_ours(FP, "T1", True)], State(frozenset({FP})), Severity.MEDIUM, 15)
+
+    assert plan.unresolve == ("T1",)
+
+
+def test_a_sibling_resolved_by_a_maintainer_stays_resolved_after_bylaw_resolved_the_other() -> None:
+    # Run 1: line 3 is fixed, bylaw resolves T3. Then a maintainer resolves T9 by hand.
+    first = _plan_for([_group(FP, line=9)], [_at(FP, "T3", None), _at(FP, "T9", 9)])
+    assert first.resolve == ("T3",)
+    t3 = Thread(id="T3", resolved=True, comments=_at(FP, "T3", None).comments)
+    t9 = Thread(id="T9", resolved=True, comments=_at(FP, "T9", 9).comments, line=9)
+
+    second = make_plan([_group(FP, line=9)], [t3, t9], first.state, Severity.LOW, 10)
+
+    assert second.unresolve == ()
+    assert [g.finding.line_start for g in second.reviewer_resolved] == [9]
+
+
+def test_multi_line_copies_pair_by_the_line_github_anchors_on() -> None:
+    first = Group(finding=_finding(3).model_copy(update={"line_end": 12}), fingerprint=FP, others=())
+    second = Group(finding=_finding(14).model_copy(update={"line_end": 23}), fingerprint=FP, others=())
+    threads = [_at(FP, "T1", 12, MUTE), _at(FP, "T2", 23)]
+
+    plan = _plan_for([first, second], threads)
+
+    assert [g.finding.line_start for g in plan.muted] == [3]
+
+
+def test_outdated_threads_pair_by_their_original_line() -> None:
+    # Both threads are outdated; the muted copy at line 3 was deleted, the other moved from 9 to 8.
+    muted = Thread(id="Ta", resolved=False, comments=_at(FP, "Ta", None, MUTE).comments, original_line=3)
+    other = Thread(id="Tb", resolved=False, comments=_at(FP, "Tb", None).comments, original_line=9)
+
+    plan = _plan_for([_group(FP, line=8)], [muted, other])
+
+    assert plan.muted == ()
+    assert plan.resolve == ("Ta",)

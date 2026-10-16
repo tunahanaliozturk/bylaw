@@ -124,6 +124,7 @@ query($owner: String!, $name: String!, $number: Int!, $after: String) {
           id
           isResolved
           line
+          originalLine
           comments: comments(first: 1) { nodes { id body authorAssociation author { __typename login } } }
           recent: comments(last: 50) { nodes { id body authorAssociation author { __typename login } } }
         }
@@ -156,6 +157,7 @@ class _GqlThread(_Model):
     id: str
     is_resolved: bool = Field(alias="isResolved")
     line: int | None = None
+    original_line: int | None = Field(default=None, alias="originalLine")
     # The finding itself and the newest replies: a mute or resolve is usually late in a long thread.
     comments: _GqlComments
     recent: _GqlComments = Field(default_factory=lambda: _GqlComments(nodes=[]))
@@ -361,7 +363,13 @@ class GitHubClient:
                     for c in _first_and_recent(node)
                 )
                 threads.append(
-                    Thread(id=node.id, resolved=node.is_resolved, comments=comments, line=node.line)
+                    Thread(
+                        id=node.id,
+                        resolved=node.is_resolved,
+                        comments=comments,
+                        line=node.line,
+                        original_line=node.original_line,
+                    )
                 )
             if not pull.review_threads.page_info.has_next_page:
                 return threads

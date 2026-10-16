@@ -204,3 +204,13 @@ def test_a_short_thread_is_not_read_twice(client: GitHubClient) -> None:
     (read,) = client.review_threads("octo/app", 5)
 
     assert len(read.comments) == 1
+
+
+@respx.mock
+def test_threads_carry_their_current_and_original_lines(client: GitHubClient) -> None:
+    thread = _thread("T1", "a", "Bot", "NONE") | {"line": None, "originalLine": 7}
+    respx.post(f"{API}/graphql").mock(return_value=httpx.Response(200, json=_threads_page([thread], None)))
+
+    (read,) = client.review_threads("octo/app", 5)
+
+    assert (read.line, read.original_line) == (None, 7)
