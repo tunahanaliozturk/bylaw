@@ -19,6 +19,10 @@ Create a fresh temporary directory first (`mktemp -d` in a POSIX shell, `New-Ite
 
 Commands with `--pr` need `GITHUB_TOKEN` or `GH_TOKEN`. If neither is set and the GitHub CLI is installed, set it inside the same command, for that command only: `GITHUB_TOKEN=$(gh auth token) uvx ...` in a POSIX shell, or `$env:GITHUB_TOKEN = gh auth token; uvx ...` in PowerShell. Never print the token, never run `gh auth token` on its own, and never write its value into a command.
 
+## Finding the target
+
+Run `gh repo view --json nameWithOwner,defaultBranchRef,isFork,parent` for the repository as `owner/name` and its default branch; when `isFork` is true, the pull request usually lives in `parent`. A number, `#12` or a pull request URL names a pull request. When the user asks for "the pull request for this branch", `gh pr view --json number` finds it. With no pull request, review the current branch against the default branch. Without the GitHub CLI, ask the user.
+
 ## Steps
 
 1. **Pick the target.**
