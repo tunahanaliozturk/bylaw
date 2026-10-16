@@ -25,7 +25,7 @@ def _project_version() -> str:
 
 
 def test_both_plugin_manifests_carry_the_project_name_and_version() -> None:
-    for path in (".claude-plugin/plugin.json", ".codex-plugin/plugin.json"):
+    for path in (".claude-plugin/plugin.json", "plugin.json"):
         manifest = _json(path)
         assert (manifest["name"], manifest["version"]) == ("bylaw", _project_version()), path
 
@@ -99,7 +99,9 @@ def test_the_fork_recipe_runs_only_for_its_own_label() -> None:
 
 
 def test_the_codex_manifest_is_ready_for_a_listing() -> None:
-    interface = _json(".codex-plugin/plugin.json")["interface"]
+    # The portable root manifest carries Codex settings under extensions."com.openai" (Codex plugin docs).
+    interface = _json("plugin.json")["extensions"]["com.openai"]["interface"]  # type: ignore[index]
+    assert not (ROOT / ".codex-plugin").exists()
     assert isinstance(interface, dict)
 
     for field in ("websiteURL", "privacyPolicyURL", "termsOfServiceURL", "longDescription", "brandColor"):
