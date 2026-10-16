@@ -176,8 +176,10 @@ def _locations(locations: Iterable[Location]) -> str:
 
 
 def _cell(text: str, limit: int = _MAX_CELL) -> str:
-    flat = _text(" ".join(text.split())).replace("|", "\\|")
-    return flat if len(flat) <= limit else flat[: limit - 3] + "..."
+    # Cut before escaping, so a limit never lands inside an entity such as &amp;.
+    flat = " ".join(text.split())
+    cut = flat if len(flat) <= limit else flat[: limit - 3] + "..."
+    return _text(cut).replace("|", "\\|")
 
 
 def _text(text: str) -> str:

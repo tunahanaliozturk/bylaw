@@ -175,3 +175,16 @@ def test_a_dry_run_previews_with_the_settings_in_the_context(
     preview = capsysbinary.readouterr().out.decode("utf-8")
     assert code == 0
     assert "0 new inline comments" in preview
+
+
+def test_a_context_with_settings_out_of_range_is_a_clear_error(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    context = json.loads(_EMPTY_CONTEXT)
+    context["max_comments"] = 99
+    (tmp_path / "context.json").write_text(json.dumps(context), encoding="utf-8")
+
+    code = main(["post", "--context", str(tmp_path / "context.json"), "--dry-run"])
+
+    assert code == 2
+    assert capsys.readouterr().err.startswith("bylaw: ")

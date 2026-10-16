@@ -253,3 +253,14 @@ def test_an_inferred_criterion_is_shown_in_full_up_to_its_limit() -> None:
     body = summary_body(PROSE, result, _plan())
 
     assert long_text in body
+
+
+def test_a_criterion_with_ampersands_is_not_cut_inside_an_entity() -> None:
+    text = ("Tom & Jerry " * 30)[:300].strip()
+    result = ReviewResult(
+        criteria=(CriterionResult(criterion="issue#7/IC-1", status=CriterionStatus.MET, text=text),)
+    )
+
+    body = summary_body(PROSE, result, _plan())
+
+    assert text.replace("&", "&amp;") in body

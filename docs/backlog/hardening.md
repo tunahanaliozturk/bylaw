@@ -9,13 +9,13 @@ Small problems found by the milestone reviews. Each one is real but rare or mino
 ## Items
 
 - [x] **HRD-1** (S) Renamed-only, mode-only and empty files get the "binary or too large" note. Done when: a precise note per case.
-- [x] **HRD-2** (S) An invalid glob such as `[z-a]` in a base `.editorconfig` ends the run with a traceback. Done when: a `bylaw:` error naming the file.
+- [x] **HRD-2** (S) An invalid glob such as `[z-a]` in a base `.editorconfig` ends the run with a traceback. Done when: the section is ignored with a note naming the file and section.
 - [x] **HRD-3** (S) The note about skipped lock, vendored and generated files gives a count, not the paths. Done when: paths listed, capped.
 - [x] **HRD-4** (S) Nothing says so when GitHub's 3000-file listing cap cuts a pull request short. Done when: a note in the summary.
 - [ ] **HRD-5** (M) If posting fails partway, the summary's saved state can disagree with the comments already posted. Done when: state written last and reconciled on the next run.
 - [x] **HRD-6** (M) Two findings on identical lines in one file share a fingerprint, so one can hide the other. Done when: fingerprint includes an occurrence index.
 - [x] **HRD-7** (S) `bylaw post --dry-run` previews with the default config, not the base branch's `.bylaw.toml`. Done when: dry run reads the base config.
-- [x] **HRD-8** (S) Thread replies past the first 50 are not read, so a late mute or resolve can be missed. Done when: replies paged.
+- [x] **HRD-8** (S) Thread replies past the first 50 are not read, so a late mute or resolve can be missed. Done when: the first comment and the 50 newest replies are read.
 - [ ] **HRD-9** (M) The Anthropic call caps output at 20,000 tokens and does not stream. Done when: streaming with a higher cap.
 - [ ] **HRD-10** (M) The prompt budget counts characters, not tokens. Done when: token counting through the provider.
 - [x] **HRD-11** (S) With the `pull_request_target` recipe, adding or removing a label re-runs the review. Done when: only the `bylaw` label triggers.
@@ -37,3 +37,6 @@ Small problems found by the milestone reviews. Each one is real but rare or mino
 ## Notes
 
 Pick these up between features. Each fix comes with a test that fails first.
+- [ ] **HRD-26** (S) In a thread with more than 51 comments, replies between the first comment and the 50 newest are not read. Done when: long threads are paged.
+- [ ] **HRD-27** (S) A renamed file whose binary content also changed gets no note, and a copied file gets the generic one. Done when: both have their own note.
+- [ ] **HRD-28** (S) A pull request that already had two threads with the same fingerprint keeps an orphan thread after the HRD-6 pairing change. Done when: the orphan is resolved on the next run.
