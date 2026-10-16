@@ -138,3 +138,40 @@ def test_the_schema_asks_for_criterion_text(capsysbinary: pytest.CaptureFixture[
     schema = json.loads(capsysbinary.readouterr().out)
     criterion = schema["$defs"]["OutCriterion"]
     assert "text" in criterion["required"]
+
+
+def test_a_dry_run_previews_with_the_settings_in_the_context(
+    tmp_path: Path, capsysbinary: pytest.CaptureFixture[bytes]
+) -> None:
+    context = json.loads(_EMPTY_CONTEXT)
+    context["files"] = [{"path": "a.py", "status": "added", "added_lines": [{"number": 1, "text": "x = 1"}]}]
+    context["max_comments"] = 0
+    result = {
+        "findings": [
+            {
+                "file": "a.py",
+                "line_start": 1,
+                "line_end": 1,
+                "category": "bug",
+                "severity": "high",
+                "message": "m",
+            }
+        ]
+    }
+    (tmp_path / "context.json").write_text(json.dumps(context), encoding="utf-8")
+    (tmp_path / "result.json").write_text(json.dumps(result), encoding="utf-8")
+
+    code = main(
+        [
+            "post",
+            "--context",
+            str(tmp_path / "context.json"),
+            "--result",
+            str(tmp_path / "result.json"),
+            "--dry-run",
+        ]
+    )
+
+    preview = capsysbinary.readouterr().out.decode("utf-8")
+    assert code == 0
+    assert "0 new inline comments" in preview

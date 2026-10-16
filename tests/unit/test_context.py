@@ -133,3 +133,11 @@ def test_a_pull_request_cut_short_by_the_file_listing_cap_says_so() -> None:
     notes = build_context(source).notes
 
     assert "GitHub lists at most 3000 files: 1 of 3200 changed files were read." in notes
+
+
+def test_the_base_branch_comment_settings_travel_with_the_context() -> None:
+    source = FakeSource(base={".bylaw.toml": 'severity_threshold = "high"\nmax_comments = 0\n'})
+
+    context = build_context(source)
+
+    assert (context.severity_threshold, context.max_comments) == ("high", 0)

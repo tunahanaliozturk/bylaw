@@ -118,4 +118,6 @@ def build_context(source: RepoSource) -> ReviewContext:
         requirements=requirements,
         findings=tuple(findings),
         notes=(*notes, *requirement_notes),
+        severity_threshold=config.severity_threshold,
+        max_comments=config.max_comments,
     )
