@@ -17,7 +17,7 @@ Get bylaw into people's hands with numbers behind every claim: a measured evalua
 - [x] **REL-7** (M) PyPI trusted publishing on a version tag. Done when: `uvx bylaw --version` works on a machine without the repository.
 - [x] **REL-8** (S) `v0.1.0` tag, the moving `v0` tag and release notes from the changelog. Done when: the recipes work with `@v0`.
 - [x] **REL-9** (S) GitHub Marketplace listing for the Action. Done when: listed and installable from the Marketplace.
-- [ ] **REL-10** (S) Claude Code and Codex plugin directory listings. Done when: both listings live; needs HRD-15.
+- [ ] **REL-10** (S) Claude Code and Codex plugin directory listings. Done when: both listings live; needs HRD-15. Claude directory: submitted 2026-10-17 from `plugin/` on main, held for one reviewer check (the skill passes the GitHub CLI token to the GitHub API). Codex directory: ZIP of `plugin/` ready; needs a signed-in, verified OpenAI Platform organization.
 - [x] **REL-11** (S) Skill and docs move from `git+` to `uvx bylaw==<version>`. Done when: no doc tells users to run `main`.
 - [ ] **REL-12** (S) Launch post with the evaluation as the story. Done when: Show HN and the Claude Code and Codex communities.
 
