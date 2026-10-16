@@ -4,6 +4,12 @@ bylaw reviews a pull request or a local branch against what the repository alrea
 
 The host model does the reviewing, so no extra API key is needed. bylaw itself runs from PyPI through `uvx`, so you need uv installed.
 
+## Install
+
+```
+/plugin install bylaw --marketplace tunahanaliozturk/bylaw
+```
+
 ## Use it
 
 - `/bylaw-review` reviews the current branch against the default branch.
