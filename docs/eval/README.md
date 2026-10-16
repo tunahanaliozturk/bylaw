@@ -56,6 +56,8 @@ bylaw eval run --provider anthropic --only py-sqli --out runs/opus
 bylaw eval score --runs runs/opus --only py-sqli --label "claude-opus-5-5, 2026-10-15" --input-price <usd> --output-price <usd>
 ```
 
+To cap the spend, add `--max-cost <usd> --input-price <usd> --output-price <usd>`: no new case starts once the saved runs in that directory cost that much. A hard limit for the whole account still belongs in the provider's console.
+
 Then run the whole set into the same directory. A rerun skips cases that already have a result and retries only the failed ones, so an interrupted run never pays twice. Each saved result records the reviewer and a hash of the case: a rerun with another model into the same directory is refused, and a case whose files changed is reviewed again. `score --only` scores only the matching cases, tokens and latency included.
 
 Host models (Claude Code, Codex) review without an API key: `bylaw eval prepare --out host` writes `<id>.brief.txt` and `<id>.context.json` per case, the host writes `<id>.json` for each brief in the `bylaw schema` format, and `bylaw eval run --answers host --out runs/host` scores them like any other run.

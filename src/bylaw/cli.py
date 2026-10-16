@@ -97,6 +97,9 @@ def _add_eval(evaluation: argparse.ArgumentParser) -> None:
     answer.add_argument("--provider", choices=PROVIDERS)
     go.add_argument("--model", help="model name; defaults to claude-opus-5-5 for anthropic")
     go.add_argument("--effort", help="reasoning effort passed to the model")
+    go.add_argument("--max-cost", type=float, help="stop starting new cases once this many USD are spent")
+    go.add_argument("--input-price", type=float, help="USD per million input tokens, for --max-cost")
+    go.add_argument("--output-price", type=float, help="USD per million output tokens, for --max-cost")
     mark.add_argument("--runs", required=True, help="directory `bylaw eval run` wrote")
     mark.add_argument("--label", required=True, help="model or host and date, for the report title")
     mark.add_argument("--input-price", type=float, help="USD per million input tokens")
@@ -146,6 +149,12 @@ def _eval(args: argparse.Namespace) -> int:
         if args.eval_command == "prepare":
             prepare(root, cases, Path(args.out), Path(work))
             return 0
+        limit: Callable[[Sequence[CaseRun]], bool] | None = None
+        if args.max_cost is not None:
+            if args.input_price is None or args.output_price is None:
+                _say("--max-cost needs --input-price and --output-price")
+                return 2
+            limit = _spend_limit(args.max_cost, args.input_price, args.output_price)
         make: Callable[[Case], Reviewer]
         if args.no_model:
             make, identity = (lambda _: NoModel()), "no-model"
@@ -165,11 +174,24 @@ def _eval(args: argparse.Namespace) -> int:
             make = lambda _: reviewer  # noqa: E731 - one reviewer for every case
             identity = f"{args.provider}:{args.model or 'default model'}:{args.effort or 'default effort'}"
         _say(f"reviewing {len(cases)} case(s) with {identity}; finished cases in {args.out} are reused")
-        runs = run_all(root, cases, make, Path(args.out), identity)
+        runs = run_all(root, cases, make, Path(args.out), identity, stop=limit)
         failed = sum(r.error is not None for r in runs)
         _say(f"reviewed {len(runs)} case(s); {failed} failed.")
+        if len(runs) < len(cases):
+            _say(f"stopped at the {args.max_cost} USD limit; {len(cases) - len(runs)} case(s) not started.")
         return 1 if failed else 0
     return 0
+
+
+def _spend_limit(
+    max_cost: float, input_price: float, output_price: float
+) -> Callable[[Sequence[CaseRun]], bool]:
+    def reached(runs: Sequence[CaseRun]) -> bool:
+        tokens_in = sum(r.input_tokens or 0 for r in runs)
+        tokens_out = sum(r.output_tokens or 0 for r in runs)
+        return (tokens_in * input_price + tokens_out * output_price) / 1_000_000 >= max_cost
+
+    return reached
 
 
 def _write(text: str, output: str | None = None) -> None:

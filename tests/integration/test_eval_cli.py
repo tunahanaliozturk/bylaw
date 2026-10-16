@@ -96,3 +96,14 @@ def test_a_run_with_failed_cases_exits_1_and_says_how_many(
     assert code == 1
     assert "reviewing 1 case(s)" in err
     assert "1 failed" in err
+
+
+def test_a_cost_limit_needs_the_prices(
+    evalset: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    code = main(
+        ["eval", "run", "--set", str(evalset), "--out", str(tmp_path / "r"), "--no-model", "--max-cost", "5"]
+    )
+
+    assert code == 2
+    assert "--max-cost needs --input-price and --output-price" in capsys.readouterr().err
