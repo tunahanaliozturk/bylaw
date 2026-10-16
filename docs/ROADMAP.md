@@ -44,7 +44,7 @@ Each milestone ends with something a user can run. Design: [design.md](design.md
   model and date ([docs/eval/README.md](eval/README.md), [ADR 0010](adr/0010-evaluation-on-planted-cases.md)).
 - Exit: README numbers come from a committed eval run: done 2026-10-16 with `claude-opus-5-5` (eval/results/2026-10-16-opus-5-5).
 
-## M6: v0.1.0 release
+## M6: v0.1.0 release (released 2026-10-16)
 
 - README with real screenshots, architecture diagram, logo and social preview.
 - PyPI trusted publishing, Action tags, Marketplace listing.

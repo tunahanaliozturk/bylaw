@@ -76,7 +76,7 @@ Then ask "review pull request 12 with bylaw", or run `/bylaw-review 12` in Claud
 **On your branch, before the pull request.** Ask Claude Code or Codex to "review this branch with bylaw", or use the CLI with [uv](https://docs.astral.sh/uv/):
 
 ```
-alias bylaw='uvx --from git+https://github.com/tunahanaliozturk/bylaw bylaw'
+alias bylaw='uvx bylaw'
 bylaw context --base main --output context.json
 bylaw review --context context.json   # prints the findings as JSON; set ANTHROPIC_API_KEY for the model review
 ```

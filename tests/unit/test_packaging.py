@@ -143,3 +143,10 @@ def test_the_skill_itself_says_how_to_find_the_repository_and_the_pull_request()
 
     assert "gh repo view --json nameWithOwner,defaultBranchRef,isFork,parent" in text
     assert "gh pr view --json number" in text
+
+
+def test_a_skill_copied_on_its_own_runs_the_released_version_from_pypi() -> None:
+    text = SKILL.read_text(encoding="utf-8")
+
+    assert f"uvx bylaw@{_project_version()}" in text
+    assert "git+https://" not in text
