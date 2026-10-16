@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/images/wordmark-dark.svg">
-    <img src="docs/images/wordmark-light.svg" alt="bylaw" width="236">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tunahanaliozturk/bylaw/main/docs/images/wordmark-dark.svg">
+    <img src="https://raw.githubusercontent.com/tunahanaliozturk/bylaw/main/docs/images/wordmark-light.svg" alt="bylaw" width="236">
   </picture>
 </p>
 
@@ -28,15 +28,15 @@ Findings go on the changed lines as review comments. A re-run never repeats a co
 Real output on [bylaw-demo pull request 7](https://github.com/tunahanaliozturk/bylaw-demo/pull/7). An inline finding with its rule citation and a one-click fix:
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/images/screenshot-inline-dark.png">
-  <img src="docs/images/screenshot-inline-light.png" alt="A critical SQL injection finding citing CONTRIBUTING.md line 3, with a suggested change" width="600">
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tunahanaliozturk/bylaw/main/docs/images/screenshot-inline-dark.png">
+  <img src="https://raw.githubusercontent.com/tunahanaliozturk/bylaw/main/docs/images/screenshot-inline-light.png" alt="A critical SQL injection finding citing CONTRIBUTING.md line 3, with a suggested change" width="600">
 </picture>
 
 The summary checks the change against the acceptance criteria of the issue it closes:
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/images/screenshot-summary-dark.png">
-  <img src="docs/images/screenshot-summary-light.png" alt="The bylaw summary with a requirements table: one criterion partly met, two missing" width="600">
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tunahanaliozturk/bylaw/main/docs/images/screenshot-summary-dark.png">
+  <img src="https://raw.githubusercontent.com/tunahanaliozturk/bylaw/main/docs/images/screenshot-summary-light.png" alt="The bylaw summary with a requirements table: one criterion partly met, two missing" width="600">
 </picture>
 
 ## Quick start
@@ -61,7 +61,7 @@ jobs:
           api-key: ${{ secrets.ANTHROPIC_API_KEY }}
 ```
 
-Without a key it still runs the deterministic checks. OpenAI works too (`provider: openai`, `model: ...`). Fork pull requests need [the `pull_request_target` recipe](docs/recipes/pull-request-target.yml); read the warning at its top first.
+Without a key it still runs the deterministic checks. OpenAI works too (`provider: openai`, `model: ...`). Fork pull requests need [the `pull_request_target` recipe](https://github.com/tunahanaliozturk/bylaw/blob/main/docs/recipes/pull-request-target.yml); read the warning at its top first.
 
 **Claude Code or Codex.** The host's own model reviews, so no API key is needed:
 
@@ -71,7 +71,7 @@ Without a key it still runs the deterministic checks. OpenAI works too (`provide
 codex plugin marketplace add tunahanaliozturk/bylaw   # Codex, then /plugins
 ```
 
-Then ask "review pull request 12 with bylaw", or run `/bylaw-review 12` in Claude Code. Details: [docs/hosts.md](docs/hosts.md).
+Then ask "review pull request 12 with bylaw", or run `/bylaw-review 12` in Claude Code. Details: [docs/hosts.md](https://github.com/tunahanaliozturk/bylaw/blob/main/docs/hosts.md).
 
 **On your branch, before the pull request.** Ask Claude Code or Codex to "review this branch with bylaw", or use the CLI with [uv](https://docs.astral.sh/uv/):
 
@@ -84,8 +84,8 @@ bylaw review --context context.json   # prints the findings as JSON; set ANTHROP
 ## How it works
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/images/flow-dark.png">
-  <img src="docs/images/flow-light.png" alt="Pull request, then context, then deterministic checks and the reviewer, then validation, then comments on the pull request" width="100%">
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/tunahanaliozturk/bylaw/main/docs/images/flow-dark.png">
+  <img src="https://raw.githubusercontent.com/tunahanaliozturk/bylaw/main/docs/images/flow-light.png" alt="Pull request, then context, then deterministic checks and the reviewer, then validation, then comments on the pull request" width="100%">
 </picture>
 
 1. **Context.** bylaw reads the diff, the rule files and `.bylaw.toml` from the **base** branch (so a change cannot loosen its own review), and the issues and specs the change links.
@@ -93,7 +93,7 @@ bylaw review --context context.json   # prints the findings as JSON; set ANTHROP
 3. **Validate.** Every finding must sit on a line the change adds, and every rule citation must point at a real line. Anything else is dropped before it can be posted.
 4. **Post.** Inline comments for findings at or above the threshold, one summary comment with the requirement checklist. State lives in that summary, so there is no server and no database.
 
-The design and its trade-offs: [docs/design.md](docs/design.md) and the [ADRs](docs/adr/).
+The design and its trade-offs: [docs/design.md](https://github.com/tunahanaliozturk/bylaw/blob/main/docs/design.md) and the [ADRs](https://github.com/tunahanaliozturk/bylaw/tree/main/docs/adr/).
 
 ## Configuration
 
@@ -109,9 +109,9 @@ input_token_budget = 300000     # model input in tokens; the largest files are l
 
 ## Evaluation
 
-bylaw is measured on 50 labelled pull requests in Python, TypeScript, Go and C#: planted security problems, bugs, rule breaks, missed acceptance criteria, scope creep, and clean changes. Results are per model and date: [docs/eval/README.md](docs/eval/README.md).
+bylaw is measured on 50 labelled pull requests in Python, TypeScript, Go and C#: planted security problems, bugs, rule breaks, missed acceptance criteria, scope creep, and clean changes. Results are per model and date: [docs/eval/README.md](https://github.com/tunahanaliozturk/bylaw/blob/main/docs/eval/README.md).
 
-Runs from 16 October 2026: the GitHub Action calling the API, and Claude Code and Codex reviewing as hosts with no API key ([API](eval/results/2026-10-16-opus-5-5/report.md), [Claude Code](eval/results/2026-10-16-claude-code-host/report.md), [Codex](eval/results/2026-10-16-codex-host/report.md)):
+Runs from 16 October 2026: the GitHub Action calling the API, and Claude Code and Codex reviewing as hosts with no API key ([API](https://github.com/tunahanaliozturk/bylaw/blob/main/eval/results/2026-10-16-opus-5-5/report.md), [Claude Code](https://github.com/tunahanaliozturk/bylaw/blob/main/eval/results/2026-10-16-claude-code-host/report.md), [Codex](https://github.com/tunahanaliozturk/bylaw/blob/main/eval/results/2026-10-16-codex-host/report.md)):
 
 | | Action, `claude-opus-5-5` | Claude Code host | Codex host, `gpt-6-sol` |
 | --- | --- | --- | --- |
@@ -127,7 +127,7 @@ Runs from 16 October 2026: the GitHub Action calling the API, and Claude Code an
 
 Both inline comments on clean changes are the same remark on the same case (`py-clean-contained-path`): the upload path is compared after resolving one side only. Host runs saw the briefs under neutral names, so case names could not hint at the answers.
 
-These are small, planted changes; real pull requests are larger and messier ([ADR 0010](docs/adr/0010-evaluation-on-planted-cases.md)), so treat the numbers as an upper bound on what the model catches.
+These are small, planted changes; real pull requests are larger and messier ([ADR 0010](https://github.com/tunahanaliozturk/bylaw/blob/main/docs/adr/0010-evaluation-on-planted-cases.md)), so treat the numbers as an upper bound on what the model catches.
 
 ## Costs
 
@@ -135,9 +135,9 @@ A review is one model call. On the evaluation above it used about 3,900 input an
 
 ## Contributing and security
 
-Contributions are welcome: [CONTRIBUTING.md](CONTRIBUTING.md). Please report vulnerabilities privately as described in [SECURITY.md](SECURITY.md), not in a public issue.
-bylaw has no server and collects no data; what it sends where is in [docs/privacy.md](docs/privacy.md).
+Contributions are welcome: [CONTRIBUTING.md](https://github.com/tunahanaliozturk/bylaw/blob/main/CONTRIBUTING.md). Please report vulnerabilities privately as described in [SECURITY.md](https://github.com/tunahanaliozturk/bylaw/blob/main/SECURITY.md), not in a public issue.
+bylaw has no server and collects no data; what it sends where is in [docs/privacy.md](https://github.com/tunahanaliozturk/bylaw/blob/main/docs/privacy.md).
 
 ## Licence
 
-[MIT](LICENSE)
+[MIT](https://github.com/tunahanaliozturk/bylaw/blob/main/LICENSE)
