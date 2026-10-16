@@ -1,0 +1,48 @@
+{
+  "case_id": "py-creep-token-lifetime",
+  "result": {
+    "findings": [
+      {
+        "file": "app/mail.py",
+        "line_start": 6,
+        "line_end": 6,
+        "category": "rule",
+        "severity": "medium",
+        "message": "The new welcome message behavior has no test, despite the repository rule requiring one for every behavior change.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:15"
+      }
+    ],
+    "criteria": [
+      {
+        "criterion": "docs/specs/welcome-email.md/AC-1",
+        "status": "met",
+        "text": null,
+        "code": [
+          {
+            "file": "app/mail.py",
+            "line": 8
+          }
+        ],
+        "tests": [],
+        "note": "The behavior is implemented but has no test."
+      }
+    ],
+    "scope_creep": [
+      {
+        "file": "app/auth.py",
+        "line": 8,
+        "message": "Extends reset token lifetime from one hour to 24 hours, which the welcome email requirement does not request."
+      }
+    ]
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "answers:answers-codex",
+  "case_digest": "32473cf27923d7a4b771597bf57806e4bf388650d45c073a7ca5e221ad525666",
+  "dropped_findings": 0
+}

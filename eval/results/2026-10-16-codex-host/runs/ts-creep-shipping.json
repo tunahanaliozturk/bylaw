@@ -1,0 +1,48 @@
+{
+  "case_id": "ts-creep-shipping",
+  "result": {
+    "findings": [
+      {
+        "file": "src/orders.ts",
+        "line_start": 21,
+        "line_end": 21,
+        "category": "bug",
+        "severity": "high",
+        "message": "Every order now gains an unexplained 499-cent charge, so its total no longer equals the cart subtotal and coupon behavior is not reflected here.",
+        "suggestion": "  return { id, userId: cart.userId, totalCents: subtotalCents(cart) };",
+        "evidence": null
+      }
+    ],
+    "criteria": [
+      {
+        "criterion": "docs/specs/coupons.md/AC-1",
+        "status": "met",
+        "text": null,
+        "code": [
+          {
+            "file": "src/cart.ts",
+            "line": 28
+          }
+        ],
+        "tests": [],
+        "note": ""
+      }
+    ],
+    "scope_creep": [
+      {
+        "file": "src/orders.ts",
+        "line": 21,
+        "message": "Adds a 499-cent charge to every order; the coupon requirement does not request this."
+      }
+    ]
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "answers:answers-codex",
+  "case_digest": "d727156e3fcf53e5c0157277c3182f8a0e65dbbbc71bfdf8185bcc7341e3e535",
+  "dropped_findings": 0
+}

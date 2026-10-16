@@ -1,0 +1,28 @@
+{
+  "case_id": "ts-console-log",
+  "result": {
+    "findings": [
+      {
+        "file": "src/server.ts",
+        "line_start": 27,
+        "line_end": 27,
+        "category": "rule",
+        "severity": "low",
+        "message": "Order logging now uses console.log instead of the required logger.",
+        "suggestion": "  logger.info(\"order created\", { orderId: order.id });",
+        "evidence": "CONTRIBUTING.md:8"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "answers:answers-codex",
+  "case_digest": "1cfc2ea3d4a5dfb8946c128820fe6c3e1a333680cfa07295dd26f944d3f5bdd7",
+  "dropped_findings": 0
+}

@@ -1,0 +1,28 @@
+{
+  "case_id": "cs-null-after-firstordefault",
+  "result": {
+    "findings": [
+      {
+        "file": "OrderService.cs",
+        "line_start": 25,
+        "line_end": 25,
+        "category": "bug",
+        "severity": "high",
+        "message": "For an unknown order ID, FirstOrDefaultAsync returns null and accessing Total throws instead of handling the missing order.",
+        "suggestion": null,
+        "evidence": null
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "answers:answers-codex",
+  "case_digest": "efd70563b2b422f8f85683ea5abb652127e2f9c0769bb43cdb833fe14f042d07",
+  "dropped_findings": 0
+}

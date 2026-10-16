@@ -1,4 +1,4 @@
-# Evaluation: Claude Code as host (Opus), 2026-10-16
+# Evaluation: Claude Code as host (claude-opus-5-5), 2026-10-16
 
 50 cases. Matching rules: docs/eval/README.md.
 

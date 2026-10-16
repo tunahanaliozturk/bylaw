@@ -1,0 +1,28 @@
+{
+  "case_id": "ts-xss-search",
+  "result": {
+    "findings": [
+      {
+        "file": "src/server.ts",
+        "line_start": 33,
+        "line_end": 33,
+        "category": "security",
+        "severity": "critical",
+        "message": "The search term is inserted into HTML without escaping, so a crafted q parameter can execute script in a visitor's browser.",
+        "suggestion": null,
+        "evidence": null
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "answers:answers-codex",
+  "case_digest": "74ed5f6ccb4669736f9888efdf3634442494d1dfd3cca23c19de4e133df354af",
+  "dropped_findings": 0
+}

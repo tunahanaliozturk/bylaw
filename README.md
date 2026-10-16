@@ -111,19 +111,21 @@ input_token_budget = 300000     # model input in tokens; the largest files are l
 
 bylaw is measured on 50 labelled pull requests in Python, TypeScript, Go and C#: planted security problems, bugs, rule breaks, missed acceptance criteria, scope creep, and clean changes. Results are per model and date: [docs/eval/README.md](docs/eval/README.md).
 
-Latest run, `claude-opus-5-5` at effort `high`, 16 October 2026 ([report](eval/results/2026-10-16-opus-5-5/report.md)):
+Runs from 16 October 2026: the GitHub Action calling the API, and Claude Code and Codex reviewing as hosts with no API key ([API](eval/results/2026-10-16-opus-5-5/report.md), [Claude Code](eval/results/2026-10-16-claude-code-host/report.md), [Codex](eval/results/2026-10-16-codex-host/report.md)):
 
-| | Result |
-| --- | --- |
-| Planted security problems found | 10 of 10 |
-| Planted bugs found | 10 of 10 |
-| Rule breaks found, citing the right rule line | 10 of 10, 8 of 8 citations |
-| Acceptance criteria judged correctly | 21 of 21 |
-| Scope creep found | 4 of 4 |
-| Clean pull requests with an inline comment | 1 of 9 |
-| Model findings dropped by validation | 1 of 74 |
-| Median review time | 6.5 s |
-| Cost per pull request | about $0.03 |
+| | Action, `claude-opus-5-5` | Claude Code host | Codex host, `gpt-6-sol` |
+| --- | --- | --- | --- |
+| Planted security problems found | 10 of 10 | 10 of 10 | 10 of 10 |
+| Planted bugs found | 10 of 10 | 10 of 10 | 10 of 10 |
+| Rule breaks found | 10 of 10 | 10 of 10 | 10 of 10 |
+| Rule citations on the right line | 8 of 8 | 8 of 8 | 8 of 8 |
+| Acceptance criteria judged correctly | 21 of 21 | 21 of 21 | 21 of 21 |
+| Scope creep found | 4 of 4 | 4 of 4 | 4 of 4 |
+| Clean pull requests with an inline comment | 1 of 9 | 0 of 9 | 1 of 9 |
+| Model findings dropped by validation | 1 of 74 | 0 of 53 | 0 of 56 |
+| Median review time, cost per review | 6.5 s, about $0.03 | no API cost | no API cost |
+
+Both inline comments on clean changes are the same remark on the same case (`py-clean-contained-path`): the upload path is compared after resolving one side only. Host runs saw the briefs under neutral names, so case names could not hint at the answers.
 
 These are small, planted changes; real pull requests are larger and messier ([ADR 0010](docs/adr/0010-evaluation-on-planted-cases.md)), so treat the numbers as an upper bound on what the model catches.
 

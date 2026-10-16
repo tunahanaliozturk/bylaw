@@ -1,0 +1,38 @@
+{
+  "case_id": "py-new-dependency",
+  "result": {
+    "findings": [
+      {
+        "file": "pyproject.toml",
+        "line_start": 5,
+        "line_end": 5,
+        "category": "rule",
+        "severity": "medium",
+        "message": "This adds requests as a third-party dependency without the required ADR in docs/adr/.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:10"
+      },
+      {
+        "file": "app/gravatar.py",
+        "line_start": 8,
+        "line_end": 8,
+        "category": "rule",
+        "severity": "medium",
+        "message": "The new avatar download behavior has no test, contrary to the rule for behavior changes.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:15"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 2,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "answers:answers-codex",
+  "case_digest": "99ddea3c621a9930a50618e0083454e0ed2018a702ec8632474ea70e285ce5fd",
+  "dropped_findings": 0
+}

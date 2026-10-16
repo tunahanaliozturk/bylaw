@@ -1,0 +1,38 @@
+{
+  "case_id": "py-print",
+  "result": {
+    "findings": [
+      {
+        "file": "app/users.py",
+        "line_start": 41,
+        "line_end": 41,
+        "category": "rule",
+        "severity": "medium",
+        "message": "This uses print for an operational message, contrary to the repository's logging rule.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:8"
+      },
+      {
+        "file": "app/users.py",
+        "line_start": 38,
+        "line_end": 38,
+        "category": "rule",
+        "severity": "medium",
+        "message": "The new rename behavior has no test, so a regression in the update would go unnoticed.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:15"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 2,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "answers:answers-codex",
+  "case_digest": "4f297df07c0748ed1e0d97a7f89f1cf7b57f33924ce06d9df65ede43747a2a0f",
+  "dropped_findings": 0
+}

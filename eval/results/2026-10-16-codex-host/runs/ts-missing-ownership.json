@@ -1,0 +1,28 @@
+{
+  "case_id": "ts-missing-ownership",
+  "result": {
+    "findings": [
+      {
+        "file": "src/server.ts",
+        "line_start": 32,
+        "line_end": 32,
+        "category": "security",
+        "severity": "critical",
+        "message": "The delete handler reads and deletes any order by ID without checking that it belongs to the signed-in user, letting one user cancel another user's order.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:10"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "answers:answers-codex",
+  "case_digest": "254da376d43c37b9d5b474ca62af8f6c8c031c8001785ddaf8bf14745dce132f",
+  "dropped_findings": 0
+}

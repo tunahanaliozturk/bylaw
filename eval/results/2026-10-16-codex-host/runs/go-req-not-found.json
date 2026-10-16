@@ -1,0 +1,62 @@
+{
+  "case_id": "go-req-not-found",
+  "result": {
+    "findings": [
+      {
+        "file": "handlers.go",
+        "line_start": 73,
+        "line_end": 73,
+        "category": "requirement",
+        "severity": "high",
+        "message": "An unknown widget ID makes Store.Rename return a not-found error, but this handler responds with 500 instead of the required 404.",
+        "suggestion": null,
+        "evidence": "docs/specs/rename.md/AC-2"
+      }
+    ],
+    "criteria": [
+      {
+        "criterion": "docs/specs/rename.md/AC-1",
+        "status": "met",
+        "text": null,
+        "code": [
+          {
+            "file": "main.go",
+            "line": 19
+          },
+          {
+            "file": "handlers.go",
+            "line": 70
+          },
+          {
+            "file": "handlers.go",
+            "line": 76
+          },
+          {
+            "file": "store.go",
+            "line": 46
+          }
+        ],
+        "tests": [],
+        "note": ""
+      },
+      {
+        "criterion": "docs/specs/rename.md/AC-2",
+        "status": "missing",
+        "text": null,
+        "code": [],
+        "tests": [],
+        "note": "The handler maps every store error to 500."
+      }
+    ],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "answers:answers-codex",
+  "case_digest": "4d7ec543d3b53b584256756613a74412975d079b2ce5ce4928c0c07069953198",
+  "dropped_findings": 0
+}
