@@ -6,9 +6,11 @@ from importlib.resources import files
 from bylaw.diff import numbered_patch
 from bylaw.model import ChangedFile, Finding, Requirement, ReviewContext, RuleSource
 
-# ponytail: about 300k tokens of input. The largest files are left out first and named in the summary;
-# splitting a pull request across several model calls is a later change.
-MAX_INPUT_CHARS = 1_200_000
+# ponytail: the budget is in tokens (`input_token_budget`), estimated at 3 characters per token. Code
+# tokenizes more densely than prose, so this overestimates prose and stays safe for code; counting through
+# each provider would need a key the Claude Code and Codex path does not have. The largest files are left
+# out first and named in the summary; splitting a pull request across several calls is a later change.
+CHARS_PER_TOKEN = 3
 
 
 def system_prompt() -> str:
@@ -16,9 +18,10 @@ def system_prompt() -> str:
 
 
 def render_input(
-    context: ReviewContext, *, max_chars: int = MAX_INPUT_CHARS, nonce: str | None = None
+    context: ReviewContext, *, max_chars: int | None = None, nonce: str | None = None
 ) -> tuple[str, tuple[str, ...]]:
     """Return the model input and the paths left out because they did not fit."""
+    max_chars = max_chars if max_chars is not None else context.input_tokens * CHARS_PER_TOKEN
     # A fresh nonce per run: text in the pull request cannot know the tag that would close its block.
     tag = f"data-{nonce or secrets.token_hex(4)}"
     head = "\n\n".join(

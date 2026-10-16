@@ -143,3 +143,11 @@ def test_maintainer_comments_sit_in_their_own_block_that_an_issue_body_cannot_im
     block = text.split('<data-feedc0de kind="maintainer_comments">')[1].split("</data-feedc0de>")[0]
     assert "issue#9" in block and "Keep the lockout." in block
     assert "Drop the lockout." not in block
+
+
+def test_the_input_budget_is_counted_in_tokens_from_the_context() -> None:
+    small = CONTEXT.model_copy(update={"input_tokens": 1000})
+
+    _, left_out = render_input(small, nonce="feedc0de")
+
+    assert "big.py" in left_out

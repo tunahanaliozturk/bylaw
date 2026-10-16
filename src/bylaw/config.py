@@ -18,6 +18,8 @@ class Config(BaseModel):
     severity_threshold: Severity = Severity.MEDIUM
     max_comments: int = Field(default=15, ge=0, le=50)
     issue_repos: tuple[str, ...] = ()
+    # Model input, in tokens. Fits every supported model's context with room for the answer.
+    input_token_budget: int = Field(default=300_000, ge=10_000, le=900_000)
 
 
 def load_config(text: str | None) -> Config:

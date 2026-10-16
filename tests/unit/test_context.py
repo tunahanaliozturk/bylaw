@@ -141,3 +141,14 @@ def test_the_base_branch_comment_settings_travel_with_the_context() -> None:
     context = build_context(source)
 
     assert (context.severity_threshold, context.max_comments) == ("high", 0)
+
+
+def test_the_base_branch_token_budget_travels_with_the_context() -> None:
+    source = FakeSource(base={".bylaw.toml": "input_token_budget = 50000\n"})
+
+    assert build_context(source).input_tokens == 50000
+
+
+def test_a_token_budget_outside_the_limits_is_a_config_error() -> None:
+    with pytest.raises(ConfigError):
+        load_config("input_token_budget = 5\n")

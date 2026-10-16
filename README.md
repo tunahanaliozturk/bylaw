@@ -88,6 +88,7 @@ severity_threshold = "medium"   # inline comments at or above this; the rest go 
 max_comments = 15               # inline comments per run, 0 to 50
 spec_globs = ["docs/specs/**", "docs/adr/**", "**/REQUIREMENTS.md"]
 issue_repos = []                # other repositories whose issues may be quoted, e.g. ["acme/roadmap"]
+input_token_budget = 300000     # model input in tokens; the largest files are left out first
 ```
 
 ## Evaluation
