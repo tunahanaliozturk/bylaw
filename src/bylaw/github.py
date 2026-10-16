@@ -165,7 +165,10 @@ query($owner: String!, $name: String!, $number: Int!, $after: String) {
           line
           originalLine
           comments: comments(first: 1) { nodes { id body authorAssociation author { __typename login } } }
-          recent: comments(last: 50) { nodes { id body authorAssociation author { __typename login } } }
+          recent: comments(last: 100) {
+            pageInfo { hasPreviousPage startCursor }
+            nodes { id body authorAssociation author { __typename login } }
+          }
         }
       }
     }
@@ -188,8 +191,37 @@ class _GqlComment(_Model):
     author: _GqlAuthor | None = None
 
 
+class _GqlCommentPage(_Model):
+    has_previous_page: bool = Field(default=False, alias="hasPreviousPage")
+    start_cursor: str | None = Field(default=None, alias="startCursor")
+
+
 class _GqlComments(_Model):
     nodes: list[_GqlComment]
+    page_info: _GqlCommentPage | None = Field(default=None, alias="pageInfo")
+
+
+class _GqlOlderNode(_Model):
+    comments: _GqlComments
+
+
+class _GqlOlderData(_Model):
+    node: _GqlOlderNode | None = None
+
+
+_OLDER_COMMENTS_QUERY = """
+query($id: ID!, $before: String) {
+  node(id: $id) {
+    ... on PullRequestReviewThread {
+      comments(last: 100, before: $before) {
+        pageInfo { hasPreviousPage startCursor }
+        nodes { id body authorAssociation author { __typename login } }
+      }
+    }
+  }
+}
+"""
+_MAX_THREAD_PAGES = 10
 
 
 class _GqlThread(_Model):
@@ -404,7 +436,7 @@ class GitHubClient:
                         trusted=_trusted(c.author.typename if c.author else "", c.author_association),
                         by_pr_author=c.author is not None and c.author.login == pr_author,
                     )
-                    for c in _first_and_recent(node)
+                    for c in self._thread_comments(node)
                 )
                 threads.append(
                     Thread(
@@ -418,6 +450,23 @@ class GitHubClient:
             if not pull.review_threads.page_info.has_next_page:
                 return threads
             after = pull.review_threads.page_info.end_cursor
+
+    def _thread_comments(self, thread: _GqlThread) -> list[_GqlComment]:
+        """The finding and every reply; a thread longer than the newest hundred is paged back to its start."""
+        older: list[_GqlComment] = []
+        page = thread.recent.page_info
+        for _ in range(_MAX_THREAD_PAGES):
+            if page is None or not page.has_previous_page:
+                break
+            data = _GqlOlderData.model_validate(
+                self._graphql(_OLDER_COMMENTS_QUERY, {"id": thread.id, "before": page.start_cursor})
+            )
+            if data.node is None:
+                break
+            older = [*data.node.comments.nodes, *older]
+            page = data.node.comments.page_info
+        merged = thread.model_copy(update={"recent": _GqlComments(nodes=[*older, *thread.recent.nodes])})
+        return _first_and_recent(merged)
 
     def summary_comment(self, repo: str, number: int) -> SummaryComment | None:
         """The comment that opens with the summary marker, a bot's first (ADR 0008).
