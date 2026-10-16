@@ -1,0 +1,48 @@
+{
+  "case_id": "go-ignored-unmarshal",
+  "result": {
+    "findings": [
+      {
+        "file": "handlers.go",
+        "line_start": 65,
+        "line_end": 65,
+        "category": "bug",
+        "severity": "high",
+        "message": "The error from json.Unmarshal is discarded, so a malformed body imports nothing (or only part of the list) and the client still gets 204 No Content. Reject invalid JSON with 400 instead of reporting success.",
+        "suggestion": "\tif err := json.Unmarshal(body, &names); err != nil {\n\t\thttp.Error(w, \"invalid JSON body\", http.StatusBadRequest)\n\t\treturn\n\t}",
+        "evidence": null
+      },
+      {
+        "file": "handlers.go",
+        "line_start": 59,
+        "line_end": 59,
+        "category": "security",
+        "severity": "medium",
+        "message": "io.ReadAll reads the whole request body with no size limit, so a single large upload can exhaust the server's memory. Cap the body with http.MaxBytesReader before reading it.",
+        "suggestion": "\tbody, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 1<<20))",
+        "evidence": null
+      },
+      {
+        "file": "handlers.go",
+        "line_start": 67,
+        "line_end": 67,
+        "category": "bug",
+        "severity": "medium",
+        "message": "Widgets are created one by one outside a transaction, so a failure part-way through returns 500 while the earlier widgets stay created; a client that retries the import then creates duplicates. Run the batch in one transaction or report which names were imported.",
+        "suggestion": null,
+        "evidence": null
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 3,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "answers:answers-claude",
+  "case_digest": "101be86d98ecaf2c4353e909d8eb7ce83220f51cbc19cff1d4fcee176f6ba7a4",
+  "dropped_findings": 0
+}

@@ -1,0 +1,70 @@
+{
+  "case_id": "py-req-untested",
+  "result": {
+    "findings": [
+      {
+        "file": "tests/test_export.py",
+        "line_start": 8,
+        "line_end": 8,
+        "category": "requirement",
+        "severity": "medium",
+        "message": "The only test inserts a single user, so nothing proves users are written in id order; a test with several users inserted out of id order is needed.",
+        "suggestion": null,
+        "evidence": "docs/specs/export.md/AC-2"
+      },
+      {
+        "file": "app/export.py",
+        "line_start": 13,
+        "line_end": 13,
+        "category": "security",
+        "severity": "medium",
+        "message": "User-supplied names and emails go into a file meant to be opened in a spreadsheet without neutralising a leading `=`, `+`, `-` or `@`, so a user can plant a formula that runs when support staff open the export (CSV injection).",
+        "suggestion": null,
+        "evidence": null
+      }
+    ],
+    "criteria": [
+      {
+        "criterion": "docs/specs/export.md/AC-1",
+        "status": "met",
+        "text": null,
+        "code": [
+          {
+            "file": "app/export.py",
+            "line": 13
+          }
+        ],
+        "tests": [
+          {
+            "file": "tests/test_export.py",
+            "line": 8
+          }
+        ],
+        "note": ""
+      },
+      {
+        "criterion": "docs/specs/export.md/AC-2",
+        "status": "partial",
+        "text": null,
+        "code": [
+          {
+            "file": "app/export.py",
+            "line": 11
+          }
+        ],
+        "tests": [],
+        "note": "The query orders by id, but no test proves the order: the only test uses a single user."
+      }
+    ],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 2,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "answers:answers-claude",
+  "case_digest": "39de344e2f4f40c3f09cbb0eaa1fead2fb7c135931af438e557015d12c2c1a92",
+  "dropped_findings": 0
+}

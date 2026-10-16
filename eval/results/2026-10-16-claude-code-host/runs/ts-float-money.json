@@ -1,0 +1,28 @@
+{
+  "case_id": "ts-float-money",
+  "result": {
+    "findings": [
+      {
+        "file": "src/cart.ts",
+        "line_start": 28,
+        "line_end": 28,
+        "category": "rule",
+        "severity": "high",
+        "message": "The total is turned into a floating-point amount in currency units (divided by 100, then multiplied by 1.18), which breaks the integer-cents rule and gives rounding errors such as 11.799999999999999 for a 10.00 subtotal.",
+        "suggestion": "  return Math.round((subtotalCents(cart) * 118) / 100);",
+        "evidence": "CONTRIBUTING.md:7"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "answers:answers-claude",
+  "case_digest": "286906407b21ff7bf4b0362b4431a089f705eca8e46356ae5e9a379fa0b814c0",
+  "dropped_findings": 0
+}

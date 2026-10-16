@@ -1,0 +1,71 @@
+{
+  "case_id": "py-req-met",
+  "result": {
+    "findings": [],
+    "criteria": [
+      {
+        "criterion": "docs/specs/display-name.md/AC-1",
+        "status": "met",
+        "text": null,
+        "code": [
+          {
+            "file": "app/users.py",
+            "line": 42
+          }
+        ],
+        "tests": [
+          {
+            "file": "tests/test_users.py",
+            "line": 30
+          }
+        ],
+        "note": ""
+      },
+      {
+        "criterion": "docs/specs/display-name.md/AC-2",
+        "status": "met",
+        "text": null,
+        "code": [
+          {
+            "file": "app/users.py",
+            "line": 40
+          }
+        ],
+        "tests": [
+          {
+            "file": "tests/test_users.py",
+            "line": 39
+          }
+        ],
+        "note": ""
+      },
+      {
+        "criterion": "docs/specs/display-name.md/AC-3",
+        "status": "met",
+        "text": null,
+        "code": [],
+        "tests": [
+          {
+            "file": "tests/test_users.py",
+            "line": 30
+          },
+          {
+            "file": "tests/test_users.py",
+            "line": 39
+          }
+        ],
+        "note": ""
+      }
+    ],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 0,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "answers:answers-claude",
+  "case_digest": "7a2636df3b8c628ccc3ed9cdd52fd92abbff6af98914161cc4c4e85133a4f111",
+  "dropped_findings": 0
+}

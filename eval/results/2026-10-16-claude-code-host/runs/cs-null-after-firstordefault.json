@@ -1,0 +1,28 @@
+{
+  "case_id": "cs-null-after-firstordefault",
+  "result": {
+    "findings": [
+      {
+        "file": "OrderService.cs",
+        "line_start": 25,
+        "line_end": 25,
+        "category": "bug",
+        "severity": "high",
+        "message": "`FirstOrDefaultAsync` returns null for an unknown id, and `order.Total` then throws a `NullReferenceException`. With nullable checks on, this is also a CS8602 warning that fails the required `-warnaserror` build.",
+        "suggestion": null,
+        "evidence": null
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "answers:answers-claude",
+  "case_digest": "efd70563b2b422f8f85683ea5abb652127e2f9c0769bb43cdb833fe14f042d07",
+  "dropped_findings": 0
+}

@@ -1,0 +1,28 @@
+{
+  "case_id": "py-naive-aware-compare",
+  "result": {
+    "findings": [
+      {
+        "file": "app/auth.py",
+        "line_start": 31,
+        "line_end": 31,
+        "category": "bug",
+        "severity": "high",
+        "message": "`datetime.now()` is naive while `expires_at` is timezone-aware (the module builds expiries from UTC), so the comparison raises TypeError and every reset-token check fails; even with naive expiries, local time would shift expiry by the server's UTC offset.",
+        "suggestion": "    return datetime.now(UTC) < expires_at",
+        "evidence": null
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "answers:answers-claude",
+  "case_digest": "554ad50bf8251a4c76e0d0c3099d802b42e4eada4ba3a04e99ce653615be88c9",
+  "dropped_findings": 0
+}
