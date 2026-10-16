@@ -267,3 +267,12 @@ def test_usage_from_an_earlier_review_is_not_reported_again() -> None:
     reviewer.review("system text", "user text")
 
     assert reviewer.last_usage is None
+
+
+def test_a_refused_review_still_reports_the_tokens_it_was_billed() -> None:
+    reviewer = _anthropic(lambda _request: httpx2.Response(200, json=_message("{", "refusal")))
+
+    with pytest.raises(ReviewError):
+        reviewer.review("s", "u")
+
+    assert reviewer.last_usage == Usage(input_tokens=10, output_tokens=5)

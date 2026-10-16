@@ -35,6 +35,7 @@ def render(
         f"- Duplicate findings: {score.duplicates}.",
         f"- Other remarks on planted code, not scored: {score.ignored} ({score.ignored_inline} at medium "
         "or above).",
+        f"- Rule findings citing the right rule line: {score.citations_correct} of {score.citations_total}.",
         f"- Acceptance criteria judged correctly: {score.criteria_correct} of {score.criteria_total}.",
         f"- Scope creep found: {score.creep_found} of {score.creep_expected}, "
         f"with {score.creep_extra} extra.",

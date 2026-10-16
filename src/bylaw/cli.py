@@ -5,7 +5,7 @@ import json
 import os
 import sys
 import tempfile
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from importlib.metadata import version
 from pathlib import Path
 
@@ -13,8 +13,8 @@ from pydantic import BaseModel
 
 from bylaw.config import Config, ConfigError, load_config
 from bylaw.context import build_context
-from bylaw.engine import PROVIDERS, OutReview, ReviewError, api_key_for, make_reviewer
-from bylaw.evaluation.cases import load_cases
+from bylaw.engine import PROVIDERS, OutReview, Reviewer, ReviewError, api_key_for, make_reviewer
+from bylaw.evaluation.cases import Case, load_cases
 from bylaw.evaluation.report import render
 from bylaw.evaluation.run import AnswerReviewer, CaseRun, NoModel, prepare, run_all
 from bylaw.evaluation.score import score
@@ -146,28 +146,29 @@ def _eval(args: argparse.Namespace) -> int:
         if args.eval_command == "prepare":
             prepare(root, cases, Path(args.out), Path(work))
             return 0
+        make: Callable[[Case], Reviewer]
         if args.no_model:
-            run_all(root, cases, lambda _: NoModel(), Path(args.out), "no-model")
-            return 0
-        if args.answers:
+            make, identity = (lambda _: NoModel()), "no-model"
+        elif args.answers:
             answers = Path(args.answers)
-            run_all(
-                root,
-                cases,
-                lambda c: AnswerReviewer(answers / f"{c.id}.json"),
-                Path(args.out),
+            make, identity = (
+                (lambda c: AnswerReviewer(answers / f"{c.id}.json")),
                 f"answers:{answers.resolve().name}",
             )
-            return 0
-        key = api_key_for(args.provider)
-        if key is None:
-            variable = {"anthropic": "ANTHROPIC_API_KEY", "openai": "OPENAI_API_KEY"}[args.provider]
-            _say(f"eval run needs {variable}; it calls the model once per case")
-            return 2
-        reviewer = make_reviewer(args.provider, args.model, args.effort, key)
-        identity = f"{args.provider}:{args.model or 'default model'}:{args.effort or 'default effort'}"
-        runs = run_all(root, cases, lambda _: reviewer, Path(args.out), identity)
-        _say(f"reviewed {len(runs)} case(s); {sum(r.error is not None for r in runs)} failed.")
+        else:
+            key = api_key_for(args.provider)
+            if key is None:
+                variable = {"anthropic": "ANTHROPIC_API_KEY", "openai": "OPENAI_API_KEY"}[args.provider]
+                _say(f"eval run needs {variable} or BYLAW_API_KEY; it calls the model once per case")
+                return 2
+            reviewer = make_reviewer(args.provider, args.model, args.effort, key)
+            make = lambda _: reviewer  # noqa: E731 - one reviewer for every case
+            identity = f"{args.provider}:{args.model or 'default model'}:{args.effort or 'default effort'}"
+        _say(f"reviewing {len(cases)} case(s) with {identity}; finished cases in {args.out} are reused")
+        runs = run_all(root, cases, make, Path(args.out), identity)
+        failed = sum(r.error is not None for r in runs)
+        _say(f"reviewed {len(runs)} case(s); {failed} failed.")
+        return 1 if failed else 0
     return 0
 
 

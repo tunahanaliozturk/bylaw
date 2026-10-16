@@ -1,13 +1,14 @@
 """A case: a base project, the files a pull request changes, and labels for what a review must find."""
 
 import hashlib
+import os
 import shutil
 import subprocess
 import tomllib
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 from bylaw.context import build_context
 from bylaw.local_git import LocalGitSource
@@ -31,6 +32,8 @@ class ExpectedFinding(Span):
     evidence: str | None = None
     # Found by bylaw's own checks (.editorconfig), with or without a model.
     deterministic: bool = False
+    # Other places where a reviewer may fairly anchor the same defect, such as the call of a broken method.
+    also: tuple[Span, ...] = ()
 
 
 class ExpectedCreep(_Frozen):
@@ -51,13 +54,27 @@ class Case(_Frozen):
     scope_creep: tuple[ExpectedCreep, ...] = ()
     remove: tuple[str, ...] = ()
 
+    @model_validator(mode="after")
+    def _labels_fit_the_kind(self) -> "Case":
+        labelled = {
+            "security": bool(self.findings),
+            "bug": bool(self.findings),
+            "rule": bool(self.findings),
+            "requirement": bool(self.criteria),
+            "scope": bool(self.scope_creep),
+            "clean": not (self.findings or self.criteria or self.scope_creep),
+        }
+        if not labelled[self.kind]:
+            raise ValueError(f"the labels do not fit a {self.kind} case")
+        return self
+
 
 def load_cases(root: Path) -> tuple[Case, ...]:
     cases: list[Case] = []
-    for directory in sorted((root / "cases").iterdir()):
+    for directory in sorted(d for d in (root / "cases").iterdir() if d.is_dir()):
         toml = directory / "case.toml"
         if not toml.is_file():
-            continue
+            raise ValueError(f"eval case {directory.name}: no case.toml")
         try:
             cases.append(
                 Case.model_validate({**tomllib.loads(toml.read_text("utf-8")), "id": directory.name})
@@ -90,6 +107,8 @@ def _git(cwd: Path, *args: str) -> None:
     # autocrlf off: a planted tab, trailing space or missing newline must reach the diff byte for byte.
     settings = ["-c", "user.name=bylaw eval", "-c", "user.email=eval@bylaw.invalid"]
     settings += ["-c", "commit.gpgsign=false", "-c", "core.autocrlf=false"]
+    # The user's own hooks have no business in a throwaway repository, and a failing one would end the run.
+    settings += ["-c", f"core.hooksPath={os.devnull}"]
     subprocess.run(["git", *settings, *args], cwd=cwd, check=True, capture_output=True)  # noqa: S603, S607
 
 

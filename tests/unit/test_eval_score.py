@@ -82,7 +82,7 @@ def test_runs_for_cases_outside_the_scored_set_are_left_out() -> None:
         update={"seconds": 9.0, "input_tokens": 999, "output_tokens": 99}
     )
 
-    result = score([_case()], [mine, other])
+    result = score([_case(kind="clean")], [mine, other])
 
     assert (result.input_tokens, result.output_tokens, result.model_findings) == (10, 1, 0)
     assert result.median_seconds == 2.0
@@ -108,7 +108,7 @@ def test_only_dropped_findings_count_against_model_findings() -> None:
 def test_p90_never_exceeds_the_slowest_run() -> None:
     runs = [_run(i).model_copy(update={"seconds": s}) for i, s in (("a", 1.0), ("b", 2.0))]
 
-    result = score([_case("a"), _case("b")], runs)
+    result = score([_case("a", "clean"), _case("b", "clean")], runs)
 
     assert result.p90_seconds is not None
     assert result.p90_seconds <= 2.0
@@ -178,8 +178,38 @@ def test_a_case_without_a_run_is_an_error_not_a_crash() -> None:
 
 
 def test_a_category_nobody_predicted_or_labelled_has_no_precision_or_recall() -> None:
-    result = score([_case()], [_run("c")])
+    result = score([_case(kind="clean")], [_run("c")])
 
     rule = _category(result, Category.RULE)
     assert rule.precision is None
     assert rule.recall is None
+
+
+def test_a_label_may_accept_another_place_for_the_same_defect() -> None:
+    label = SQLI.model_copy(update={"also": (Span(file="web.py", lines=(4, 4)),)})
+    elsewhere = Finding(
+        file="web.py",
+        line_start=4,
+        line_end=4,
+        category=Category.SECURITY,
+        severity=Severity.HIGH,
+        message="x",
+    )
+
+    result = score([_case(findings=[label])], [_run("c", elsewhere)])
+
+    assert _category(result, Category.SECURITY).true_positives == 1
+
+
+def test_rule_citations_are_counted_against_the_label() -> None:
+    rule = ExpectedFinding(
+        file="app.py", lines=(10, 10), categories=(Category.RULE,), note="print", evidence="CONTRIBUTING.md:8"
+    )
+    right = _found(10, Category.RULE).model_copy(update={"evidence": "CONTRIBUTING.md:8"})
+    wrong = _found(10, Category.RULE).model_copy(update={"evidence": "CONTRIBUTING.md:3"})
+
+    good = score([_case(kind="rule", findings=[rule])], [_run("c", right)])
+    bad = score([_case(kind="rule", findings=[rule])], [_run("c", wrong)])
+
+    assert (good.citations_correct, good.citations_total) == (1, 1)
+    assert (bad.citations_correct, bad.citations_total) == (0, 1)

@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from bylaw.engine import ReviewError
+from bylaw.engine import ReviewError, Usage
 from bylaw.evaluation.cases import Case, load_cases
 from bylaw.evaluation.run import AnswerReviewer, NoModel, prepare, run_all
 from bylaw.model import Category, Finding, ReviewResult, Severity
@@ -113,3 +113,16 @@ def test_dropped_findings_are_counted_apart_from_other_drops(root: Path, tmp_pat
     runs = run_all(root, load_cases(root), Counting().maker, tmp_path / "out", "fake")
 
     assert runs[0].dropped_findings == 1
+
+
+class _BilledFailure:
+    last_usage = Usage(input_tokens=100, output_tokens=7)
+
+    def review(self, system: str, user: str) -> ReviewResult:
+        raise ReviewError("the model declined to review this change")
+
+
+def test_a_failed_review_keeps_the_tokens_it_was_billed(root: Path, tmp_path: Path) -> None:
+    runs = run_all(root, load_cases(root), lambda _: _BilledFailure(), tmp_path / "out", "fake")
+
+    assert [(r.error is not None, r.input_tokens) for r in runs] == [(True, 100), (True, 100)]

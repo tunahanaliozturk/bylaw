@@ -23,12 +23,12 @@ Small problems found by the milestone reviews. Each one is real but rare or mino
 - [x] **HRD-13** (S) `--base` reviews committed changes only, and the skill does not tell the user so. Done when: skill says it.
 - [x] **HRD-14** (S) In `--pr` mode the skill may open local files that differ from the pull request's head. Done when: skill checks out or warns.
 - [x] **HRD-15** (S) Codex manifest default prompt names pull request 12; listing fields missing (`websiteURL`, `privacyPolicyURL`, `logo`, `composerIcon`). Done when: manifest ready for a listing.
-- [ ] **HRD-16** (S) A failed paid evaluation attempt is billed but its tokens are not recorded. Done when: usage recorded on failure.
-- [ ] **HRD-17** (S) `bylaw eval run` exits 0 when cases failed, does not mention `BYLAW_API_KEY`, and does not show the case count first. Done when: exit code, message and count.
-- [ ] **HRD-18** (S) An evaluation case directory without `case.toml` is skipped silently; kind and labels are not cross-checked. Done when: load error.
-- [ ] **HRD-19** (S) Rule findings in the evaluation are matched by place and category, not by the rule line they cite. Done when: citation scored.
-- [ ] **HRD-20** (S) `cs-async-void` accepts only the declaration as the place of the defect. Done when: the call site also accepted.
-- [ ] **HRD-21** (S) Throwaway evaluation repositories run the user's global git hooks. Done when: hooks disabled in those repositories.
+- [x] **HRD-16** (S) A failed paid evaluation attempt is billed but its tokens are not recorded. Done when: usage recorded on failure.
+- [x] **HRD-17** (S) `bylaw eval run` exits 0 when cases failed, does not mention `BYLAW_API_KEY`, and does not show the case count first. Done when: exit code, message and count.
+- [x] **HRD-18** (S) An evaluation case directory without `case.toml` is skipped silently; kind and labels are not cross-checked. Done when: load error.
+- [x] **HRD-19** (S) Rule findings in the evaluation are matched by place and category, not by the rule line they cite. Done when: citation scored.
+- [x] **HRD-20** (S) `cs-async-void` accepts only the declaration as the place of the defect. Done when: the call site also accepted.
+- [x] **HRD-21** (S) Throwaway evaluation repositories run the user's global git hooks. Done when: hooks disabled in those repositories.
 - [x] **HRD-22** (S) A linked issue whose comments cannot be read ends the review. Done when: review goes on without the comments, with a note.
 - [x] **HRD-23** (S) Summary cells show 80 characters, so an inferred criterion of up to 300 is cut. Done when: criterion cells show the full text.
 - [ ] **HRD-24** (S) Maintainer comments sit under an in-band heading that an issue body could imitate. Done when: comments in their own labelled block.

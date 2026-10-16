@@ -39,6 +39,8 @@ A `case.toml` names the project, the kind, the pull request title and commit mes
 - Any other finding is a false alarm in its category. So false alarms, and precision, come from clean pull requests and from code a case does not add; the report gives the number of other remarks next to them.
 - A label nothing matched is a miss in its first category. Each label is located at most once, whatever order the findings come in.
 - A clean case has an inline comment when a finding of medium severity or above remains after the rules above.
+- A label may list other places where the same defect can fairly be anchored (`also`), such as the call of a broken method; a finding at any of them counts.
+- A rule finding that hits a label is also checked for its citation: the report gives how many cited the label's rule line.
 - A criterion is right when the run's status is one of the accepted statuses.
 - Scope creep matches on file and line within 2 lines.
 - A case with no run is listed under errors and scored as if nothing was found. A case whose review failed is listed under errors and scored with what bylaw's own checks found.

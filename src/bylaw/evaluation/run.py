@@ -74,8 +74,8 @@ def run_case(
     seconds = time.perf_counter() - start
     merged = result.model_copy(update={"findings": (*context.findings, *result.findings)})
     checked = validate(context, merged)
-    # Read only after a success: a reviewer reused across cases still holds the previous case's usage.
-    usage: Usage | None = getattr(reviewer, "last_usage", None) if error is None else None
+    # Engines reset this at the start of each review, so it is this case's usage, billed failures included.
+    usage: Usage | None = getattr(reviewer, "last_usage", None)
     return CaseRun(
         case_id=case_id,
         result=checked.result,
