@@ -6,7 +6,7 @@ from collections.abc import Sequence
 
 from pydantic import BaseModel, ConfigDict
 
-from bylaw.evaluation.cases import Case, Span
+from bylaw.evaluation.cases import Case, ExpectedFinding, Span
 from bylaw.evaluation.run import CaseRun
 from bylaw.model import Category, Finding, ReviewResult, Severity
 
@@ -48,6 +48,9 @@ class Score(_Frozen):
     clean_with_inline: int
     model_findings: int
     dropped: int
+    # Rule findings that hit a label citing a rule line, and how many cited that same line.
+    citations_total: int
+    citations_correct: int
     criteria_total: int
     criteria_correct: int
     creep_expected: int
@@ -61,6 +64,10 @@ class Score(_Frozen):
     errors: tuple[str, ...]
     misses: tuple[str, ...]
     false_alarms: tuple[str, ...]
+
+
+def _near_label(finding: Finding, label: ExpectedFinding) -> bool:
+    return _near(finding, label) or any(_near(finding, span) for span in label.also)
 
 
 def _near(finding: Finding, span: Span) -> bool:
@@ -82,6 +89,7 @@ def score(cases: Sequence[Case], runs: Sequence[CaseRun]) -> Score:  # noqa: PLR
     fn: Counter[Category] = Counter()
     located = duplicates = clean_cases = clean_with_inline = ignored = ignored_inline = 0
     criteria_total = criteria_correct = creep_expected = creep_found = creep_extra = 0
+    citations_total = citations_correct = 0
     errors: list[str] = []
     misses: list[str] = []
     false_alarms: list[str] = []
@@ -95,29 +103,32 @@ def score(cases: Sequence[Case], runs: Sequence[CaseRun]) -> Score:  # noqa: PLR
                 errors.append(f"{case.id}: {run.error}")
             result = run.result
         open_labels = list(case.findings)
-        matched: list[Span] = []
+        matched: list[ExpectedFinding] = []
         # Labels are tracked by position: two labels can be equal values.
         near_label: set[int] = set()
         inline = False
         # Right-category findings first, so the order a reviewer lists findings in never changes the score.
         ordered = sorted(
             result.findings,
-            key=lambda f: not any(_near(f, e) and f.category in e.categories for e in case.findings),
+            key=lambda f: not any(_near_label(f, e) and f.category in e.categories for e in case.findings),
         )
         for finding in ordered:
-            near_label.update(i for i, label in enumerate(case.findings) if _near(finding, label))
+            near_label.update(i for i, label in enumerate(case.findings) if _near_label(finding, label))
             hit = next(
-                (e for e in open_labels if _near(finding, e) and finding.category in e.categories), None
+                (e for e in open_labels if _near_label(finding, e) and finding.category in e.categories), None
             )
             if hit is not None:
                 open_labels.remove(hit)
                 matched.append(hit)
                 tp[finding.category] += 1
+                if finding.category == Category.RULE and hit.evidence:
+                    citations_total += 1
+                    citations_correct += finding.evidence == hit.evidence
                 continue
-            if any(_near(finding, e) for e in matched):
+            if any(_near_label(finding, e) for e in matched):
                 duplicates += 1
                 continue
-            if any(_near(finding, e) for e in open_labels):
+            if any(_near_label(finding, e) for e in open_labels):
                 # The defect, found at its place under another category: located, missed, not invented.
                 continue
             if any(_near(finding, span) for span in case.allowed):
@@ -170,6 +181,8 @@ def score(cases: Sequence[Case], runs: Sequence[CaseRun]) -> Score:  # noqa: PLR
         clean_with_inline=clean_with_inline,
         model_findings=sum(r.model_findings for r in runs),
         dropped=sum(r.dropped_findings for r in runs),
+        citations_total=citations_total,
+        citations_correct=citations_correct,
         criteria_total=criteria_total,
         criteria_correct=criteria_correct,
         creep_expected=creep_expected,

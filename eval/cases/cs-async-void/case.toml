@@ -8,6 +8,7 @@ file = "OrderService.cs"
 lines = [22, 22]
 categories = ["bug"]
 note = "async void: exceptions crash the process and the call is not awaited"
+also = [{file = "OrdersController.cs", lines = [22, 22]}]
 
 [[allowed]]
 file = "OrderService.cs"

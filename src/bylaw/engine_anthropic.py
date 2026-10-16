@@ -71,11 +71,7 @@ class AnthropicReviewer:
             raise ReviewError("could not reach the Anthropic API") from error
         except (anthropic.AnthropicError, ValueError) as error:
             raise ReviewError(f"the Anthropic SDK rejected the request ({type(error).__name__})") from error
-        if response.stop_reason == "refusal":
-            category = response.stop_details.category if response.stop_details else None
-            raise ReviewError(f"the model declined to review this change ({category or 'no category'})")
-        if response.stop_reason == "max_tokens":
-            raise ReviewError("the model ran out of output tokens before finishing the review")
+        # Recorded first: a refused or truncated answer is billed too.
         usage = response.usage
         self.last_usage = Usage(
             input_tokens=usage.input_tokens
@@ -83,6 +79,11 @@ class AnthropicReviewer:
             + (usage.cache_creation_input_tokens or 0),
             output_tokens=usage.output_tokens,
         )
+        if response.stop_reason == "refusal":
+            category = response.stop_details.category if response.stop_details else None
+            raise ReviewError(f"the model declined to review this change ({category or 'no category'})")
+        if response.stop_reason == "max_tokens":
+            raise ReviewError("the model ran out of output tokens before finishing the review")
         text = "".join(block.text for block in response.content if block.type == "text")
         try:
             return OutReview.model_validate_json(text).to_result()

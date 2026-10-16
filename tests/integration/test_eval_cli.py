@@ -71,3 +71,28 @@ def test_a_model_run_without_a_key_says_so(
 
     assert code == 2
     assert "eval run needs ANTHROPIC_API_KEY" in capsys.readouterr().err
+
+
+def test_a_model_run_without_a_key_names_both_variables(
+    evalset: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("BYLAW_API_KEY", raising=False)
+
+    main(["eval", "run", "--set", str(evalset), "--out", str(tmp_path / "r"), "--provider", "anthropic"])
+
+    assert "ANTHROPIC_API_KEY or BYLAW_API_KEY" in capsys.readouterr().err
+
+
+def test_a_run_with_failed_cases_exits_1_and_says_how_many(
+    evalset: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    empty = tmp_path / "no-answers"
+    empty.mkdir()
+
+    code = main(["eval", "run", "--set", str(evalset), "--out", str(tmp_path / "r"), "--answers", str(empty)])
+
+    err = capsys.readouterr().err
+    assert code == 1
+    assert "reviewing 1 case(s)" in err
+    assert "1 failed" in err
