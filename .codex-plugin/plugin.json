@@ -10,9 +10,16 @@
   "interface": {
     "displayName": "bylaw",
     "shortDescription": "Review a PR against the repository's own rules and linked requirements.",
+    "longDescription": "bylaw reviews a pull request or a local branch against what the repository already wrote down: .editorconfig, linter configuration, CONTRIBUTING and agent instructions, and the acceptance criteria of the issues and specs the change implements. Every rule finding cites its source line, and findings are checked before they are posted. The Codex model does the reviewing, so no extra API key is needed.",
     "developerName": "Tunahan Ali Ozturk",
     "category": "Coding",
-    "capabilities": ["Review"],
-    "defaultPrompt": ["Review this branch with bylaw.", "Review pull request 12 with bylaw."]
+    "capabilities": ["Read", "Write"],
+    "websiteURL": "https://github.com/tunahanaliozturk/bylaw",
+    "privacyPolicyURL": "https://github.com/tunahanaliozturk/bylaw/blob/main/docs/privacy.md",
+    "termsOfServiceURL": "https://github.com/tunahanaliozturk/bylaw/blob/main/LICENSE",
+    "defaultPrompt": ["Review this branch with bylaw.", "Review the pull request for this branch with bylaw."],
+    "brandColor": "#1C2024",
+    "composerIcon": "./assets/icon.png",
+    "logo": "./assets/logo.png"
   }
 }

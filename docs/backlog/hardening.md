@@ -19,10 +19,10 @@ Small problems found by the milestone reviews. Each one is real but rare or mino
 - [ ] **HRD-9** (M) The Anthropic call caps output at 20,000 tokens and does not stream. Done when: streaming with a higher cap.
 - [ ] **HRD-10** (M) The prompt budget counts characters, not tokens. Done when: token counting through the provider.
 - [x] **HRD-11** (S) With the `pull_request_target` recipe, adding or removing a label re-runs the review. Done when: only the `bylaw` label triggers.
-- [ ] **HRD-12** (S) `/bylaw-review` argument parsing: `post` as a base name, `#12` and URLs, fork `origin`, `master` default. Done when: command handles each case.
-- [ ] **HRD-13** (S) `--base` reviews committed changes only, and the skill does not tell the user so. Done when: skill says it.
-- [ ] **HRD-14** (S) In `--pr` mode the skill may open local files that differ from the pull request's head. Done when: skill checks out or warns.
-- [ ] **HRD-15** (S) Codex manifest default prompt names pull request 12; listing fields missing (`websiteURL`, `privacyPolicyURL`, `logo`, `composerIcon`). Done when: manifest ready for a listing.
+- [x] **HRD-12** (S) `/bylaw-review` argument parsing: `post` as a base name, `#12` and URLs, fork `origin`, `master` default. Done when: command handles each case.
+- [x] **HRD-13** (S) `--base` reviews committed changes only, and the skill does not tell the user so. Done when: skill says it.
+- [x] **HRD-14** (S) In `--pr` mode the skill may open local files that differ from the pull request's head. Done when: skill checks out or warns.
+- [x] **HRD-15** (S) Codex manifest default prompt names pull request 12; listing fields missing (`websiteURL`, `privacyPolicyURL`, `logo`, `composerIcon`). Done when: manifest ready for a listing.
 - [ ] **HRD-16** (S) A failed paid evaluation attempt is billed but its tokens are not recorded. Done when: usage recorded on failure.
 - [ ] **HRD-17** (S) `bylaw eval run` exits 0 when cases failed, does not mention `BYLAW_API_KEY`, and does not show the case count first. Done when: exit code, message and count.
 - [ ] **HRD-18** (S) An evaluation case directory without `case.toml` is skipped silently; kind and labels are not cross-checked. Done when: load error.
