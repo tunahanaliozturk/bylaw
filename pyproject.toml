@@ -1,7 +1,17 @@
 [project]
 name = "bylaw"
-version = "0.1.0"
+version = "0.1.1"
 description = "Reviews pull requests against your repository's own rules and requirements."
+readme = "README.md"
+keywords = ["code-review", "pull-requests", "github-actions", "llm", "requirements", "editorconfig"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Quality Assurance",
+]
 requires-python = ">=3.13"
 license = "MIT"
 license-files = ["LICENSE"]
@@ -13,6 +23,12 @@ dependencies = [
     "openai>=3.31.0",
     "httpx2>=2.13.1",
 ]
+
+[project.urls]
+Homepage = "https://github.com/tunahanaliozturk/bylaw"
+Documentation = "https://github.com/tunahanaliozturk/bylaw#readme"
+Issues = "https://github.com/tunahanaliozturk/bylaw/issues"
+Changelog = "https://github.com/tunahanaliozturk/bylaw/blob/main/CHANGELOG.md"
 
 [project.scripts]
 bylaw = "bylaw.cli:main"
