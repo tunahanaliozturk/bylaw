@@ -9,7 +9,9 @@ import re
 from collections import Counter
 from collections.abc import Iterable
 
-from bylaw.model import CriterionResult, Location, ReviewContext, ReviewResult, Severity
+from pydantic import ValidationError
+
+from bylaw.model import CriterionResult, Location, ReviewContext, ReviewMemory, ReviewResult, Severity
 from bylaw.plan import Group, Plan, State
 
 SUMMARY_MARKER = "<!-- bylaw:summary -->"
@@ -19,6 +21,9 @@ _STATE = re.compile(r"<!-- bylaw:state (\{.*\}) -->\s*", re.DOTALL)
 # ponytail: about 20 KB of hashes. Entries are already limited to threads that still exist; past the
 # ceiling the cut is by hash order, which only means a few fixed findings forget they were auto-resolved.
 _MAX_STATE_ENTRIES = 1000
+# ponytail: the review memory (ADR 0012) gets at most this much of the comment; a bigger one is left out
+# and the next run reviews everything, which costs tokens but never loses a finding.
+_MAX_MEMORY = 20_000
 _MAX_PLACES = 5
 _TRIMMED = "\n\n_Summary trimmed to fit GitHub's comment size limit._"
 _MAX_CELL = 80
@@ -64,14 +69,24 @@ def summary_body(context: ReviewContext, result: ReviewResult, plan: Plan) -> st
         _details("Muted with `bylaw: ignore`", plan.muted),
         _rule_sources(context),
         _notes(context),
+        _footer(plan.state.review),
     ]
     body = "\n\n".join(section for section in sections if section)
-    entries = sorted(plan.state.auto_resolved)[-_MAX_STATE_ENTRIES:]
-    state = "\n\n" + _STATE_OPEN + json.dumps({"auto_resolved": entries}) + " -->"
+    state = "\n\n" + _STATE_OPEN + _state_json(plan.state) + " -->"
     room = MAX_BODY - len(state)
     if len(body) > room:
         body = body[: room - len(_TRIMMED)] + _TRIMMED
     return body + state
+
+
+def _state_json(state: State) -> str:
+    raw: dict[str, object] = {"auto_resolved": sorted(state.auto_resolved)[-_MAX_STATE_ENTRIES:]}
+    if state.review is not None:
+        memory = state.review.model_dump(mode="json")
+        if len(json.dumps(memory)) <= _MAX_MEMORY:
+            raw["review"] = memory
+    # Model text sits in the memory; with < and > escaped it cannot close the comment the state lives in.
+    return json.dumps(raw).replace("<", "\\u003c").replace(">", "\\u003e")
 
 
 def read_state(body: str) -> State:
@@ -88,8 +103,17 @@ def read_state(body: str) -> State:
         raw = json.loads(match[1])
     except ValueError:
         return empty
-    entries = raw.get("auto_resolved", []) if isinstance(raw, dict) else []
-    return State(auto_resolved=frozenset(e for e in entries if isinstance(e, str)))
+    if not isinstance(raw, dict):
+        return empty
+    entries = raw.get("auto_resolved", [])
+    auto = frozenset(e for e in entries if isinstance(e, str)) if isinstance(entries, list) else frozenset()
+    review = None
+    if "review" in raw:
+        try:
+            review = ReviewMemory.model_validate(raw["review"])
+        except ValidationError:
+            review = None  # an unreadable memory only means the next run reviews everything
+    return State(auto_resolved=auto, review=review)
 
 
 def _headline(context: ReviewContext, plan: Plan, current: list[Group]) -> str:
@@ -169,6 +193,12 @@ def _notes(context: ReviewContext) -> str:
     if not context.notes:
         return ""
     return "### Notes\n\n" + "\n".join(f"- {_text(note)}" for note in context.notes)
+
+
+def _footer(memory: ReviewMemory | None) -> str:
+    if memory is None or not memory.tokens:
+        return ""
+    return f"<sub>Model tokens: {memory.run_tokens:,} this run, {memory.tokens:,} on this pull request.</sub>"
 
 
 def _locations(locations: Iterable[Location]) -> str:

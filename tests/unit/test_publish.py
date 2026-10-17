@@ -114,3 +114,30 @@ def test_a_failed_thread_update_still_records_what_was_done() -> None:
 
     assert client.resolved == [("T1", True)]
     assert read_state(client.summaries[-1][1]).auto_resolved == frozenset({"T1"})
+
+
+def test_the_review_memory_is_written_into_the_summary_state() -> None:
+    from bylaw.model import ReviewMemory  # noqa: PLC0415
+    from bylaw.render import read_state  # noqa: PLC0415
+
+    client = FakeClient()
+    memory = ReviewMemory(head_sha="h" * 40, inputs="0" * 16, tokens=10, run_tokens=10)
+
+    publish(client, "octo/app", 5, context=CONTEXT, result=RESULT, config=Config(), memory=memory)
+
+    assert read_state(client.summaries[-1][1]).review == memory
+
+
+def test_a_human_written_summary_never_supplies_the_review_memory() -> None:
+    from bylaw.incremental import trusted_memory  # noqa: PLC0415
+    from bylaw.model import ReviewMemory  # noqa: PLC0415
+    from bylaw.plan import Plan, State  # noqa: PLC0415
+    from bylaw.render import summary_body  # noqa: PLC0415
+
+    memory = ReviewMemory(head_sha="h" * 40, inputs="0" * 16)
+    plan = Plan((), (), (), (), (), (), (), State(auto_resolved=frozenset(), review=memory))
+    body = summary_body(CONTEXT, RESULT, plan)
+
+    assert trusted_memory(SummaryComment(id=1, body=body, bot=True)) == memory
+    assert trusted_memory(SummaryComment(id=1, body=body, bot=False)) is None
+    assert trusted_memory(None) is None

@@ -63,7 +63,7 @@ def test_the_summary_is_the_first_trusted_comment_with_the_marker(client: GitHub
     summary = client.summary_comment("octo/app", 5)
 
     assert summary is not None
-    assert (summary.id, summary.body) == (2, "<!-- bylaw:summary --> real")
+    assert (summary.id, summary.body, summary.bot) == (2, "<!-- bylaw:summary --> real", True)
 
 
 @respx.mock
@@ -157,7 +157,7 @@ def test_the_summary_marker_must_open_the_comment_and_bots_come_first(client: Gi
     summary = client.summary_comment("octo/app", 5)
 
     assert summary is not None
-    assert summary.id == 3
+    assert (summary.id, summary.bot) == (3, True)
 
 
 @respx.mock

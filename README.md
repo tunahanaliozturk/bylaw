@@ -105,6 +105,10 @@ max_comments = 15               # inline comments per run, 0 to 50
 spec_globs = ["docs/specs/**", "docs/adr/**", "**/REQUIREMENTS.md"]
 issue_repos = []                # other repositories whose issues may be quoted, e.g. ["acme/roadmap"]
 input_token_budget = 300000     # model input in tokens; the largest files are left out first
+incremental = true              # on a new push, send the model only the files whose change differs
+
+[budget]
+pr_tokens = 500000              # optional: model tokens one pull request may use across all runs
 ```
 
 ## Evaluation
@@ -131,7 +135,7 @@ These are small, planted changes; real pull requests are larger and messier ([AD
 
 ## Costs
 
-A review is one model call. On the evaluation above it used about 3,900 input and 520 output tokens per pull request, about $0.03 at Claude Opus 5.5 prices; a large pull request costs more, up to the input budget (`input_token_budget`, 300,000 tokens by default). To cap spending, set a monthly limit for the key or workspace in the provider's console; bylaw cannot see your balance.
+A review is one model call. On the evaluation above it used about 3,900 input and 520 output tokens per pull request, about $0.03 at Claude Opus 5.5 prices; a large pull request costs more, up to the input budget (`input_token_budget`, 300,000 tokens by default). On a new push only the files whose change differs from the last run go to the model; the rest keep their earlier findings ([ADR 0012](https://github.com/tunahanaliozturk/bylaw/blob/main/docs/adr/0012-incremental-review.md)). The summary's footer shows the tokens of the run and of the pull request, and `[budget] pr_tokens` stops the model review on a pull request that has used its share. To cap spending across pull requests, set a monthly limit for the key or workspace in the provider's console; bylaw cannot see your balance.
 
 ## Contributing and security
 

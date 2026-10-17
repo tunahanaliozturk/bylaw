@@ -10,8 +10,8 @@ A team with a fixed amount of API credit needs to know what bylaw costs and to s
 
 - [x] **BUD-1** (S) `bylaw eval run --max-cost` with given prices stops starting new cases at the limit. Done when: tested, documented in docs/eval/README.md.
 - [x] **BUD-2** (S) README section "Costs": a measured cost per review from the evaluation, and how to set a spend limit in the Anthropic and OpenAI consoles. Done when: numbers come from a committed run.
-- [ ] **BUD-3** (M) Per pull request token cap in `.bylaw.toml` (`[budget] pr_tokens`), counted in the summary state; once reached, bylaw's own checks still run and the model review is skipped with a note. Done when: state round trip and skip tests.
-- [ ] **BUD-4** (S) The summary's footer gives the tokens this run used and the running total for the pull request. Done when: render test.
+- [x] **BUD-3** (M) Per pull request token cap in `.bylaw.toml` (`[budget] pr_tokens`), counted in the summary state; once reached, bylaw's own checks still run and the model review is skipped with a note. Done when: state round trip and skip tests.
+- [x] **BUD-4** (S) The summary's footer gives the tokens this run used and the running total for the pull request. Done when: render test.
 - [ ] **BUD-5** (M) A monthly cap per repository. Needs a store across pull requests, so it waits for the outcome store in [learning](learning.md). Done when: ADR on the store.
 
 ## Notes

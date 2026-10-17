@@ -35,6 +35,7 @@ def render_input(
             ),
             _block(tag, "maintainer_comments", _comments(context) or "(none)"),
             _block(tag, "already_found", "\n".join(_known(f) for f in context.findings) or "(none)"),
+            *_carried(tag, context),
         ]
     )
     reviewable = [f for f in context.files if f.status != "removed" and f.patch]
@@ -49,6 +50,17 @@ def render_input(
     body = "\n\n".join(_file(f) for f in reviewable if f.path in chosen) or "(no reviewable changes)"
     closing = "Return your review as the JSON object described in your instructions."
     return f"{head}\n\n{_block(tag, 'changes', body)}\n\n{closing}", left_out
+
+
+def _carried(tag: str, context: ReviewContext) -> list[str]:
+    if not context.carried_over:
+        return []
+    paths = "\n".join(context.carried_over)
+    text = (
+        "These files are part of the pull request but did not change since the last review, which already "
+        f"covered them. They are not shown; do not report on them.\n{paths}"
+    )
+    return [_block(tag, "unchanged_files", text)]
 
 
 def _comments(context: ReviewContext) -> str:

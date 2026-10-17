@@ -3,7 +3,7 @@
 from enum import StrEnum
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class Category(StrEnum):
@@ -97,6 +97,8 @@ class ReviewContext(_Frozen):
     severity_threshold: Severity = Severity.MEDIUM
     max_comments: int = 15
     input_tokens: int = 300_000
+    # Files an incremental review leaves out because their change is the same as at the last run.
+    carried_over: tuple[str, ...] = ()
 
 
 class CriterionStatus(StrEnum):
@@ -130,3 +132,20 @@ class ReviewResult(_Frozen):
     findings: tuple[Finding, ...] = ()
     criteria: tuple[CriterionResult, ...] = ()
     scope_creep: tuple[ScopeCreep, ...] = ()
+
+
+class ReviewMemory(_Frozen):
+    """What the last model review saw and said, kept so the next run can skip what did not change."""
+
+    head_sha: str
+    inputs: str
+    # Path to the hash of its change, for the files the model actually read.
+    files: dict[str, str] = Field(default_factory=dict)
+    findings: tuple[Finding, ...] = ()
+    criteria: tuple[CriterionResult, ...] = ()
+    scope_creep: tuple[ScopeCreep, ...] = ()
+    # Criterion key to the head the model last assessed it on.
+    criteria_since: dict[str, str] = Field(default_factory=dict)
+    # Model tokens, input plus output: on this pull request so far, and in the run that wrote this.
+    tokens: int = 0
+    run_tokens: int = 0

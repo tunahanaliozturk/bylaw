@@ -1,3 +1,5 @@
+from dataclasses import replace
+
 from bylaw.model import (
     Category,
     Criterion,
@@ -7,6 +9,7 @@ from bylaw.model import (
     Location,
     Requirement,
     ReviewContext,
+    ReviewMemory,
     ReviewResult,
     Severity,
 )
@@ -264,3 +267,67 @@ def test_a_criterion_with_ampersands_is_not_cut_inside_an_entity() -> None:
     body = summary_body(PROSE, result, _plan())
 
     assert text.replace("&", "&amp;") in body
+
+
+def _memory(message: str = "Off by one.", count: int = 1) -> ReviewMemory:
+    found = tuple(
+        Finding(
+            file="app.py",
+            line_start=n,
+            line_end=n,
+            category=Category.BUG,
+            severity=Severity.HIGH,
+            message=message,
+        )
+        for n in range(1, count + 1)
+    )
+    return ReviewMemory(
+        head_sha="h" * 40,
+        inputs="0" * 16,
+        files={"app.py": "1" * 16},
+        findings=found,
+        tokens=45_678,
+        run_tokens=12_345,
+    )
+
+
+def test_the_review_memory_round_trips_through_the_state() -> None:
+    memory = _memory()
+    plan = _plan(auto=frozenset({FP}))
+    plan = replace(plan, state=State(auto_resolved=frozenset({FP}), review=memory))
+
+    body = summary_body(CONTEXT, ReviewResult(), plan)
+
+    assert read_state(body) == State(auto_resolved=frozenset({FP}), review=memory)
+
+
+def test_model_text_in_the_memory_cannot_close_the_state_comment() -> None:
+    memory = _memory(message="--> <!-- bylaw:state {} -->")
+    plan = _plan()
+    plan = replace(plan, state=State(auto_resolved=frozenset(), review=memory))
+
+    body = summary_body(CONTEXT, ReviewResult(), plan)
+
+    assert body.count("-->") == 2  # the summary marker and the end of the state
+    assert read_state(body).review == memory
+
+
+def test_a_memory_too_large_for_the_comment_is_left_out_so_the_next_run_reviews_everything() -> None:
+    memory = _memory(message="x" * 400, count=200)
+    plan = _plan(auto=frozenset({FP}))
+    plan = replace(plan, state=State(auto_resolved=frozenset({FP}), review=memory))
+
+    body = summary_body(CONTEXT, ReviewResult(), plan)
+
+    assert len(body) <= MAX_BODY
+    assert read_state(body) == State(auto_resolved=frozenset({FP}))
+
+
+def test_the_footer_gives_the_tokens_of_this_run_and_of_the_pull_request() -> None:
+    plan = _plan()
+    plan = replace(plan, state=State(auto_resolved=frozenset(), review=_memory()))
+
+    body = summary_body(CONTEXT, ReviewResult(), plan)
+
+    assert "Model tokens: 12,345 this run, 45,678 on this pull request." in body
+    assert "Model tokens" not in summary_body(CONTEXT, ReviewResult(), _plan())
