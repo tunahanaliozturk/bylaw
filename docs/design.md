@@ -70,7 +70,7 @@ Drops a finding when:
 - its lines are not part of the diff;
 - its evidence names a file or line that does not exist in the collected context;
 - it is a `rule` or `requirement` finding with no evidence;
-- it duplicates another finding on the same lines.
+- it repeats another finding: same lines, same category and same message.
 
 The validator runs in every mode, so a host model is held to the same standard as the built-in engine.
 
