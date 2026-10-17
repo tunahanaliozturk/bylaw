@@ -141,3 +141,18 @@ def test_a_human_written_summary_never_supplies_the_review_memory() -> None:
     assert trusted_memory(SummaryComment(id=1, body=body, bot=True)) == memory
     assert trusted_memory(SummaryComment(id=1, body=body, bot=False)) is None
     assert trusted_memory(None) is None
+
+
+def test_publishing_without_a_memory_keeps_the_token_count_of_the_last_one() -> None:
+    from bylaw.model import ReviewMemory  # noqa: PLC0415
+    from bylaw.plan import Plan, State  # noqa: PLC0415
+    from bylaw.render import read_state, summary_body  # noqa: PLC0415
+
+    earlier = ReviewMemory(head_sha="h" * 40, inputs="0" * 16, files={"app.py": "1" * 16}, tokens=900)
+    plan = Plan((), (), (), (), (), (), (), State(auto_resolved=frozenset(), review=earlier))
+    client = FakeClient(summary=SummaryComment(id=7, body=summary_body(CONTEXT, RESULT, plan), bot=True))
+
+    publish(client, "octo/app", 5, context=CONTEXT, result=RESULT, config=Config())
+
+    review = read_state(client.summaries[-1][1]).review
+    assert review is not None and (review.files, review.tokens) == ({}, 900)

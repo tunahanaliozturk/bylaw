@@ -288,3 +288,16 @@ def test_replies_in_the_middle_of_a_very_long_thread_are_read(client: GitHubClie
     assert "bylaw: ignore, accepted" in bodies
     assert len(bodies) == 201
     assert json.loads(route.calls[1].request.content)["variables"]["before"] == "older"
+
+
+@respx.mock
+def test_threads_carry_their_file(client: GitHubClient) -> None:
+    bylaw = {"body": "x", "author": {"__typename": "Bot", "login": "b"}, "authorAssociation": "NONE"}
+    thread = {"id": "T1", "isResolved": False, "path": "src/app.py", "comments": {"nodes": [bylaw]}}
+    page = {"pageInfo": {"hasNextPage": False, "endCursor": None}, "nodes": [thread]}
+    data = {"data": {"repository": {"pullRequest": {"author": {"login": "a"}, "reviewThreads": page}}}}
+    respx.post(f"{API}/graphql").mock(return_value=httpx.Response(200, json=data))
+
+    (read,) = client.review_threads("octo/app", 5)
+
+    assert read.path == "src/app.py"

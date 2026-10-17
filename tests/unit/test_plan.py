@@ -245,3 +245,12 @@ def test_outdated_threads_pair_by_their_original_line() -> None:
 
     assert plan.muted == ()
     assert plan.resolve == ("Ta",)
+
+
+def test_a_thread_on_a_file_the_model_did_not_review_is_not_resolved_as_fixed() -> None:
+    held = Thread(id="T1", resolved=False, comments=_ours(FP).comments, path="app.py")
+    other = Thread(id="T2", resolved=False, comments=_ours(FP).comments, path="lib.py")
+
+    plan = make_plan([], [held, other], NO_STATE, Severity.MEDIUM, 15, unreviewed=frozenset({"app.py"}))
+
+    assert plan.resolve == ("T2",)

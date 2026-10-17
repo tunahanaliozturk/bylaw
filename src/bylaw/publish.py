@@ -8,7 +8,7 @@ from bylaw.config import Config
 from bylaw.github import ReviewComment, SummaryComment
 from bylaw.model import ReviewContext, ReviewMemory, ReviewResult
 from bylaw.plan import Plan, State, Thread, added_text, group_findings, make_plan
-from bylaw.render import inline_body, read_state, review_body, summary_body
+from bylaw.render import inline_body, read_state, review_body, summary_body, tokens_only
 
 
 class Publisher(Protocol):
@@ -34,6 +34,7 @@ def publish(  # noqa: PLR0913 - one call site, every argument is a distinct inpu
     result: ReviewResult,
     config: Config,
     memory: ReviewMemory | None = None,
+    unreviewed: frozenset[str] = frozenset(),
 ) -> Plan:
     summary = client.summary_comment(repo, number)
     state = read_state(summary.body) if summary else State(auto_resolved=frozenset())
@@ -44,7 +45,10 @@ def publish(  # noqa: PLR0913 - one call site, every argument is a distinct inpu
             "so a `bylaw: ignore` among them is not seen this run."
         )
         context = context.model_copy(update={"notes": (*context.notes, note)})
-    plan = _plan(context, result, config, threads, state)
+    plan = _plan(context, result, config, threads, state, unreviewed=unreviewed)
+    if memory is None and state.review is not None:
+        # A run that keeps no memory (bylaw post, no key) still keeps the pull request's token count.
+        memory = tokens_only(state.review)
     plan = replace(plan, state=replace(plan.state, review=memory))
     if plan.inline:
         comments = [
@@ -89,8 +93,16 @@ def preview(context: ReviewContext, result: ReviewResult, config: Config) -> str
     return "\n\n".join([summary_body(context, result, plan), *comments])
 
 
-def _plan(
-    context: ReviewContext, result: ReviewResult, config: Config, threads: Sequence[Thread], state: State
+def _plan(  # noqa: PLR0913 - two callers, every argument is a distinct input
+    context: ReviewContext,
+    result: ReviewResult,
+    config: Config,
+    threads: Sequence[Thread],
+    state: State,
+    *,
+    unreviewed: frozenset[str] = frozenset(),
 ) -> Plan:
     groups = group_findings(result.findings, added_text(context))
-    return make_plan(groups, threads, state, config.severity_threshold, config.max_comments)
+    return make_plan(
+        groups, threads, state, config.severity_threshold, config.max_comments, unreviewed=unreviewed
+    )
