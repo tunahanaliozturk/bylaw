@@ -38,6 +38,8 @@ class Thread:
     line: int | None = None
     # The end line it was posted on, for pairing outdated threads.
     original_line: int | None = None
+    # GitHub failed to return the replies between the first one and the newest hundred.
+    older_replies_unread: bool = False
 
 
 @dataclass(frozen=True, slots=True)

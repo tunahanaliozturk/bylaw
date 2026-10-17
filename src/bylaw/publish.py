@@ -36,7 +36,14 @@ def publish(  # noqa: PLR0913 - one call site, every argument is a distinct inpu
 ) -> Plan:
     summary = client.summary_comment(repo, number)
     state = read_state(summary.body) if summary else State(auto_resolved=frozenset())
-    plan = _plan(context, result, config, client.review_threads(repo, number), state)
+    threads = client.review_threads(repo, number)
+    if unread := sum(thread.older_replies_unread for thread in threads):
+        note = (
+            f"{unread} long review thread(s) read without older replies: GitHub did not return them, "
+            "so a `bylaw: ignore` among them is not seen this run."
+        )
+        context = context.model_copy(update={"notes": (*context.notes, note)})
+    plan = _plan(context, result, config, threads, state)
     if plan.inline:
         comments = [
             ReviewComment(g.finding.file, g.finding.line_end, g.finding.line_start, inline_body(g))

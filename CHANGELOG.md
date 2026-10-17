@@ -6,6 +6,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 - The Claude Code and Codex plugin moved to `plugin/`, so plugin directories scan only the files users install. The skill now always runs the bylaw release from PyPI that it names. Existing installs pick up the new path from the marketplace on their next update.
 - A moved file that GitHub sends without a blob sha, and whose old path is missing from the base, now gets the binary file note instead of counting as an unchanged move.
+- A GraphQL error while reading the older replies of a long review thread no longer ends the run. The thread is read without them and the summary says so. A rate limit still stops the run.
 
 ## 0.1.1 - 2026-10-16
 

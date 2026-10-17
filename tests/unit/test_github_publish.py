@@ -5,7 +5,7 @@ import httpx
 import pytest
 import respx
 
-from bylaw.github import GitHubClient, ReviewComment
+from bylaw.github import GitHubClient, GitHubError, ReviewComment
 
 API = "https://api.github.com"
 
@@ -214,6 +214,38 @@ def test_threads_carry_their_current_and_original_lines(client: GitHubClient) ->
     (read,) = client.review_threads("octo/app", 5)
 
     assert (read.line, read.original_line) == (None, 7)
+
+
+def _long_thread() -> dict[str, object]:
+    first = {"id": "C0", "body": "finding", "author": {"__typename": "Bot"}, "authorAssociation": "NONE"}
+    reply = {"id": "C150", "body": "newest", "author": {"__typename": "User"}, "authorAssociation": "NONE"}
+    newest = {"pageInfo": {"hasPreviousPage": True, "startCursor": "older"}, "nodes": [reply]}
+    return {"id": "T1", "isResolved": False, "comments": {"nodes": [first]}, "recent": newest}
+
+
+@respx.mock
+def test_a_graphql_error_on_older_replies_reads_the_thread_without_them(client: GitHubClient) -> None:
+    respx.post(f"{API}/graphql").side_effect = [
+        httpx.Response(200, json=_threads_page([_long_thread()], None)),
+        httpx.Response(200, json={"errors": [{"type": "INTERNAL", "message": "Something went wrong"}]}),
+    ]
+
+    (read,) = client.review_threads("octo/app", 5)
+
+    assert [c.body for c in read.comments] == ["finding", "newest"]
+    assert read.older_replies_unread is True
+
+
+@respx.mock
+def test_a_rate_limit_on_older_replies_still_fails(client: GitHubClient) -> None:
+    limited = {"errors": [{"type": "RATE_LIMITED", "message": "API rate limit exceeded"}]}
+    respx.post(f"{API}/graphql").side_effect = [
+        httpx.Response(200, json=_threads_page([_long_thread()], None)),
+        httpx.Response(200, json=limited),
+    ]
+
+    with pytest.raises(GitHubError, match="rate limit"):
+        client.review_threads("octo/app", 5)
 
 
 @respx.mock
