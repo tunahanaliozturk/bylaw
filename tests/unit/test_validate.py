@@ -98,6 +98,16 @@ def test_a_second_finding_on_the_same_lines_and_category_is_dropped() -> None:
     )
 
 
+def test_two_different_problems_on_the_same_lines_and_category_are_both_kept() -> None:
+    injection = _finding().model_copy(update={"message": "Shell command built from the file name."})
+    traversal = _finding().model_copy(update={"message": "The file name can climb out of the upload folder."})
+
+    kept = validate(CONTEXT, ReviewResult(findings=(injection, traversal)))
+
+    assert kept.result.findings == (injection, traversal)
+    assert kept.dropped == ()
+
+
 def test_criteria_results_keep_only_known_criteria_and_changed_locations() -> None:
     result = ReviewResult(
         criteria=(

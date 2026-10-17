@@ -24,9 +24,10 @@ def validate(context: ReviewContext, result: ReviewResult) -> Validated:
     checker.criteria |= {item.criterion for item in result.criteria if checker.inferred_problem(item) is None}
 
     findings: list[Finding] = []
-    seen: set[tuple[str, int, int, Category]] = set()
+    # The message is part of the key: two different problems of one category can share a line.
+    seen: set[tuple[str, int, int, Category, str]] = set()
     for finding in result.findings:
-        key = (finding.file, finding.line_start, finding.line_end, finding.category)
+        key = (finding.file, finding.line_start, finding.line_end, finding.category, finding.message)
         problem = checker.finding_problem(finding)
         if problem is None and key in seen:
             problem = "duplicates another finding on the same lines"
