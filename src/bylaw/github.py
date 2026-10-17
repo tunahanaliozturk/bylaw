@@ -175,6 +175,7 @@ query($owner: String!, $name: String!, $number: Int!, $after: String) {
         nodes {
           id
           isResolved
+          path
           line
           originalLine
           comments: comments(first: 1) { nodes { id body authorAssociation author { __typename login } } }
@@ -240,6 +241,7 @@ _MAX_THREAD_PAGES = 10
 class _GqlThread(_Model):
     id: str
     is_resolved: bool = Field(alias="isResolved")
+    path: str = ""
     line: int | None = None
     original_line: int | None = Field(default=None, alias="originalLine")
     # The finding itself and the newest replies: a mute or resolve is usually late in a long thread.
@@ -497,6 +499,7 @@ class GitHubClient:
                         comments=comments,
                         line=node.line,
                         original_line=node.original_line,
+                        path=node.path,
                         older_replies_unread=unread,
                     )
                 )

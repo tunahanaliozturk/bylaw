@@ -19,7 +19,7 @@ from bylaw.evaluation.report import render
 from bylaw.evaluation.run import AnswerReviewer, CaseRun, NoModel, prepare, run_all
 from bylaw.evaluation.score import score
 from bylaw.github import GitHubClient, GitHubError, GitHubSource
-from bylaw.incremental import run_model_review, trusted_memory
+from bylaw.incremental import ModelRun, keep_valid, run_model_review, trusted_memory
 from bylaw.local_git import LocalGitSource
 from bylaw.model import Finding, ReviewContext, ReviewMemory, ReviewResult, Severity
 from bylaw.plan import remaining
@@ -282,7 +282,8 @@ def _review(args: argparse.Namespace) -> int:
         raise SourceError("--post needs --pr")
     if args.pr is None:
         context = _read(ReviewContext, args.context)
-        context, result, _ = _with_model_review(context, args)
+        context, run = _with_model_review(context, args)
+        result = run.result
         checked = _check(context, result)
         counted = checked.result.findings
     else:
@@ -302,12 +303,19 @@ def _review_pull_request(args: argparse.Namespace) -> tuple[Validated, tuple[Fin
         context = build_context(source)
         config = load_config(source.read_base(".bylaw.toml"))
         memory = trusted_memory(client.summary_comment(repo, args.pr))
-        context, result, memory = _with_model_review(context, args, config, memory)
-        checked = _check(context, result)
+        context, run = _with_model_review(context, args, config, memory)
+        checked = _check(context, run.result)
         if not args.post:
             return checked, checked.result.findings
         plan = publish(
-            client, repo, args.pr, context=context, result=checked.result, config=config, memory=memory
+            client,
+            repo,
+            args.pr,
+            context=context,
+            result=checked.result,
+            config=config,
+            memory=keep_valid(run.memory, checked.result.findings),
+            unreviewed=run.unreviewed,
         )
         _say(f"posted {len(plan.inline)} comment(s), resolved {len(plan.resolve)}.")
     return checked, remaining(plan)
@@ -318,7 +326,7 @@ def _with_model_review(
     args: argparse.Namespace,
     config: Config | None = None,
     memory: ReviewMemory | None = None,
-) -> tuple[ReviewContext, ReviewResult, ReviewMemory | None]:
+) -> tuple[ReviewContext, ModelRun]:
     """The context with notes about the model run, the model's result and what to remember for next time."""
     key = api_key_for(args.provider)
     make: Callable[[], Reviewer] | None = None
@@ -330,7 +338,7 @@ def _with_model_review(
     )
     for note in run.notes:
         _say(note)
-    return context.model_copy(update={"notes": (*context.notes, *run.notes)}), run.result, run.memory
+    return context.model_copy(update={"notes": (*context.notes, *run.notes)}), run
 
 
 def _check(context: ReviewContext, result: ReviewResult) -> Validated:

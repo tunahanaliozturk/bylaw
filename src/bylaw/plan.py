@@ -38,6 +38,8 @@ class Thread:
     line: int | None = None
     # The end line it was posted on, for pairing outdated threads.
     original_line: int | None = None
+    # The file the thread is on.
+    path: str = ""
     # GitHub failed to return the replies between the first one and the newest hundred.
     older_replies_unread: bool = False
 
@@ -86,12 +88,14 @@ def group_findings(findings: Iterable[Finding], added: Mapping[str, Mapping[int,
     )
 
 
-def make_plan(
+def make_plan(  # noqa: PLR0913 - every argument is a distinct input to one decision
     groups: Sequence[Group],
     threads: Sequence[Thread],
     state: State,
     threshold: Severity,
     cap: int,
+    *,
+    unreviewed: frozenset[str] = frozenset(),
 ) -> Plan:
     ours: dict[str, list[Thread]] = {}
     for thread in threads:
@@ -105,7 +109,8 @@ def make_plan(
             ours.setdefault(found[-1], []).append(thread)
 
     paired, unpaired = _pair(groups, ours)
-    fixed = [(fp, thread) for fp, thread in unpaired if not thread.resolved]
+    # A thread on a file the model did not read this run is not evidence of a fix (ADR 0012).
+    fixed = [(fp, t) for fp, t in unpaired if not t.resolved and t.path not in unreviewed]
     auto_resolved = set(state.auto_resolved) | {thread.id for _, thread in fixed}
 
     inline: list[Group] = []

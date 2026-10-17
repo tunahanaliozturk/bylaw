@@ -73,18 +73,29 @@ def summary_body(context: ReviewContext, result: ReviewResult, plan: Plan) -> st
     ]
     body = "\n\n".join(section for section in sections if section)
     state = "\n\n" + _STATE_OPEN + _state_json(plan.state) + " -->"
-    room = MAX_BODY - len(state)
+    room = max(0, MAX_BODY - len(state))
     if len(body) > room:
         body = body[: room - len(_TRIMMED)] + _TRIMMED
     return body + state
 
 
+def tokens_only(memory: ReviewMemory) -> ReviewMemory:
+    """The memory without what it reviewed: the next run reviews everything but the budget still counts."""
+    return ReviewMemory(
+        head_sha=memory.head_sha, inputs=memory.inputs, tokens=memory.tokens, run_tokens=memory.run_tokens
+    )
+
+
 def _state_json(state: State) -> str:
     raw: dict[str, object] = {"auto_resolved": sorted(state.auto_resolved)[-_MAX_STATE_ENTRIES:]}
     if state.review is not None:
-        memory = state.review.model_dump(mode="json")
-        if len(json.dumps(memory)) <= _MAX_MEMORY:
-            raw["review"] = memory
+        raw["review"] = state.review.model_dump(mode="json")
+        if len(_escaped(raw["review"])) > _MAX_MEMORY:
+            raw["review"] = tokens_only(state.review).model_dump(mode="json")
+    return _escaped(raw)
+
+
+def _escaped(raw: object) -> str:
     # Model text sits in the memory; with < and > escaped it cannot close the comment the state lives in.
     return json.dumps(raw).replace("<", "\\u003c").replace(">", "\\u003e")
 

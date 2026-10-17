@@ -21,18 +21,25 @@ model is told which files it is not shown. Everything else goes to the model.
   keeps its review; one that changes it gets it reviewed again. There is no ancestry case to get wrong.
 - **What forces a full review:** different rules, different requirements, or another bylaw version
   (hashed together), no memory, or `incremental = false` in `.bylaw.toml`.
-- **Criteria.** A criterion that was met stays met, with "unchanged since <commit>", while every file it
-  was met in is unchanged. Partial and missing criteria are always asked again: new code may meet them.
-- **When the model does not run** (no key, an error, or the pull request reached `[budget] pr_tokens`),
-  the earlier findings stand instead of being resolved as fixed. Validation still drops any that no
-  longer fit the code.
+- **Criteria.** A criterion that was met stays met, marked with the commit it was assessed on, while
+  every file it was met in is unchanged. Partial and missing criteria are asked again: new code may meet
+  them. A listed criterion the model leaves unanswered keeps its last answer. Inferred criteria (ADR
+  0011) are numbered afresh on every run, so they are always derived again. When no file changed at all,
+  every criterion keeps its last answer and the model is not called.
+- **When the model does not read a file** (no key, an error, the budget, or the file left out for size),
+  the earlier findings on unchanged files stand, and the threads on changed files are left as they are:
+  not resolved as fixed, and their old findings not posted again on lines that moved.
+- **The budget is approximate.** The input of a run is cut to what is left of `[budget] pr_tokens`, but
+  the model's output is not, and a run cancelled by a newer push (`cancel-in-progress`) never records the
+  tokens it spent. A first run whose call fails records nothing either.
 - **Trust.** The memory decides what the model skips, so it is read only from a summary written by a bot
   account. ADR 0008 also accepts a summary written by an `OWNER`, `MEMBER` or `COLLABORATOR`, and an
   organisation member with read access could otherwise post a fake summary claiming every file was
   reviewed clean. A summary written by a person still carries muted and resolved threads as before, and
   the review falls back to a full one.
-- **Size.** The memory gets at most 20,000 characters of the comment; a larger one is left out and the
-  next run is a full review.
+- **Size.** The memory gets at most 20,000 characters of the comment, measured after escaping. A larger
+  one keeps only its token count, and the next run is a full review. Only findings that passed
+  validation are remembered.
 
 ## Consequences
 
@@ -45,12 +52,15 @@ model is told which files it is not shown. Everything else goes to the model.
 - Cost: the model no longer sees unchanged files, so a problem that only shows when a new change meets an
   old file it does not touch can be missed. The model can still open files in host mode; in the Action it
   sees the list of carried files. Setting `incremental = false` restores full reviews.
-- Cost: a run with a personal token writes the summary as a user, so its memory is never trusted and
-  every run is a full review.
+- Cost: a run with a personal token writes the summary as a user, so its memory is never trusted:
+  every run is a full review and the budget counts nothing.
+- Cost: the check is by account type, as in ADR 0008. A bot that posts whatever a commenter asks for,
+  ahead of bylaw's own summary, could plant a memory. bylaw cannot name its own account with an
+  installation token, so it cannot check the login.
 - Cost: model text now sits in the state comment. `<` and `>` are escaped in the state JSON so it cannot
   close the comment it lives in.
-- The Claude Code and Codex path (`bylaw context`, `bylaw post`) still reviews in full; it does not read
-  the memory and writes none.
+- The Claude Code and Codex path (`bylaw context`, `bylaw post`) still reviews in full. It does not read
+  the memory, and `bylaw post` keeps only its token count, so the next Action run reviews in full.
 
 ## Alternatives
 

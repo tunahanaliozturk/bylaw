@@ -312,17 +312,6 @@ def test_model_text_in_the_memory_cannot_close_the_state_comment() -> None:
     assert read_state(body).review == memory
 
 
-def test_a_memory_too_large_for_the_comment_is_left_out_so_the_next_run_reviews_everything() -> None:
-    memory = _memory(message="x" * 400, count=200)
-    plan = _plan(auto=frozenset({FP}))
-    plan = replace(plan, state=State(auto_resolved=frozenset({FP}), review=memory))
-
-    body = summary_body(CONTEXT, ReviewResult(), plan)
-
-    assert len(body) <= MAX_BODY
-    assert read_state(body) == State(auto_resolved=frozenset({FP}))
-
-
 def test_the_footer_gives_the_tokens_of_this_run_and_of_the_pull_request() -> None:
     plan = _plan()
     plan = replace(plan, state=State(auto_resolved=frozenset(), review=_memory()))
@@ -331,3 +320,24 @@ def test_the_footer_gives_the_tokens_of_this_run_and_of_the_pull_request() -> No
 
     assert "Model tokens: 12,345 this run, 45,678 on this pull request." in body
     assert "Model tokens" not in summary_body(CONTEXT, ReviewResult(), _plan())
+
+
+def test_a_memory_too_large_still_keeps_its_token_count() -> None:
+    memory = _memory(message="x" * 400, count=200)
+    plan = replace(_plan(), state=State(auto_resolved=frozenset(), review=memory))
+
+    review = read_state(summary_body(CONTEXT, ReviewResult(), plan)).review
+
+    assert review is not None
+    assert (review.files, review.findings, review.tokens, review.run_tokens) == ({}, (), 45_678, 12_345)
+
+
+def test_escaped_brackets_count_toward_the_memory_limit() -> None:
+    memory = _memory(message="<" * 300, count=60)
+    plan = replace(_plan(), state=State(auto_resolved=frozenset(), review=memory))
+
+    body = summary_body(CONTEXT, ReviewResult(), plan)
+
+    review = read_state(body).review
+    assert len(body) <= MAX_BODY
+    assert review is not None and review.findings == ()

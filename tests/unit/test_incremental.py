@@ -111,7 +111,7 @@ def test_a_met_criterion_whose_code_did_not_change_keeps_its_status_and_says_sin
 
     (criterion,) = run.result.criteria
     assert criterion.status is CriterionStatus.MET
-    assert "unchanged since h1" in criterion.note
+    assert "assessed on h1" in criterion.note
     assert run.memory is not None and run.memory.criteria_since == {"#1/AC-1": "h1"}
 
 
@@ -265,3 +265,100 @@ def test_a_reviewer_that_cannot_be_built_leaves_a_note() -> None:
     run = run_model_review(_context(NEW), broken, None, incremental=True, budget=None)
 
     assert run.notes == ("The model review did not run: --model is required with the openai provider.",)
+
+
+def test_a_run_without_the_model_keeps_findings_only_for_unchanged_files() -> None:
+    edited = _file("old.py", "a = 2")
+    context = _context(edited, NEW)
+    memory = _memory(context, files={"old.py": file_key(OLD), "new.py": file_key(NEW)})
+    memory = memory.model_copy(update={"findings": (*memory.findings, _finding("new.py", "New problem."))})
+
+    run = run_model_review(context, None, memory, incremental=True, budget=None)
+
+    assert [f.message for f in run.result.findings] == ["New problem."]
+    assert run.unreviewed == frozenset({"old.py"})
+
+
+def test_a_run_with_nothing_new_keeps_every_criterion() -> None:
+    context = _context(OLD)
+    missing = CriterionResult(criterion="#1/AC-2", status=CriterionStatus.MISSING)
+    memory = _memory(context, criteria=(MET, missing), criteria_since={"#1/AC-1": "h1", "#1/AC-2": "h1"})
+
+    run = run_model_review(context, FakeReviewer, memory, incremental=True, budget=None)
+
+    assert [(c.criterion, c.status) for c in run.result.criteria] == [
+        ("#1/AC-1", CriterionStatus.MET),
+        ("#1/AC-2", CriterionStatus.MISSING),
+    ]
+    assert run.memory is not None and len(run.memory.criteria) == 2
+
+
+def test_a_met_inferred_criterion_is_derived_again_rather_than_carried() -> None:
+    context = _context(OLD, NEW)
+    inferred = MET.model_copy(update={"criterion": "#1/IC-1", "text": "Log failed logins"})
+    fresh = CriterionResult(criterion="#1/IC-1", text="Rate limit logins", status=CriterionStatus.MISSING)
+
+    run = run_model_review(
+        context,
+        lambda: FakeReviewer(ReviewResult(criteria=(fresh,))),
+        _memory(context, criteria=(inferred,)),
+        incremental=True,
+        budget=None,
+    )
+
+    assert run.result.criteria == (fresh,)
+
+
+def test_a_model_finding_on_a_file_it_was_not_shown_is_dropped() -> None:
+    context = _context(OLD, NEW)
+    stray = _finding("old.py", "Guessed problem.")
+
+    run = run_model_review(
+        context,
+        lambda: FakeReviewer(ReviewResult(findings=(stray,))),
+        _memory(context),
+        incremental=True,
+        budget=None,
+    )
+
+    assert [f.message for f in run.result.findings] == ["Old problem."]
+
+
+def test_the_incremental_note_is_left_out_when_the_model_fails() -> None:
+    context = _context(OLD, NEW)
+
+    run = run_model_review(
+        context, lambda: FakeReviewer(error="overloaded"), _memory(context), incremental=True, budget=None
+    )
+
+    assert not any(note.startswith("Incremental review") for note in run.notes)
+
+
+def test_a_kept_criterion_names_the_commit_it_was_assessed_on() -> None:
+    context = _context(OLD, NEW)
+    memory = _memory(context, head_sha="h9", criteria_since={"#1/AC-1": "h1"})
+
+    run = run_model_review(context, FakeReviewer, memory, incremental=True, budget=None)
+
+    assert "assessed on h1" in run.result.criteria[0].note
+
+
+def test_the_input_is_cut_to_what_is_left_of_the_budget() -> None:
+    context = _context(OLD, NEW)
+    reviewer = FakeReviewer()
+
+    run = run_model_review(context, lambda: reviewer, _memory(context), incremental=True, budget=5100)
+
+    assert reviewer.inputs == []
+    assert run.unreviewed == frozenset({"new.py"})
+    assert any("token budget" in note for note in run.notes)
+
+
+def test_findings_validation_dropped_are_not_remembered() -> None:
+    from bylaw.incremental import keep_valid  # noqa: PLC0415
+
+    memory = _memory(_context(OLD))
+    kept = keep_valid(memory, ())
+
+    assert kept is not None and kept.findings == ()
+    assert keep_valid(None, ()) is None
