@@ -682,9 +682,9 @@ class GitHubSource:
             changes: int | None = item.changes
             if omitted and changes == 0 and item.status in {"renamed", "copied"} and item.previous_filename:
                 # GitHub reports 0 changes both for a pure move and for a binary file that changed on the
-                # way; the old blob tells them apart.
+                # way; the old blob tells them apart. Two missing shas prove nothing, so that pair is binary.
                 before = self._base_blob(item.previous_filename)
-                if before == item.sha:
+                if before is not None and before == item.sha:
                     omitted = False  # moved or copied unchanged: nothing to review
                 else:
                     changes = None  # content changed and has no text diff: a binary file

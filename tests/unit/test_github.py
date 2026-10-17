@@ -323,6 +323,21 @@ def test_a_moved_file_is_compared_with_its_old_blob(
 
 
 @respx.mock
+def test_a_moved_file_with_no_sha_and_no_old_blob_gets_the_binary_note(client: GitHubClient) -> None:
+    moved_file = _moved("renamed", "unused", old="gone.png")
+    del moved_file["sha"]
+    respx.get(f"{API}/repos/octo/app/pulls/5").mock(return_value=httpx.Response(200, json=PULL))
+    respx.get(url__startswith=f"{API}/repos/octo/app/pulls/5/files").mock(
+        return_value=httpx.Response(200, json=[moved_file])
+    )
+    respx.get(f"{API}/repos/octo/app/git/trees/b1").mock(return_value=httpx.Response(200, json=_tree()))
+
+    (moved,) = GitHubSource(client, "octo/app", 5).changed_files()
+
+    assert (moved.patch_omitted, moved.changes) == (True, None)
+
+
+@respx.mock
 def test_moving_many_files_costs_one_tree_read(client: GitHubClient) -> None:
     files = [_moved("renamed", "same", f"new/{n}.py", "old.png") for n in range(300)]
     respx.get(f"{API}/repos/octo/app/pulls/5").mock(return_value=httpx.Response(200, json=PULL))
