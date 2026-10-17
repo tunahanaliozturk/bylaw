@@ -40,6 +40,14 @@ class GitHubError(Exception):
     """A GitHub API call failed. The message never contains the token."""
 
 
+class _GraphQLError(GitHubError):
+    """GitHub answered a GraphQL query with errors in the body."""
+
+    def __init__(self, errors: list[dict[str, object]]) -> None:
+        super().__init__(f"GitHub GraphQL call failed: {errors[0].get('message')}")
+        self.rate_limited = any(error.get("type") == "RATE_LIMITED" for error in errors)
+
+
 class _Model(BaseModel):
     model_config = ConfigDict(frozen=True, extra="ignore")
 
@@ -471,13 +479,14 @@ class GitHubClient:
                 return threads
             pr_author = pull.author.login if pull.author else None
             for node in pull.review_threads.nodes:
+                read, unread = self._thread_comments(node)
                 comments = tuple(
                     ThreadComment(
                         body=c.body,
                         trusted=_trusted(c.author.typename if c.author else "", c.author_association),
                         by_pr_author=c.author is not None and c.author.login == pr_author,
                     )
-                    for c in self._thread_comments(node)
+                    for c in read
                 )
                 threads.append(
                     Thread(
@@ -486,28 +495,39 @@ class GitHubClient:
                         comments=comments,
                         line=node.line,
                         original_line=node.original_line,
+                        older_replies_unread=unread,
                     )
                 )
             if not pull.review_threads.page_info.has_next_page:
                 return threads
             after = pull.review_threads.page_info.end_cursor
 
-    def _thread_comments(self, thread: _GqlThread) -> list[_GqlComment]:
-        """The finding and every reply; a thread longer than the newest hundred is paged back to its start."""
+    def _thread_comments(self, thread: _GqlThread) -> tuple[list[_GqlComment], bool]:
+        """The finding and every reply, and whether the older replies could not be read.
+
+        A thread longer than the newest hundred is paged back to its start.
+        """
         older: list[_GqlComment] = []
+        unread = False
         page = thread.recent.page_info
         for _ in range(_MAX_THREAD_PAGES):
             if page is None or not page.has_previous_page:
                 break
-            data = _GqlOlderData.model_validate(
-                self._graphql(_OLDER_COMMENTS_QUERY, {"id": thread.id, "before": page.start_cursor})
-            )
+            try:
+                raw = self._graphql(_OLDER_COMMENTS_QUERY, {"id": thread.id, "before": page.start_cursor})
+            except _GraphQLError as error:
+                if error.rate_limited:
+                    raise
+                # One thread's history should not end the run: the finding and the newest replies still count.
+                unread = True
+                break
+            data = _GqlOlderData.model_validate(raw)
             if data.node is None:
                 break
             older = [*data.node.comments.nodes, *older]
             page = data.node.comments.page_info
         merged = thread.model_copy(update={"recent": _GqlComments(nodes=[*older, *thread.recent.nodes])})
-        return _first_and_recent(merged)
+        return _first_and_recent(merged), unread
 
     def summary_comment(self, repo: str, number: int) -> SummaryComment | None:
         """The comment that opens with the summary marker, a bot's first (ADR 0008).
@@ -562,7 +582,7 @@ class GitHubClient:
         _raise_for_status(response)
         body = response.json()
         if isinstance(body, dict) and body.get("errors"):
-            raise GitHubError(f"GitHub GraphQL call failed: {body['errors'][0].get('message')}")
+            raise _GraphQLError(body["errors"])
         return body.get("data") if isinstance(body, dict) else None
 
     def _get(self, path: str, params: Params | None = None) -> httpx.Response:

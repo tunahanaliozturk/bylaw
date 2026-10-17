@@ -41,7 +41,7 @@ Small problems found by the milestone reviews. Each one is real but rare or mino
 - [x] **HRD-31** (S) Current Codex docs put the interface under `extensions."com.openai"` in a root `plugin.json`; bylaw uses the `.codex-plugin/plugin.json` fallback. Done when: moved, and the install re-checked.
 - [x] **HRD-32** (S) The test SSE stream has no thinking blocks, `ping` events or `stop_details`, so a refusal category and a stream that starts with thinking are untested. Done when: the adapter models them and tests cover both.
 - [x] **HRD-33** (S) A moved file with no `sha` whose base lookup also returns nothing counts as unchanged. Done when: that pair gets the binary note, with a test.
-- [ ] **HRD-34** (S) A GraphQL error on the older-replies query of a long thread ends the run. Done when: the thread is read without its older replies, with a note.
+- [x] **HRD-34** (S) A GraphQL error on the older-replies query of a long thread ends the run. Done when: the thread is read without its older replies, with a note.
 - [ ] **HRD-35** (S) Validation treats two different problems of the same category on the same lines as duplicates and drops the second (found by the Claude Code host evaluation: a shell injection and a path traversal on one line). Done when: findings are deduplicated by message as well, with a test.
 
 ## Notes
