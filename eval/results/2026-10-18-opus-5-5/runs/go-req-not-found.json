@@ -1,0 +1,58 @@
+{
+  "case_id": "go-req-not-found",
+  "result": {
+    "findings": [
+      {
+        "file": "handlers.go",
+        "line_start": 71,
+        "line_end": 75,
+        "category": "requirement",
+        "severity": "high",
+        "message": "Every error from `Store.Rename` becomes a 500, including the not-found error for an unknown id. The UPDATE matches no rows, and the follow-up `s.Widget` lookup then fails, so the spec's 404 is never returned.",
+        "suggestion": null,
+        "evidence": "docs/specs/rename.md/AC-2"
+      }
+    ],
+    "criteria": [
+      {
+        "criterion": "docs/specs/rename.md/AC-1",
+        "status": "met",
+        "text": null,
+        "code": [
+          {
+            "file": "main.go",
+            "line": 19
+          },
+          {
+            "file": "handlers.go",
+            "line": 57
+          },
+          {
+            "file": "store.go",
+            "line": 45
+          }
+        ],
+        "tests": [],
+        "note": "The route, handler and store update are present, but no test covers the rename."
+      },
+      {
+        "criterion": "docs/specs/rename.md/AC-2",
+        "status": "missing",
+        "text": null,
+        "code": [],
+        "tests": [],
+        "note": "Neither the store nor the handler distinguishes a missing widget (for example by checking RowsAffected or the not-found error), so an unknown id returns 500 instead of 404."
+      }
+    ],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": 8.226977100013755,
+  "input_tokens": 4701,
+  "output_tokens": 776,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "4d7ec543d3b53b584256756613a74412975d079b2ce5ce4928c0c07069953198",
+  "dropped_findings": 0
+}

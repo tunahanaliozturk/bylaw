@@ -1,0 +1,48 @@
+{
+  "case_id": "cs-async-void",
+  "result": {
+    "findings": [
+      {
+        "file": "OrderService.cs",
+        "line_start": 22,
+        "line_end": 22,
+        "category": "bug",
+        "severity": "high",
+        "message": "`NotifyAsync` is declared `async void`, so callers cannot await it. Any exception it throws, such as a failed reload or a disposed context, is raised on the thread pool and can crash the process.",
+        "suggestion": "    public async Task NotifyAsync(Order order)",
+        "evidence": null
+      },
+      {
+        "file": "OrdersController.cs",
+        "line_start": 22,
+        "line_end": 22,
+        "category": "bug",
+        "severity": "high",
+        "message": "`NotifyAsync` is fired and forgotten, so the response returns while it is still using the request-scoped `DbContext`. The reload can run concurrently with other context use or after the context is disposed at the end of the request, causing `ObjectDisposedException` or `InvalidOperationException` and a lost confirmation. This suggestion only compiles once `NotifyAsync` returns `Task`.",
+        "suggestion": "        await orders.NotifyAsync(order);",
+        "evidence": null
+      },
+      {
+        "file": "OrderService.cs",
+        "line_start": 21,
+        "line_end": 21,
+        "category": "rule",
+        "severity": "low",
+        "message": "The added blank line contains trailing whitespace, which `.editorconfig` forbids.",
+        "suggestion": "",
+        "evidence": ".editorconfig:5"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 3,
+  "seconds": 11.252513299987186,
+  "input_tokens": 3849,
+  "output_tokens": 860,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "88d0d2a098bb784af89ba3ecf55d70eb3d2bffb800f058d3fa87c656aced8faa",
+  "dropped_findings": 0
+}

@@ -1,0 +1,28 @@
+{
+  "case_id": "cs-clean-service",
+  "result": {
+    "findings": [
+      {
+        "file": "OrderService.cs",
+        "line_start": 29,
+        "line_end": 29,
+        "category": "bug",
+        "severity": "medium",
+        "message": "`CancelAsync` permanently deletes the order row instead of marking it cancelled. The order's history and any audit trail are lost, and dependent rows may be cascade-deleted or block the delete.",
+        "suggestion": null,
+        "evidence": null
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": 7.88885540002957,
+  "input_tokens": 3760,
+  "output_tokens": 480,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "dece78fd6e6f97973aa7c6420117a1e6b6cb01f0d5343caeb32fd73792906fba",
+  "dropped_findings": 0
+}

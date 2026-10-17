@@ -1,0 +1,62 @@
+{
+  "case_id": "py-creep-token-lifetime",
+  "result": {
+    "findings": [
+      {
+        "file": "app/auth.py",
+        "line_start": 8,
+        "line_end": 8,
+        "category": "security",
+        "severity": "high",
+        "message": "The password reset token lifetime is raised from 1 hour to 24 hours, giving a leaked or intercepted reset link a 24-times longer window for account takeover. This change is unrelated to the welcome email and is not mentioned in the PR.",
+        "suggestion": "RESET_TOKEN_LIFETIME = timedelta(hours=1)",
+        "evidence": null
+      },
+      {
+        "file": "app/mail.py",
+        "line_start": 6,
+        "line_end": 8,
+        "category": "rule",
+        "severity": "medium",
+        "message": "`welcome_message` is new behaviour, but the change adds no test for it. The contributing guide requires a test with every change in behaviour.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:15"
+      }
+    ],
+    "criteria": [
+      {
+        "criterion": "docs/specs/welcome-email.md/AC-1",
+        "status": "met",
+        "text": null,
+        "code": [
+          {
+            "file": "app/mail.py",
+            "line": 6
+          },
+          {
+            "file": "app/mail.py",
+            "line": 8
+          }
+        ],
+        "tests": [],
+        "note": "Implemented: it returns the subject \"Welcome\" and a body greeting `user.name`. No test covers it."
+      }
+    ],
+    "scope_creep": [
+      {
+        "file": "app/auth.py",
+        "line": 8,
+        "message": "Changes the password reset token lifetime from 1 hour to 24 hours, which the welcome-email spec does not ask for. CONTRIBUTING.md:3 also asks to keep a pull request to one change."
+      }
+    ]
+  },
+  "dropped": [],
+  "model_findings": 2,
+  "seconds": 10.517562299966812,
+  "input_tokens": 4030,
+  "output_tokens": 866,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "32473cf27923d7a4b771597bf57806e4bf388650d45c073a7ca5e221ad525666",
+  "dropped_findings": 0
+}

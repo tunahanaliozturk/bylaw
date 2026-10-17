@@ -1,0 +1,83 @@
+{
+  "case_id": "py-req-missing-lockout",
+  "result": {
+    "findings": [
+      {
+        "file": "app/login.py",
+        "line_start": 14,
+        "line_end": 15,
+        "category": "requirement",
+        "severity": "high",
+        "message": "There is no lockout: failed attempts are never counted, and a locked account is never refused. Five failures in a row do not lock the account, so the right password still signs in and brute-force guessing goes unchecked.",
+        "suggestion": null,
+        "evidence": "docs/specs/login.md/AC-3"
+      },
+      {
+        "file": "app/login.py",
+        "line_start": 9,
+        "line_end": 9,
+        "category": "rule",
+        "severity": "medium",
+        "message": "This adds new sign-in behaviour without any test. None of the acceptance criteria is proven by a test.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:15"
+      },
+      {
+        "file": "app/login.py",
+        "line_start": 14,
+        "line_end": 14,
+        "category": "bug",
+        "severity": "medium",
+        "message": "Reading columns by name (`row[\"salt\"]` and so on) only works if the caller set `connection.row_factory = sqlite3.Row`. With a default sqlite3 connection the row is a tuple, and `login` raises a TypeError instead of returning a result.",
+        "suggestion": null,
+        "evidence": null
+      }
+    ],
+    "criteria": [
+      {
+        "criterion": "docs/specs/login.md/AC-1",
+        "status": "partial",
+        "text": null,
+        "code": [
+          {
+            "file": "app/login.py",
+            "line": 16
+          }
+        ],
+        "tests": [],
+        "note": "Implemented, but no test proves it."
+      },
+      {
+        "criterion": "docs/specs/login.md/AC-2",
+        "status": "partial",
+        "text": null,
+        "code": [
+          {
+            "file": "app/login.py",
+            "line": 14
+          }
+        ],
+        "tests": [],
+        "note": "Implemented for an unknown email and a wrong password, but no test proves it."
+      },
+      {
+        "criterion": "docs/specs/login.md/AC-3",
+        "status": "missing",
+        "text": null,
+        "code": [],
+        "tests": [],
+        "note": "No counting of failed attempts and no account lockout."
+      }
+    ],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 3,
+  "seconds": 9.009323800040875,
+  "input_tokens": 4168,
+  "output_tokens": 879,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "df275cadac25bedd70c6fc7bb7246a76033728ed6e5021c9dbe01c8a98402feb",
+  "dropped_findings": 0
+}

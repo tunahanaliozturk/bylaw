@@ -1,0 +1,28 @@
+{
+  "case_id": "py-clean-contained-path",
+  "result": {
+    "findings": [
+      {
+        "file": "app/files.py",
+        "line_start": 23,
+        "line_end": 23,
+        "category": "bug",
+        "severity": "medium",
+        "message": "The resolved target is compared with an unresolved `UPLOAD_DIR`. If `UPLOAD_DIR` is relative or passes through a symlink, `is_relative_to` is always False and every legitimate upload is refused. The tests pass only because pytest's `tmp_path` is already absolute and resolved.",
+        "suggestion": "    if not target.is_relative_to(UPLOAD_DIR.resolve()):",
+        "evidence": null
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": 8.363637700036634,
+  "input_tokens": 4169,
+  "output_tokens": 795,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "0ce913d7ea7e2bd68d521b851f70dae8249d1cd62745a20bc350dca59bcafcc4",
+  "dropped_findings": 0
+}
