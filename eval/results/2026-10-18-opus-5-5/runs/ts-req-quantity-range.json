@@ -1,0 +1,50 @@
+{
+  "case_id": "ts-req-quantity-range",
+  "result": {
+    "findings": [
+      {
+        "file": "src/cart.ts",
+        "line_start": 28,
+        "line_end": 28,
+        "category": "requirement",
+        "severity": "high",
+        "message": "`setQuantity` accepts any number without validation. Quantities below 1, above 99, or non-integer values are stored instead of raising the required `RangeError`.",
+        "suggestion": "  if (!Number.isInteger(quantity) || quantity < 1 || quantity > 99) {\n    throw new RangeError(`quantity must be an integer between 1 and 99, got ${quantity}`);\n  }\n  return { ...cart, items: cart.items.map((i) => (i.sku === sku ? { ...i, quantity } : i)) };",
+        "evidence": "docs/specs/quantity.md/AC-2"
+      }
+    ],
+    "criteria": [
+      {
+        "criterion": "docs/specs/quantity.md/AC-1",
+        "status": "partial",
+        "text": null,
+        "code": [
+          {
+            "file": "src/cart.ts",
+            "line": 27
+          }
+        ],
+        "tests": [],
+        "note": "The quantity is updated for a matching sku. No test covers it, and an unknown sku is silently ignored."
+      },
+      {
+        "criterion": "docs/specs/quantity.md/AC-2",
+        "status": "missing",
+        "text": null,
+        "code": [],
+        "tests": [],
+        "note": "There is no range check, no RangeError is thrown, and no test covers it."
+      }
+    ],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": 4.338394799968228,
+  "input_tokens": 3985,
+  "output_tokens": 445,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "aa9cd495c81b95e8ab8b89ff85e37e507a1d31a2643b35a72b2404d481a1215a",
+  "dropped_findings": 0
+}

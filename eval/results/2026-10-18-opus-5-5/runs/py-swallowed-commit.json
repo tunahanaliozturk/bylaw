@@ -1,0 +1,38 @@
+{
+  "case_id": "py-swallowed-commit",
+  "result": {
+    "findings": [
+      {
+        "file": "app/db.py",
+        "line_start": 20,
+        "line_end": 21,
+        "category": "bug",
+        "severity": "critical",
+        "message": "Catching every exception in this `@contextmanager` generator without re-raising suppresses errors from the caller's `with` block and from `commit()`. Failed writes are silently discarded while callers carry on as if they succeeded, so data is lost with no error reported. The explicit rollback is also gone.",
+        "suggestion": "        connection.rollback()\n        raise",
+        "evidence": null
+      },
+      {
+        "file": "app/db.py",
+        "line_start": 21,
+        "line_end": 21,
+        "category": "rule",
+        "severity": "medium",
+        "message": "This changes error-handling behaviour of `connect()` (exceptions are now suppressed), but the pull request adds no test covering it.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:15"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 2,
+  "seconds": 7.3829671000130475,
+  "input_tokens": 3615,
+  "output_tokens": 678,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "a274de5d66b0204b2f3c67929df44a4817d369197d3901539fda8ae923d19fd5",
+  "dropped_findings": 0
+}

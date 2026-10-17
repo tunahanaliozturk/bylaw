@@ -1,0 +1,28 @@
+{
+  "case_id": "go-panic-handler",
+  "result": {
+    "findings": [
+      {
+        "file": "handlers.go",
+        "line_start": 59,
+        "line_end": 61,
+        "category": "rule",
+        "severity": "high",
+        "message": "The handler panics when the `id` path value is not a valid integer. That input comes straight from the client, so any malformed request triggers a panic instead of a 400 response, which the contributing rules forbid.",
+        "suggestion": "\tif err != nil {\n\t\tslog.Warn(\"delete widget: invalid id\", \"err\", err)\n\t\thttp.Error(w, \"invalid id\", http.StatusBadRequest)\n\t\treturn\n\t}",
+        "evidence": "CONTRIBUTING.md:9"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": 7.015088400046807,
+  "input_tokens": 3958,
+  "output_tokens": 593,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "2bc090b7eb1ea7e7ccfbb8051ad3042834d737b730efba9fd7636dd81bb48314",
+  "dropped_findings": 0
+}

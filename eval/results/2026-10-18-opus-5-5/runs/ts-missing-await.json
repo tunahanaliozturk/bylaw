@@ -1,0 +1,58 @@
+{
+  "case_id": "ts-missing-await",
+  "result": {
+    "findings": [
+      {
+        "file": "src/server.ts",
+        "line_start": 34,
+        "line_end": 34,
+        "category": "rule",
+        "severity": "high",
+        "message": "`saveOrder(order)` is not awaited, so the handler can return 201 before the order is stored. A failed save then becomes an unhandled rejection while the client believes the order exists.",
+        "suggestion": "  await saveOrder(order);",
+        "evidence": "CONTRIBUTING.md:11"
+      },
+      {
+        "file": "src/server.ts",
+        "line_start": 32,
+        "line_end": 32,
+        "category": "security",
+        "severity": "medium",
+        "message": "`req.body` is cast straight to `Cart` without any validation. A malformed or malicious payload, such as one with tampered prices or quantities, goes directly into `orderFromCart` and is saved.",
+        "suggestion": null,
+        "evidence": null
+      },
+      {
+        "file": "src/server.ts",
+        "line_start": 33,
+        "line_end": 33,
+        "category": "security",
+        "severity": "medium",
+        "message": "The express order is created without checking for a signed-in user and is not associated with one. Ownership checks on later reads or changes to this order cannot work, and anonymous callers can create orders.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:10"
+      },
+      {
+        "file": "src/server.ts",
+        "line_start": 30,
+        "line_end": 30,
+        "category": "rule",
+        "severity": "low",
+        "message": "This blank line contains trailing whitespace.",
+        "suggestion": "",
+        "evidence": ".editorconfig:5"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 4,
+  "seconds": 12.696710599993821,
+  "input_tokens": 3655,
+  "output_tokens": 1280,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "e9507e5f3308c9bc82c6c45df97f2ddb55359f3a352f7650521c363c26d65cb5",
+  "dropped_findings": 0
+}

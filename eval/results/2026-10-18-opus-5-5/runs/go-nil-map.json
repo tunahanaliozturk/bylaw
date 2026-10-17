@@ -1,0 +1,48 @@
+{
+  "case_id": "go-nil-map",
+  "result": {
+    "findings": [
+      {
+        "file": "handlers.go",
+        "line_start": 57,
+        "line_end": 57,
+        "category": "bug",
+        "severity": "high",
+        "message": "`widgetViews` is declared but never initialised, so it is a nil map. The `widgetViews[id]++` on line 65 panics with \"assignment to entry in nil map\" on every request, and a panic in a handler also breaks CONTRIBUTING.md:9.",
+        "suggestion": "var widgetViews = make(map[int64]int)",
+        "evidence": "CONTRIBUTING.md:9"
+      },
+      {
+        "file": "handlers.go",
+        "line_start": 65,
+        "line_end": 65,
+        "category": "bug",
+        "severity": "high",
+        "message": "net/http serves each request on its own goroutine, so these unsynchronised writes to a package-level map are a data race. The Go runtime aborts the whole process with \"concurrent map writes\", which `recover` cannot catch. Guard the map with a `sync.Mutex`, or keep it on `Server` with a lock.",
+        "suggestion": null,
+        "evidence": null
+      },
+      {
+        "file": "handlers.go",
+        "line_start": 65,
+        "line_end": 65,
+        "category": "security",
+        "severity": "medium",
+        "message": "Any client-supplied int64 id adds a new map entry, without checking that the widget exists. A client can grow memory without bound by requesting many distinct ids, which is a cheap denial of service. Check the id against existing widgets before counting it.",
+        "suggestion": null,
+        "evidence": null
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 3,
+  "seconds": 11.111281300021801,
+  "input_tokens": 3694,
+  "output_tokens": 970,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "b76700484f7e1cc835c3834458fb37bd0e9735c02e5c1e32d729d2681c55531e",
+  "dropped_findings": 0
+}

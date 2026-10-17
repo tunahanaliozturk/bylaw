@@ -1,0 +1,28 @@
+{
+  "case_id": "ts-xss-search",
+  "result": {
+    "findings": [
+      {
+        "file": "src/server.ts",
+        "line_start": 33,
+        "line_end": 33,
+        "category": "security",
+        "severity": "high",
+        "message": "The `q` query parameter goes straight into the HTML response without escaping. This is reflected XSS: a link like `/search?q=<script>…</script>` runs attacker script in the victim's browser.",
+        "suggestion": "  res.send(`<h1>Results for ${term.replace(/[&<>\"']/g, (c) => `&#${c.charCodeAt(0)};`)}</h1>`);",
+        "evidence": null
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": 7.0590024999692105,
+  "input_tokens": 3620,
+  "output_tokens": 692,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "74ed5f6ccb4669736f9888efdf3634442494d1dfd3cca23c19de4e133df354af",
+  "dropped_findings": 0
+}

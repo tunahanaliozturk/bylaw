@@ -1,0 +1,17 @@
+{
+  "case_id": "py-clean-docs",
+  "result": {
+    "findings": [],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 0,
+  "seconds": 3.4354708999744616,
+  "input_tokens": 3827,
+  "output_tokens": 164,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "13789334eedaf1f92c5cd9a6f07a7e802ffd54458bcec82d0040373d05d2c99e",
+  "dropped_findings": 0
+}
