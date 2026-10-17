@@ -6,7 +6,7 @@ from typing import Protocol
 
 from bylaw.config import Config
 from bylaw.github import ReviewComment, SummaryComment
-from bylaw.model import ReviewContext, ReviewResult
+from bylaw.model import ReviewContext, ReviewMemory, ReviewResult
 from bylaw.plan import Plan, State, Thread, added_text, group_findings, make_plan
 from bylaw.render import inline_body, read_state, review_body, summary_body
 
@@ -33,6 +33,7 @@ def publish(  # noqa: PLR0913 - one call site, every argument is a distinct inpu
     context: ReviewContext,
     result: ReviewResult,
     config: Config,
+    memory: ReviewMemory | None = None,
 ) -> Plan:
     summary = client.summary_comment(repo, number)
     state = read_state(summary.body) if summary else State(auto_resolved=frozenset())
@@ -44,6 +45,7 @@ def publish(  # noqa: PLR0913 - one call site, every argument is a distinct inpu
         )
         context = context.model_copy(update={"notes": (*context.notes, note)})
     plan = _plan(context, result, config, threads, state)
+    plan = replace(plan, state=replace(plan.state, review=memory))
     if plan.inline:
         comments = [
             ReviewComment(g.finding.file, g.finding.line_end, g.finding.line_start, inline_body(g))
@@ -74,7 +76,10 @@ def _state_after(plan: Plan, done: Sequence[tuple[str, bool]]) -> State:
     reopened = {thread_id for thread_id, closed in done if not closed}
     not_resolved = set(plan.resolve) - resolved
     not_reopened = set(plan.unresolve) - reopened
-    return State(auto_resolved=frozenset((plan.state.auto_resolved - not_resolved) | not_reopened))
+    return State(
+        auto_resolved=frozenset((plan.state.auto_resolved - not_resolved) | not_reopened),
+        review=plan.state.review,
+    )
 
 
 def preview(context: ReviewContext, result: ReviewResult, config: Config) -> str:

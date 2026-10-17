@@ -289,6 +289,8 @@ _ISSUE_COMMENTS = TypeAdapter(list[_IssueComment])
 class SummaryComment:
     id: int
     body: str
+    # Written by a bot account. Only then does its review memory decide what is reviewed again (ADR 0012).
+    bot: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -548,7 +550,7 @@ class GitHubClient:
                 ):
                     continue
                 if kind == "Bot":
-                    return SummaryComment(id=comment.id, body=comment.body)
+                    return SummaryComment(id=comment.id, body=comment.body, bot=True)
                 fallback = fallback or SummaryComment(id=comment.id, body=comment.body)
             if len(batch) < _PAGE_SIZE:
                 break

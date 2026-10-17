@@ -11,6 +11,13 @@ class ConfigError(Exception):
     """The configuration file is invalid. The message is safe to print."""
 
 
+class Budget(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    # Model tokens, input plus output, one pull request may use across all its runs; none means no cap.
+    pr_tokens: int | None = Field(default=None, ge=1_000)
+
+
 class Config(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -20,6 +27,9 @@ class Config(BaseModel):
     issue_repos: tuple[str, ...] = ()
     # Model input, in tokens. Fits every supported model's context with room for the answer.
     input_token_budget: int = Field(default=300_000, ge=10_000, le=900_000)
+    # On a new push, send the model only the files whose change differs from the last run (ADR 0012).
+    incremental: bool = True
+    budget: Budget = Budget()
 
 
 def load_config(text: str | None) -> Config:

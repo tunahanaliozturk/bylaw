@@ -8,7 +8,7 @@ import re
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 
-from bylaw.model import Finding, ReviewContext, Severity
+from bylaw.model import Finding, ReviewContext, ReviewMemory, Severity
 
 FINGERPRINT = re.compile(r"<!-- bylaw:fp=([0-9a-f]{16}) -->")
 _IGNORE = re.compile(r"^\s*bylaw:\s*ignore\b", re.IGNORECASE | re.MULTILINE)
@@ -46,6 +46,8 @@ class Thread:
 class State:
     # Ids of the threads bylaw resolved itself. States saved before this held fingerprints instead.
     auto_resolved: frozenset[str]
+    # What the last model review saw and said, for an incremental review (ADR 0012).
+    review: ReviewMemory | None = None
 
 
 @dataclass(frozen=True, slots=True)

@@ -87,6 +87,15 @@ def test_config_defaults_match_the_design() -> None:
     config = load_config(None)
 
     assert (config.severity_threshold, config.max_comments, config.issue_repos) == ("medium", 15, ())
+    assert (config.incremental, config.budget.pr_tokens) == (True, None)
+
+
+def test_incremental_review_and_a_token_budget_are_set_in_the_config() -> None:
+    config = load_config("incremental = false\n\n[budget]\npr_tokens = 200000\n")
+
+    assert (config.incremental, config.budget.pr_tokens) == (False, 200_000)
+    with pytest.raises(ConfigError):
+        load_config("[budget]\npr_tokens = 10\n")
 
 
 def test_an_invalid_editorconfig_glob_is_ignored_with_a_note() -> None:
