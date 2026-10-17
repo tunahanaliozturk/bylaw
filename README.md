@@ -131,6 +131,8 @@ Runs from 16 October 2026: the GitHub Action calling the API, and Claude Code an
 
 Both inline comments on clean changes are the same remark on the same case (`py-clean-contained-path`): the upload path is compared after resolving one side only. Host runs saw the briefs under neutral names, so case names could not hint at the answers.
 
+The Action's run for v0.2 on 18 October 2026 found all 30 planted defects, judged all 21 criteria correctly and found all 4 scope creep cases, with an inline comment on 2 of 9 clean pull requests ([report](https://github.com/tunahanaliozturk/bylaw/blob/main/eval/results/2026-10-18-opus-5-5/report.md)). The new one asks whether cancelling an order should delete its row; the case is labelled clean, and labels are not changed to fit a run.
+
 These are small, planted changes; real pull requests are larger and messier ([ADR 0010](https://github.com/tunahanaliozturk/bylaw/blob/main/docs/adr/0010-evaluation-on-planted-cases.md)), so treat the numbers as an upper bound on what the model catches.
 
 ## Costs

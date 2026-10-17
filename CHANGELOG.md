@@ -4,6 +4,8 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## Unreleased
 
+## 0.2.0 - 2026-10-18
+
 - Incremental review: on a new push, the model sees only the files whose change differs from the last run, and the unchanged files keep their earlier findings. A criterion that was met stays met while the files it was met in are unchanged. `incremental = false` in `.bylaw.toml` turns it off (ADR 0012).
 - A token budget per pull request: `[budget] pr_tokens` in `.bylaw.toml`. Once a pull request has used it, bylaw's own checks still run and the earlier model review stands.
 - The summary's footer gives the model tokens of the run and of the pull request.

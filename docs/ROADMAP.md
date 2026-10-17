@@ -67,7 +67,7 @@ The direction: be the reviewer that checks a change against what the team alread
 requirements, with numbers to show it. Each quarter ends with a release and a fresh evaluation run, so
 every claim in the README stays measured. Dates are targets, not promises; the order matters more.
 
-### Q1, November 2026 to January 2027: launch and earn trust (v0.1, v0.2)
+### Q1, November 2026 to January 2027: launch and earn trust (v0.1, v0.2; v0.2 released 2026-10-18)
 
 - Finish M6: the first paid evaluation run, README numbers and real screenshots, PyPI with trusted
   publishing, `v0` Action tag, GitHub Marketplace listing, Claude Code and Codex plugin listings.
