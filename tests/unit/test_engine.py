@@ -60,31 +60,46 @@ def _streamed(handler: Handler) -> Handler:
 
 
 def _sse(message: dict[str, object]) -> bytes:
+    """The event sequence the API streams: pings, thinking and text blocks, stop details on the last delta."""
     usage = dict(message["usage"])  # type: ignore[call-overload]
-    start = {**message, "content": [], "stop_reason": None, "usage": {**usage, "output_tokens": 0}}
-    events: list[tuple[str, object]] = [("message_start", {"type": "message_start", "message": start})]
+    start = {
+        **message,
+        "content": [],
+        "stop_reason": None,
+        "stop_details": None,
+        "usage": {**usage, "output_tokens": 0},
+    }
+    events: list[tuple[str, object]] = [
+        ("message_start", {"type": "message_start", "message": start}),
+        ("ping", {"type": "ping"}),
+    ]
     blocks: list[dict[str, str]] = message["content"]  # type: ignore[assignment]
     for index, block in enumerate(blocks):
+        if block["type"] == "thinking":
+            empty = {"type": "thinking", "thinking": "", "signature": ""}
+            deltas = [
+                {"type": "thinking_delta", "thinking": block["thinking"]},
+                {"type": "signature_delta", "signature": block["signature"]},
+            ]
+        else:
+            empty = {"type": "text", "text": ""}
+            deltas = [{"type": "text_delta", "text": block["text"]}]
+        events.append(
+            ("content_block_start", {"type": "content_block_start", "index": index, "content_block": empty})
+        )
         events += [
-            (
-                "content_block_start",
-                {
-                    "type": "content_block_start",
-                    "index": index,
-                    "content_block": {"type": "text", "text": ""},
-                },
-            ),
-            (
-                "content_block_delta",
-                {
-                    "type": "content_block_delta",
-                    "index": index,
-                    "delta": {"type": "text_delta", "text": block["text"]},
-                },
-            ),
-            ("content_block_stop", {"type": "content_block_stop", "index": index}),
+            ("content_block_delta", {"type": "content_block_delta", "index": index, "delta": delta})
+            for delta in deltas
         ]
-    delta = {"stop_reason": message["stop_reason"], "stop_sequence": None}
+        events += [
+            ("content_block_stop", {"type": "content_block_stop", "index": index}),
+            ("ping", {"type": "ping"}),
+        ]
+    delta = {
+        "stop_reason": message["stop_reason"],
+        "stop_sequence": None,
+        "stop_details": message.get("stop_details"),
+    }
     events += [
         (
             "message_delta",
@@ -147,6 +162,28 @@ def test_a_refusal_or_truncation_is_a_review_error(stop_reason: str, phrase: str
 
     with pytest.raises(ReviewError, match=phrase):
         reviewer.review("s", "u")
+
+
+def test_a_refusal_names_its_category() -> None:
+    message = _message("", "refusal")
+    message["stop_details"] = {"type": "refusal", "category": "cyber", "explanation": None}
+    reviewer = _anthropic(lambda _request: httpx2.Response(200, json=message))
+
+    with pytest.raises(ReviewError, match=r"declined to review this change \(cyber\)"):
+        reviewer.review("s", "u")
+
+
+def test_a_stream_that_starts_with_thinking_still_returns_the_review() -> None:
+    message = _message(json.dumps(REVIEW))
+    message["content"] = [
+        {"type": "thinking", "thinking": "users.py builds SQL from a string.", "signature": "sig"},
+        {"type": "text", "text": json.dumps(REVIEW)},
+    ]
+    reviewer = _anthropic(lambda _request: httpx2.Response(200, json=message))
+
+    result = reviewer.review("s", "u")
+
+    assert [f.message for f in result.findings] == ["SQL built from a string."]
 
 
 def test_an_api_error_never_shows_the_key() -> None:
