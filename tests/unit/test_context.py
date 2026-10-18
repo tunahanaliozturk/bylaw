@@ -328,7 +328,7 @@ def test_files_without_a_patch_get_a_note_that_says_why() -> None:
 
     assert "logo.png: binary, empty or permission-only change, nothing to review." in notes
     assert not any("moved.py" in note for note in notes)
-    assert "huge.sql: diff too large for GitHub to show, not reviewed." in notes
+    assert "huge.sql: diff too large for the host to show, not reviewed." in notes
     assert "blob.bin: binary file, not reviewed." in notes
 
 

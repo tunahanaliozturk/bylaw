@@ -66,7 +66,7 @@ def _no_patch_note(file: ChangedFile) -> str | None:
     if file.changes is None:
         return f"{file.path}: binary file, not reviewed."
     if file.changes > 0:
-        return f"{file.path}: diff too large for GitHub to show, not reviewed."
+        return f"{file.path}: diff too large for the host to show, not reviewed."
     if file.status == "renamed":
         return None  # moved without edits: nothing to review, nothing worth a note
     return f"{file.path}: binary, empty or permission-only change, nothing to review."
