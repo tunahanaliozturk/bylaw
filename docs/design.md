@@ -48,7 +48,8 @@ Three modes share the core:
   schema`, and `bylaw validate` checks the result. `bylaw post --dry-run` shows the review; `bylaw
   post --pr` publishes it. No extra API key.
 - **Any MCP client.** `bylaw mcp`, from the optional `bylaw[mcp]` extra, offers the same flow as tools over
-  stdio: `context`, `brief`, `schema`, `validate` and `preview`, read-only, with local reviews limited to
+  stdio: `context`, `brief`, `schema`, `validate` and `preview`, read-only unless it is started with
+  `--allow-post`, which adds `post`, with local reviews limited to
   allowed root directories ([ADR 0019](adr/0019-mcp-server.md)).
 
 The same `context` command also works on a local branch with no pull request (`bylaw context --base
