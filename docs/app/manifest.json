@@ -1,0 +1,18 @@
+{
+  "name": "bylaw-your-org",
+  "url": "https://github.com/tunahanaliozturk/bylaw",
+  "description": "Reviews pull requests against the repository's own rules, decisions and requirements. Self-hosted.",
+  "public": false,
+  "hook_attributes": {
+    "url": "https://bylaw.example.com/webhook",
+    "active": true
+  },
+  "redirect_url": "http://localhost:8000/registered",
+  "default_permissions": {
+    "contents": "read",
+    "issues": "read",
+    "metadata": "read",
+    "pull_requests": "write"
+  },
+  "default_events": ["pull_request"]
+}
