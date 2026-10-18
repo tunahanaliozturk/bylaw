@@ -43,6 +43,9 @@ def test_a_body_signed_with_the_secret_is_accepted() -> None:
         "sha1=" + hmac.new(SECRET, _event(), hashlib.sha1).hexdigest(),
         _sign(_event()).removeprefix("sha256="),
         _sign(_event()).upper(),
+        # Not ASCII: compare_digest on such strings raises instead of answering no.
+        "sha256=" + "é" * 64,
+        "sha256=☃",
     ],
 )
 def test_a_missing_wrong_or_other_algorithm_signature_is_refused(signature: str | None) -> None:
