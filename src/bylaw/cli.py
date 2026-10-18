@@ -19,12 +19,11 @@ from bylaw.evaluation.report import report
 from bylaw.evaluation.run import AnswerReviewer, CaseRun, NoModel, prepare, run_all
 from bylaw.evaluation.snapshot import snapshot_pull_request
 from bylaw.github import GitHubClient, GitHubError, GitHubSource
-from bylaw.incremental import ModelRun, keep_valid, run_model_review, trusted_memory
 from bylaw.local_git import LocalGitSource
-from bylaw.model import Finding, ReviewContext, ReviewMemory, ReviewResult, Severity
-from bylaw.plan import remaining
+from bylaw.model import Finding, ReviewContext, ReviewResult, Severity
 from bylaw.prompt import render_input, system_prompt
 from bylaw.publish import preview, publish
+from bylaw.pull_review import check, review_pull_request, with_model_review
 from bylaw.source import SourceError
 from bylaw.validate import Validated, validate
 
@@ -304,9 +303,8 @@ def _review(args: argparse.Namespace) -> int:
         raise SourceError("--post needs --pr")
     if args.pr is None:
         context = _read(ReviewContext, args.context)
-        context, run = _with_model_review(context, args)
-        result = run.result
-        checked = _check(context, result)
+        context, run = with_model_review(context, _reviewer(args), _say)
+        checked = check(context, run.result, _say)
         counted = checked.result.findings
     else:
         checked, counted = _review_pull_request(args)
@@ -321,54 +319,14 @@ def _review_pull_request(args: argparse.Namespace) -> tuple[Validated, tuple[Fin
     repo, token = _repo_and_token(args.repo)
     api_url = os.environ.get("GITHUB_API_URL", "https://api.github.com")
     with GitHubClient(token, api_url, os.environ.get("GITHUB_GRAPHQL_URL")) as client:
-        source = GitHubSource(client, repo, args.pr)
-        context = build_context(source)
-        config = load_config(source.read_base(".bylaw.toml"))
-        memory = trusted_memory(client.summary_comment(repo, args.pr))
-        context, run = _with_model_review(context, args, config, memory)
-        checked = _check(context, run.result)
-        if not args.post:
-            return checked, checked.result.findings
-        plan = publish(
-            client,
-            repo,
-            args.pr,
-            context=context,
-            result=checked.result,
-            config=config,
-            memory=keep_valid(run.memory, checked.result.findings),
-            unreviewed=run.unreviewed,
-        )
-        _say(f"posted {len(plan.inline)} comment(s), resolved {len(plan.resolve)}.")
-    return checked, remaining(plan)
+        return review_pull_request(client, repo, args.pr, make=_reviewer(args), post=args.post, say=_say)
 
 
-def _with_model_review(
-    context: ReviewContext,
-    args: argparse.Namespace,
-    config: Config | None = None,
-    memory: ReviewMemory | None = None,
-) -> tuple[ReviewContext, ModelRun]:
-    """The context with notes about the model run, the model's result and what to remember for next time."""
+def _reviewer(args: argparse.Namespace) -> Callable[[], Reviewer] | None:
     key = api_key_for(args.provider)
-    make: Callable[[], Reviewer] | None = None
-    if key is not None:
-        make = lambda: make_reviewer(args.provider, args.model, args.effort, key)  # noqa: E731
-    settings = config or Config()
-    run = run_model_review(
-        context, make, memory, incremental=settings.incremental, budget=settings.budget.pr_tokens
-    )
-    for note in run.notes:
-        _say(note)
-    return context.model_copy(update={"notes": (*context.notes, *run.notes)}), run
-
-
-def _check(context: ReviewContext, result: ReviewResult) -> Validated:
-    merged = result.model_copy(update={"findings": (*context.findings, *result.findings)})
-    checked = validate(context, merged)
-    for reason in checked.dropped:
-        _say(f"dropped {reason}")
-    return checked
+    if key is None:
+        return None
+    return lambda: make_reviewer(args.provider, args.model, args.effort, key)
 
 
 def _exit_code(findings: Sequence[Finding], fail_on: str) -> int:
