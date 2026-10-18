@@ -369,3 +369,11 @@ def test_an_eslint_package_config_that_is_silent_on_a_rule_leaves_it_to_the_root
     assert _cites(context, "packages/web/app.ts", "eslint:eqeqeq") == ()
     assert _cites(context, "packages/web/app.ts", "eslint:no-alert") == ()
     assert _cites(context, "packages/web/app.ts", "eslint:no-console") != ()
+
+
+def test_a_rule_id_cited_on_a_file_of_another_language_is_dropped() -> None:
+    dropped = _cites(_linted(ROOT_RUFF), "packages/web/app.ts", "ruff:E711")
+
+    assert dropped == (
+        "packages/web/app.ts:3 security: evidence ruff:E711 cites no ruff configuration bylaw read",
+    )

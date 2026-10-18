@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 from bylaw import linters
 from bylaw.model import Category, CriterionResult, Finding, Location, ReviewContext, ReviewResult, ScopeCreep
+from bylaw.rules import governs
 
 _NEEDS_EVIDENCE = frozenset({Category.RULE, Category.REQUIREMENT})
 INFERRED_LIMIT = 5
@@ -138,6 +139,7 @@ class _Checker:
             for rule in self._rules.values()
             if rule.linter is not None
             and rule.linter.tool == tool
+            and governs(rule.path, file)
             and (not rule.directory or file.startswith(f"{rule.directory}/"))
         ]
         if not covering:
