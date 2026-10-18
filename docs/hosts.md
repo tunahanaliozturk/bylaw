@@ -1,6 +1,6 @@
 # Running bylaw
 
-bylaw runs in three places. They share the same checks and comment format; they differ in who does the reviewing.
+bylaw runs in four places. They share the same checks and comment format; they differ in who does the reviewing.
 
 ## GitHub Action
 
@@ -28,6 +28,10 @@ codex plugin marketplace add tunahanaliozturk/bylaw
 Then open `/plugins` in Codex, install `bylaw`, and start a new session. Ask "review pull request 12 with bylaw".
 
 To use only the skill without the plugin, copy `plugin/skills/bylaw-review` into `~/.agents/skills/` (all your projects) or into `.agents/skills/` in one repository. The skill runs the released version from PyPI that it names.
+
+## Any MCP client
+
+`bylaw mcp` offers the same flow as tools to any agent that speaks MCP, so it needs no shell and no skill. The agent's model reviews; posting is off unless the server is started with `--allow-post`. Setup for Claude Code, Claude Desktop, Codex, Cursor and VS Code: [mcp.md](mcp.md).
 
 ## What every host needs
 

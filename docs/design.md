@@ -50,7 +50,7 @@ Three modes share the core:
 - **Any MCP client.** `bylaw mcp`, from the optional `bylaw[mcp]` extra, offers the same flow as tools over
   stdio: `context`, `brief`, `schema`, `validate` and `preview`, read-only unless it is started with
   `--allow-post`, which adds `post`, with local reviews limited to
-  allowed root directories ([ADR 0019](adr/0019-mcp-server.md)).
+  allowed root directories ([ADR 0019](adr/0019-mcp-server.md), setup in [mcp.md](mcp.md)).
 
 The same `context` command also works on a local branch with no pull request (`bylaw context --base
 main`), so a developer can check their work against the rules and the spec before opening the PR.

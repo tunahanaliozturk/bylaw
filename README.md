@@ -80,6 +80,14 @@ codex plugin marketplace add tunahanaliozturk/bylaw   # Codex, then /plugins
 
 Then ask "review pull request 12 with bylaw", or run `/bylaw-review 12` in Claude Code. Details: [docs/hosts.md](https://github.com/tunahanaliozturk/bylaw/blob/main/docs/hosts.md).
 
+**Any MCP client.** Claude Desktop, Cursor, VS Code, Codex or Claude Code can call bylaw as an MCP server, again with their own model and no API key:
+
+```
+uvx --from "bylaw[mcp]" bylaw mcp --root /path/to/code
+```
+
+The tools are read-only unless you add `--allow-post`. Setup for each client: [docs/mcp.md](https://github.com/tunahanaliozturk/bylaw/blob/main/docs/mcp.md).
+
 **On your branch, before the pull request.** Ask Claude Code or Codex to "review this branch with bylaw", or use the CLI with [uv](https://docs.astral.sh/uv/):
 
 ```
