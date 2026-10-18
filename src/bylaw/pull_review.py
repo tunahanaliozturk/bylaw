@@ -1,6 +1,7 @@
 """One pull request reviewed end to end. `bylaw review --pr` and the GitHub App run this same flow."""
 
 from collections.abc import Callable, Mapping
+from dataclasses import dataclass
 
 from bylaw.config import Config, load_config
 from bylaw.context import build_context
@@ -16,6 +17,15 @@ Say = Callable[[str], None]
 MakeReviewer = Callable[[], Reviewer] | None
 
 
+@dataclass(frozen=True, slots=True)
+class PullReview:
+    checked: Validated
+    # The findings `--fail-on` counts: muted ones excluded once published.
+    counted: tuple[Finding, ...]
+    # The head commit the review read, which may be newer than the one an event named.
+    head_sha: str
+
+
 def review_pull_request(  # noqa: PLR0913 - two callers, every argument is a distinct input
     client: GitHubClient,
     repo: str,
@@ -26,8 +36,8 @@ def review_pull_request(  # noqa: PLR0913 - two callers, every argument is a dis
     say: Say,
     defaults: str | None = None,
     env: Mapping[str, str] | None = None,
-) -> tuple[Validated, tuple[Finding, ...]]:
-    """Review a pull request; also return the findings `--fail-on` counts (muted ones excluded).
+) -> PullReview:
+    """Review a pull request.
 
     `make` builds the model reviewer, None for the deterministic checks only. `defaults` is the
     organisation's `.bylaw.toml` (ADR 0017) and `env` holds the tracker tokens (ADR 0014).
@@ -39,7 +49,7 @@ def review_pull_request(  # noqa: PLR0913 - two callers, every argument is a dis
     context, run = with_model_review(context, make, say, config, memory)
     checked = check(context, run.result, say)
     if not post:
-        return checked, checked.result.findings
+        return PullReview(checked, checked.result.findings, context.head_sha)
     plan = publish(
         client,
         repo,
@@ -51,7 +61,7 @@ def review_pull_request(  # noqa: PLR0913 - two callers, every argument is a dis
         unreviewed=run.unreviewed,
     )
     say(f"posted {len(plan.inline)} comment(s), resolved {len(plan.resolve)}.")
-    return checked, remaining(plan)
+    return PullReview(checked, remaining(plan), context.head_sha)
 
 
 def with_model_review(

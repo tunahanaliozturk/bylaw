@@ -297,7 +297,8 @@ def _review_pull_request(args: argparse.Namespace) -> tuple[Validated, tuple[Fin
     repo, token = _repo_and_token(args.repo)
     api_url = os.environ.get("GITHUB_API_URL", "https://api.github.com")
     with GitHubClient(token, api_url, os.environ.get("GITHUB_GRAPHQL_URL")) as client:
-        return review_pull_request(client, repo, args.pr, make=_reviewer(args), post=args.post, say=_say)
+        review = review_pull_request(client, repo, args.pr, make=_reviewer(args), post=args.post, say=_say)
+    return review.checked, review.counted
 
 
 def _reviewer(args: argparse.Namespace) -> Callable[[], Reviewer] | None:

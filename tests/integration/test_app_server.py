@@ -383,3 +383,12 @@ def test_missing_or_wrong_settings_stop_the_server_with_the_variable_named(
 ) -> None:
     with pytest.raises(SettingsError, match=message):
         Settings.from_env(environ)
+
+
+def test_the_head_the_review_read_counts_as_reviewed_when_the_event_named_an_older_one(
+    server: Server,
+) -> None:
+    server.deliver(_event(sha="c" * 40))  # GitHub's pull request is at HEAD_SHA by the time it is read
+    server.settle()
+
+    assert server.deliver(_event("synchronize")).json() == {"outcome": "duplicate"}
