@@ -1,0 +1,4 @@
+project = "py-ledger"
+kind = "clean"
+title = "Report the largest entries"
+message = "Add a largest entries report through the store"

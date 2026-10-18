@@ -73,7 +73,14 @@ def test_the_set_has_the_size_and_mix_the_design_asks_for(cases: tuple[Case, ...
     assert 40 <= len(cases) <= 60
     assert kinds["clean"] >= 8
     assert all(kinds[k] >= 4 for k in ("security", "bug", "rule", "requirement", "scope"))
-    assert {case.project for case in cases} == {"go-api", "ts-shop", "cs-orders", "py-users", "py-mono"}
+    assert {case.project for case in cases} == {
+        "go-api",
+        "ts-shop",
+        "cs-orders",
+        "py-users",
+        "py-mono",
+        "py-ledger",
+    }
 
 
 def test_the_monorepo_cases_need_a_package_rule_or_a_linter_rule_id(
@@ -97,3 +104,16 @@ def test_every_deterministic_label_is_found_without_a_model(
         for label in (label for label in case.findings if label.deterministic):
             found = contexts[case.id].findings
             assert any(f.file == label.file and f.line_start == label.lines[0] for f in found), case.id
+
+
+def test_the_ledger_cases_are_held_to_the_accepted_adr_alone(
+    cases: tuple[Case, ...], contexts: dict[str, ReviewContext]
+) -> None:
+    ledger = [case for case in cases if case.project == "py-ledger"]
+    accepted = "docs/adr/0002-sqlite-through-the-store-module.md"
+
+    assert {case.kind for case in ledger} == {"rule", "clean"}
+    assert any(label.evidence == f"{accepted}:12" for case in ledger for label in case.findings)
+    # The superseded JSON decision and the proposed async one would both condemn the clean change.
+    assert all([d.path for d in contexts[case.id].decisions] == [accepted] for case in ledger)
+    assert all(not contexts[case.id].requirements for case in ledger)

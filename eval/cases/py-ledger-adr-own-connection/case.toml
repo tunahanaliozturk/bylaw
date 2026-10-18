@@ -1,0 +1,20 @@
+project = "py-ledger"
+kind = "rule"
+title = "Report the largest entries"
+message = "Add a largest entries report"
+
+[[findings]]
+file = "ledger/reports.py"
+lines = [17, 17]
+categories = ["rule"]
+note = "the report opens its own SQLite connection and runs SQL, where the accepted ADR 0002 keeps all of that in ledger/store.py"
+evidence = "docs/adr/0002-sqlite-through-the-store-module.md:12"
+also = [{ file = "ledger/reports.py", lines = [3, 3] }]
+
+[[allowed]]
+file = "ledger/reports.py"
+lines = [3, 4]
+
+[[allowed]]
+file = "ledger/reports.py"
+lines = [15, 21]

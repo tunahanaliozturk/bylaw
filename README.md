@@ -125,7 +125,7 @@ Requirements can also come from Jira, Azure Boards (`AB#123`) and Linear. Each i
 
 ## Evaluation
 
-bylaw is measured on 55 labelled pull requests in Python, TypeScript, Go and C#: planted security problems, bugs, rule breaks, missed acceptance criteria, scope creep, and clean changes, five of them in a monorepo whose packages have conflicting rules. Results are per model and date: [docs/eval/README.md](https://github.com/tunahanaliozturk/bylaw/blob/main/docs/eval/README.md).
+bylaw is measured on 57 labelled pull requests in Python, TypeScript, Go and C#: planted security problems, bugs, rule breaks, missed acceptance criteria, scope creep, and clean changes, five of them in a monorepo whose packages have conflicting rules and two next to accepted, superseded and proposed ADRs. Results are per model and date: [docs/eval/README.md](https://github.com/tunahanaliozturk/bylaw/blob/main/docs/eval/README.md).
 
 Runs from 16 October 2026, on the 50 cases the set had then: the GitHub Action calling the API, and Claude Code and Codex reviewing as hosts with no API key ([API](https://github.com/tunahanaliozturk/bylaw/blob/main/eval/results/2026-10-16-opus-5-5/report.md), [Claude Code](https://github.com/tunahanaliozturk/bylaw/blob/main/eval/results/2026-10-16-claude-code-host/report.md), [Codex](https://github.com/tunahanaliozturk/bylaw/blob/main/eval/results/2026-10-16-codex-host/report.md)):
 

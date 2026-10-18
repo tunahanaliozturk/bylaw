@@ -1,23 +1,25 @@
 # Evaluation
 
-The README's quality numbers come from here: 55 labelled pull requests, a runner that reviews them with any model or host, and a scorer. Results are per model and date, not per release (ADR 0001), because the same bylaw gives different results with different models.
+The README's quality numbers come from here: 57 labelled pull requests, a runner that reviews them with any model or host, and a scorer. Results are per model and date, not per release (ADR 0001), because the same bylaw gives different results with different models.
 
 ## The set
 
 Each case is a small base project in `eval/projects/` plus the files one pull request changes, in `eval/cases/<id>/head/`, and a `case.toml` with the labels. bylaw builds a throwaway git repository per case (base commit, then the change) and collects the context exactly as `bylaw context --base` does, so the reviewer sees what it would see on a real pull request.
 
-There are five base projects, so the set is not only Python: `py-users` (Python), `ts-shop` (TypeScript), `go-api` (Go), `cs-orders` (C#) and `py-mono`. Each of the first four has an `.editorconfig` and a `CONTRIBUTING.md` whose rules the cases break.
+There are six base projects, so the set is not only Python: `py-users` (Python), `ts-shop` (TypeScript), `go-api` (Go), `cs-orders` (C#), `py-mono` and `py-ledger`. Each of the first four has an `.editorconfig` and a `CONTRIBUTING.md` whose rules the cases break.
 
 `py-mono` is a monorepo with two packages whose rules conflict (ADR 0013): `packages/api/AGENTS.md` says handlers return errors and never raise, `packages/worker/AGENTS.md` says jobs raise and never return an error. Each package has its own Ruff configuration, the API's selecting `S` and the worker's `B`. Its five cases check that a change is held to the nearest package's rules and not the other's, including a clean change that raises in the worker, and two of them can only cite a linter rule id (`ruff:S608`, `ruff:B006`), because no prose rule covers the defect.
+
+`py-ledger` has three ADRs (ADR 0016): a superseded one that kept the ledger in JSON files, an accepted one that lets only `ledger/store.py` open connections and run SQL, and a proposed one that would make every database function `async`. One case opens a connection in a report and can only be caught by citing the accepted decision's line. The other adds the same report through a new store function, which is clean only if the superseded and the proposed ADR are left out, as they should be.
 
 | Kind | Cases | What is planted |
 | --- | --- | --- |
 | security | 10 | SQL injection (four languages), path traversal, hardcoded secret, shell injection, unpickling a cookie, weak reset token, reflected XSS, missing ownership check |
 | bug | 10 | mutable default, off-by-one page, swallowed exception, naive and aware datetimes, missing await, `reduce` without a start value, nil map write, ignored decode error, `async void`, null dereference |
-| rule | 14 | three `.editorconfig` breaks bylaw finds itself, seven `CONTRIBUTING.md` rules, two package `AGENTS.md` rules and two Ruff rule ids |
+| rule | 15 | three `.editorconfig` breaks bylaw finds itself, seven `CONTRIBUTING.md` rules, two package `AGENTS.md` rules, two Ruff rule ids and one accepted ADR |
 | requirement | 7 | a spec with acceptance criteria that the change meets, half meets or misses |
 | scope | 4 | a change that does what its spec asks and something it does not |
-| clean | 10 | changes with nothing to report, some of them built to look like the planted ones |
+| clean | 11 | changes with nothing to report, some of them built to look like the planted ones, one next to a superseded and a proposed ADR it would break |
 
 Planted secrets are fake and shaped like no provider's key. Files under `eval/` keep their exact bytes: `.gitattributes` marks them `-text`, and `eval/.editorconfig` stops editors applying this repository's rules to them, because a tab, a trailing space or a missing final newline can be the label.
 
@@ -68,4 +70,4 @@ Host models (Claude Code, Codex) review without an API key: `bylaw eval prepare 
 
 Prices are given on the command line, never stored in the code, because they change. Cost is per reviewed case and approximate: cached input is priced as plain input, and failed attempts are not counted. Latency is only reported for model runs; replayed host answers and `--no-model` have none.
 
-Committed results live in `eval/results/<name>/`: the per-case runs and `report.md`. The runs of 15, 16 and 18 October 2026 were made before the five `py-mono` cases were added, so they cover the other 50.
+Committed results live in `eval/results/<name>/`: the per-case runs and `report.md`. The runs of 15, 16 and 18 October 2026 were made before the five `py-mono` cases were added, so they cover the other 50. No committed model run includes the two `py-ledger` cases yet.
