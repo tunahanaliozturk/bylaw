@@ -4,6 +4,11 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## Unreleased
 
+- `bylaw mcp` runs an MCP server on standard input and output, so any agent that speaks MCP can review with bylaw and its own model, no API key and no shell needed. The tools are the skill's flow: `context`, `brief`, `schema`, `validate` and `preview`, all read-only. Each takes its target as arguments, `repo` and `pr` or a local `base` and `path`, and `validate` and `preview` check a result against the context the last brief read, so a push in between cannot move the lines. Local reviews read only repositories inside the server's working directory or the `--root` directories it was given. The MCP SDK is an optional extra, `bylaw[mcp]`, so the Action and the CLI do not install it (ADR 0019).
+- Setup for `bylaw mcp` in Claude Code, Claude Desktop, Codex, Cursor and VS Code, each checked against the client's own documentation: [docs/mcp.md](docs/mcp.md).
+- `bylaw mcp --allow-post` adds a `post` tool that publishes a validated result to a pull request, as `bylaw post --pr` does, with `.bylaw.toml` read from the base branch. Without the flag the tool is not listed and cannot be called (ADR 0019).
+- A local `--base` that starts with `-` is refused instead of reaching git as an option.
+
 ## 0.5.0 - 2026-10-19
 
 - Review fixes to the new providers: only a credential chain's errors become a note, and only for the cloud providers, so a bug can no longer pass `fail-on` as a note. A key variable set but empty is refused. The JSON fallback drops `<think>` blocks and reads the first JSON object that decodes, names only the schema's fields in its problems, treats an empty answer as no review, skips its retry when it would pass `[budget] pr_tokens`, and marks the brief for the prompt cache. Vertex AI errors are named by status, an `AZURE_OPENAI_ENDPOINT` copied with `/openai/v1` still works, the extra checks look for boto3 and requests, and an eval run against a local server records the server in its reviewer identity. docs/providers.md now covers Foundry's metadata egress to Anthropic and Ollama's small default context length (ADR 0018).
@@ -19,10 +24,6 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 - In the app, only the app's own bot login carries bylaw's state: a summary or a fingerprint marker from any other bot, or a summary written by a person, is ignored and never edited (ADR 0017, the alternative ADR 0008 named).
 - `docs/app/manifest.json` registers the app with four permissions, pull requests write and contents, issues and metadata read, and the `pull_request` event only; `docs/app/register.html` sends it to GitHub from a local page. A test keeps the manifest equal to the permissions the server's tokens ask for.
 - A container image for the app (`Dockerfile`): slim, non-root, built from the lock file, with a health check written in Python because the slim image has no curl or wget. [docs/app/deploy.md](docs/app/deploy.md) covers registration, running, installing, organisation defaults and keys. `tools/app_smoke.py` runs the app end to end against a fake GitHub, as a process or as the image, and checks that Docker reports it healthy.
-- `bylaw mcp` runs an MCP server on standard input and output, so any agent that speaks MCP can review with bylaw and its own model, no API key and no shell needed. The tools are the skill's flow: `context`, `brief`, `schema`, `validate` and `preview`, all read-only. Each takes its target as arguments, `repo` and `pr` or a local `base` and `path`, and `validate` and `preview` check a result against the context the last brief read, so a push in between cannot move the lines. Local reviews read only repositories inside the server's working directory or the `--root` directories it was given. The MCP SDK is an optional extra, `bylaw[mcp]`, so the Action and the CLI do not install it (ADR 0019).
-- Setup for `bylaw mcp` in Claude Code, Claude Desktop, Codex, Cursor and VS Code, each checked against the client's own documentation: [docs/mcp.md](docs/mcp.md).
-- `bylaw mcp --allow-post` adds a `post` tool that publishes a validated result to a pull request, as `bylaw post --pr` does, with `.bylaw.toml` read from the base branch. Without the flag the tool is not listed and cannot be called (ADR 0019).
-- A local `--base` that starts with `-` is refused instead of reaching git as an option.
 
 ## 0.4.0 - 2026-10-18
 
