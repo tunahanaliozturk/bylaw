@@ -1,27 +1,25 @@
-"""Reviews with an OpenAI model through the official OpenAI SDK and structured outputs."""
+"""Reviews through the official OpenAI SDK: OpenAI and Azure OpenAI with structured outputs, and any
+server that speaks Chat Completions (Ollama, vLLM, LM Studio) with the JSON fallback."""
 
-from typing import cast
+from typing import Any, cast
 
 import openai
+from openai.types.chat import ChatCompletion, ChatCompletionMessageParam
 from openai.types.shared_params import Reasoning
 from pydantic import ValidationError
 
-from bylaw.engine import OutReview, ReviewError, Usage
+from bylaw.engine import OutReview, Retry, ReviewError, Usage, added, json_instructions, review_with_retry
 from bylaw.model import ReviewResult
 
 
 class OpenAIReviewer:
     def __init__(
-        self,
-        *,
-        model: str,
-        effort: str | None,
-        api_key: str | None,
-        http_client: openai.DefaultHttpxClient | None = None,
+        self, *, client: openai.OpenAI, model: str, effort: str | None, service: str = "OpenAI API"
     ) -> None:
+        self._client = client
         self._model = model
         self._effort = effort
-        self._client = openai.OpenAI(api_key=api_key, http_client=http_client, max_retries=3)
+        self._service = service
         self.last_usage: Usage | None = None
 
     def review(self, system: str, user: str) -> ReviewResult:
@@ -35,7 +33,7 @@ class OpenAIReviewer:
                 input=user,
                 text_format=OutReview,
                 reasoning=reasoning,
-                # Reviews hold private code; nothing needs to stay on OpenAI's side after the answer.
+                # Reviews hold private code; nothing needs to stay on the provider's side after the answer.
                 store=False,
             )
             body = raw.http_response.json()
@@ -46,10 +44,10 @@ class OpenAIReviewer:
         except openai.APIStatusError as error:
             # Status and error code only: OpenAI's message quotes part of a wrong key, and the note is public.
             raise ReviewError(
-                f"OpenAI API returned {error.status_code} ({error.code or 'unknown error'})"
+                f"{self._service} returned {error.status_code} ({error.code or 'unknown error'})"
             ) from error
         except openai.APIConnectionError as error:
-            raise ReviewError("could not reach the OpenAI API") from error
+            raise ReviewError(f"could not reach the {self._service}") from error
         except ValidationError as error:
             # A truncated answer is not valid JSON; the SDK validates it before returning.
             raise ReviewError("the model returned output that is not a valid review") from error
@@ -58,6 +56,73 @@ class OpenAIReviewer:
         if response.output_parsed is None:
             raise ReviewError("the model declined or returned no review")
         return response.output_parsed.to_result()
+
+
+_SCHEMA_FORMAT: dict[str, Any] = {
+    "type": "json_schema",
+    "json_schema": {"name": "review", "schema": OutReview.model_json_schema(), "strict": True},
+}
+
+
+class ChatReviewer:
+    """Chat Completions, the API every OpenAI-compatible server has. The schema is asked for as a strict
+    response format and also written into the prompt, and the answer is checked either way: a server may
+    reject the format, or accept it and not enforce it."""
+
+    def __init__(self, *, client: openai.OpenAI, model: str, effort: str | None) -> None:
+        self._client = client
+        self._model = model
+        self._effort = effort
+        self._strict = True
+        self.last_usage: Usage | None = None
+
+    def review(self, system: str, user: str) -> ReviewResult:
+        self.last_usage = None
+        return review_with_retry(lambda retry: self._ask(system + json_instructions(), user, retry))
+
+    def _ask(self, system: str, user: str, retry: Retry | None) -> str:
+        messages: list[ChatCompletionMessageParam] = [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ]
+        if retry:
+            messages += [{"role": "assistant", "content": retry[0]}, {"role": "user", "content": retry[1]}]
+        try:
+            completion = self._complete(messages)
+        except openai.APIStatusError as error:
+            # The status only: a server's message can echo the request, and the note is public.
+            raise ReviewError(f"the server at the base URL returned {error.status_code}") from error
+        except openai.APIConnectionError as error:
+            raise ReviewError("could not reach the server at the base URL") from error
+        except (openai.OpenAIError, ValueError) as error:
+            raise ReviewError(f"the OpenAI SDK rejected the request ({type(error).__name__})") from error
+        if completion.usage:
+            usage = completion.usage
+            self.last_usage = added(self.last_usage, usage.prompt_tokens, usage.completion_tokens)
+        choice = completion.choices[0] if completion.choices else None
+        if choice is not None and choice.finish_reason == "length":
+            raise ReviewError("the model ran out of output tokens before finishing the review")
+        if choice is None or not choice.message.content:
+            raise ReviewError("the model declined or returned no review")
+        return choice.message.content
+
+    def _complete(self, messages: list[ChatCompletionMessageParam]) -> ChatCompletion:
+        effort = cast(Any, self._effort) if self._effort else openai.omit
+        if self._strict:
+            try:
+                return self._client.chat.completions.create(
+                    model=self._model,
+                    messages=messages,
+                    response_format=cast(Any, _SCHEMA_FORMAT),
+                    reasoning_effort=effort,
+                )
+            except (openai.BadRequestError, openai.UnprocessableEntityError):
+                # No strict structured output on this server: the prompt still holds the schema, and the
+                # answer is still checked. Remembered, so the retry does not try the format again.
+                self._strict = False
+        return self._client.chat.completions.create(
+            model=self._model, messages=messages, reasoning_effort=effort
+        )
 
 
 def _usage(body: object) -> Usage | None:

@@ -2,7 +2,9 @@ from pathlib import Path
 
 import pytest
 
+from bylaw import cli
 from bylaw.cli import main
+from bylaw.evaluation.run import NoModel
 
 
 def _write(path: Path, data: bytes) -> None:
@@ -107,3 +109,51 @@ def test_a_cost_limit_needs_the_prices(
 
     assert code == 2
     assert "--max-cost needs --input-price and --output-price" in capsys.readouterr().err
+
+
+def test_a_local_model_run_needs_no_key_and_names_the_provider_and_model(
+    evalset: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    seen: list[tuple[object, ...]] = []
+
+    def local(*args: object) -> NoModel:
+        seen.append(args)
+        return NoModel()
+
+    monkeypatch.delenv("BYLAW_API_KEY", raising=False)
+    monkeypatch.setattr(cli, "make_reviewer", local)
+    runs = tmp_path / "r"
+
+    code = main(
+        [
+            "eval",
+            "run",
+            "--set",
+            str(evalset),
+            "--out",
+            str(runs),
+            "--provider",
+            "openai-compatible",
+            "--base-url",
+            "http://localhost:11434/v1",
+            "--model",
+            "qwen3:4b",
+        ]
+    )
+
+    assert code == 0
+    assert seen == [("openai-compatible", "qwen3:4b", None, None, "http://localhost:11434/v1")]
+    assert "with openai-compatible:qwen3:4b:default effort" in capsys.readouterr().err
+    assert '"reviewer": "openai-compatible:qwen3:4b:default effort"' in (runs / "one.json").read_text("utf-8")
+
+
+def test_a_model_run_without_an_openai_key_names_its_variable(
+    evalset: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("BYLAW_API_KEY", raising=False)
+
+    code = main(["eval", "run", "--set", str(evalset), "--out", str(tmp_path / "r"), "--provider", "openai"])
+
+    assert code == 2
+    assert "OPENAI_API_KEY or BYLAW_API_KEY" in capsys.readouterr().err

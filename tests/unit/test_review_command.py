@@ -203,3 +203,31 @@ def test_the_effort_is_left_to_the_engine_unless_given(
     cli.main(["review", "--context", str(context_file), "--provider", "openai", "--model", "m"])
 
     assert seen == [None]
+
+
+def test_a_local_model_reviews_with_no_key_at_the_base_url_given(
+    context_file: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    seen: list[tuple[object, ...]] = []
+
+    def capture(*args: object) -> FakeReviewer:
+        seen.append(args)
+        return FakeReviewer(ReviewResult(findings=(HIGH,)))
+
+    monkeypatch.setattr(cli, "make_reviewer", capture)
+
+    cli.main(
+        [
+            "review",
+            "--context",
+            str(context_file),
+            "--provider",
+            "openai-compatible",
+            "--base-url",
+            "http://localhost:11434/v1",
+            "--model",
+            "qwen3:4b",
+        ]
+    )
+
+    assert seen == [("openai-compatible", "qwen3:4b", None, None, "http://localhost:11434/v1")]

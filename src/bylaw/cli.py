@@ -13,7 +13,16 @@ from pydantic import BaseModel
 
 from bylaw.config import Config, ConfigError, load_config
 from bylaw.context import build_context
-from bylaw.engine import PROVIDERS, OutReview, Reviewer, ReviewError, api_key_for, make_reviewer
+from bylaw.engine import (
+    PROVIDERS,
+    OutReview,
+    Reviewer,
+    ReviewError,
+    api_key_for,
+    can_review,
+    key_variable,
+    make_reviewer,
+)
 from bylaw.evaluation.cases import Case, load_cases
 from bylaw.evaluation.report import render
 from bylaw.evaluation.run import AnswerReviewer, CaseRun, NoModel, prepare, run_all
@@ -71,6 +80,7 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("--provider", choices=PROVIDERS, default="anthropic")
     run.add_argument("--model", help="model name; defaults to claude-opus-5-5 for anthropic")
     run.add_argument("--effort", help="reasoning effort passed to the model (anthropic default: high)")
+    run.add_argument("--base-url", help="server URL for openai-compatible, such as http://localhost:11434/v1")
     run.add_argument("--post", action="store_true", help="publish to the pull request (needs --pr)")
     run.add_argument(
         "--fail-on",
@@ -98,6 +108,7 @@ def _add_eval(evaluation: argparse.ArgumentParser) -> None:
     answer.add_argument("--provider", choices=PROVIDERS)
     go.add_argument("--model", help="model name; defaults to claude-opus-5-5 for anthropic")
     go.add_argument("--effort", help="reasoning effort passed to the model")
+    go.add_argument("--base-url", help="server URL for openai-compatible, such as http://localhost:11434/v1")
     go.add_argument("--max-cost", type=float, help="stop starting new cases once this many USD are spent")
     go.add_argument("--input-price", type=float, help="USD per million input tokens, for --max-cost")
     go.add_argument("--output-price", type=float, help="USD per million output tokens, for --max-cost")
@@ -166,12 +177,12 @@ def _eval(args: argparse.Namespace) -> int:
                 f"answers:{answers.resolve().name}",
             )
         else:
-            key = api_key_for(args.provider)
-            if key is None:
-                variable = {"anthropic": "ANTHROPIC_API_KEY", "openai": "OPENAI_API_KEY"}[args.provider]
+            if not can_review(args.provider):
+                variable = key_variable(args.provider)
                 _say(f"eval run needs {variable} or BYLAW_API_KEY; it calls the model once per case")
                 return 2
-            reviewer = make_reviewer(args.provider, args.model, args.effort, key)
+            key = api_key_for(args.provider)
+            reviewer = make_reviewer(args.provider, args.model, args.effort, key, args.base_url)
             make = lambda _: reviewer  # noqa: E731 - one reviewer for every case
             identity = f"{args.provider}:{args.model or 'default model'}:{args.effort or 'default effort'}"
         _say(f"reviewing {len(cases)} case(s) with {identity}; finished cases in {args.out} are reused")
@@ -330,8 +341,8 @@ def _with_model_review(
     """The context with notes about the model run, the model's result and what to remember for next time."""
     key = api_key_for(args.provider)
     make: Callable[[], Reviewer] | None = None
-    if key is not None:
-        make = lambda: make_reviewer(args.provider, args.model, args.effort, key)  # noqa: E731
+    if can_review(args.provider):
+        make = lambda: make_reviewer(args.provider, args.model, args.effort, key, args.base_url)  # noqa: E731
     settings = config or Config()
     run = run_model_review(
         context, make, memory, incremental=settings.incremental, budget=settings.budget.pr_tokens

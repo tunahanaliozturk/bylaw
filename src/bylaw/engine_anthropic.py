@@ -22,17 +22,10 @@ _FALLBACK_MODELS = frozenset({"claude-opus-5-5", "claude-opus-5", "claude-fable-
 
 
 class AnthropicReviewer:
-    def __init__(
-        self,
-        *,
-        model: str,
-        effort: str,
-        api_key: str | None,
-        http_client: anthropic.DefaultHttpxClient | None = None,
-    ) -> None:
+    def __init__(self, *, client: anthropic.Anthropic, model: str, effort: str | None) -> None:
+        self._client = client
         self._model = model
-        self._effort = effort
-        self._client = anthropic.Anthropic(api_key=api_key, http_client=http_client, max_retries=3)
+        self._effort = effort or "high"
         self.last_usage: Usage | None = None
 
     def review(self, system: str, user: str) -> ReviewResult:

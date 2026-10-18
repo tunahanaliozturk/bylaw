@@ -41,8 +41,9 @@ Handler = Callable[[httpx2.Request], httpx2.Response]
 
 
 def _anthropic(handler: Handler, model: str = "claude-opus-5-5") -> AnthropicReviewer:
-    client = anthropic.DefaultHttpxClient(transport=httpx2.MockTransport(_streamed(handler)))
-    return AnthropicReviewer(model=model, effort="high", api_key=SECRET, http_client=client)
+    http = anthropic.DefaultHttpxClient(transport=httpx2.MockTransport(_streamed(handler)))
+    client = anthropic.Anthropic(api_key=SECRET, http_client=http, max_retries=3)
+    return AnthropicReviewer(client=client, model=model, effort="high")
 
 
 def _streamed(handler: Handler) -> Handler:
@@ -223,6 +224,11 @@ def _response(text: str) -> dict[str, object]:
     }
 
 
+def _openai(http: httpx2.Client, model: str, effort: str | None) -> OpenAIReviewer:
+    client = openai.OpenAI(api_key=SECRET, http_client=http, max_retries=3)
+    return OpenAIReviewer(client=client, model=model, effort=effort)
+
+
 def test_openai_returns_a_review_with_the_schema_and_effort() -> None:
     sent: list[httpx2.Request] = []
 
@@ -231,9 +237,7 @@ def test_openai_returns_a_review_with_the_schema_and_effort() -> None:
         return httpx2.Response(200, json=_response(json.dumps(REVIEW)))
 
     client = openai.DefaultHttpxClient(transport=httpx2.MockTransport(handler))
-    result = OpenAIReviewer(model="gpt-test", effort="high", api_key=SECRET, http_client=client).review(
-        "sys", "usr"
-    )
+    result = _openai(client, "gpt-test", "high").review("sys", "usr")
 
     assert result.findings[0].severity == "high"
     body = json.loads(sent[0].content)
@@ -262,7 +266,7 @@ def test_an_openai_error_names_the_status_and_type_but_not_the_message() -> None
         return httpx2.Response(401, json={"error": error})
 
     client = openai.DefaultHttpxClient(transport=httpx2.MockTransport(handler))
-    reviewer = OpenAIReviewer(model="gpt-test", effort=None, api_key=SECRET, http_client=client)
+    reviewer = _openai(client, "gpt-test", None)
 
     with pytest.raises(ReviewError) as error:
         reviewer.review("s", "u")
@@ -328,7 +332,7 @@ def test_openai_reports_the_tokens_it_used() -> None:
     client = openai.DefaultHttpxClient(
         transport=httpx2.MockTransport(lambda _: httpx2.Response(200, json=response))
     )
-    reviewer = OpenAIReviewer(model="gpt-test", effort=None, api_key=SECRET, http_client=client)
+    reviewer = _openai(client, "gpt-test", None)
 
     reviewer.review("system text", "user text")
 
@@ -348,7 +352,7 @@ def test_usage_from_an_earlier_review_is_not_reported_again() -> None:
     client = openai.DefaultHttpxClient(
         transport=httpx2.MockTransport(lambda _: httpx2.Response(200, json=next(replies)))
     )
-    reviewer = OpenAIReviewer(model="gpt-test", effort=None, api_key=SECRET, http_client=client)
+    reviewer = _openai(client, "gpt-test", None)
 
     reviewer.review("system text", "user text")
     reviewer.review("system text", "user text")
@@ -373,7 +377,7 @@ def test_openai_is_asked_not_to_store_the_review() -> None:
         return httpx2.Response(200, json=_response(json.dumps(REVIEW)))
 
     client = openai.DefaultHttpxClient(transport=httpx2.MockTransport(handler))
-    OpenAIReviewer(model="gpt-test", effort=None, api_key=SECRET, http_client=client).review("s", "u")
+    _openai(client, "gpt-test", None).review("s", "u")
 
     assert json.loads(sent[0].content)["store"] is False
 
@@ -392,7 +396,7 @@ def test_a_truncated_openai_answer_still_reports_the_tokens_it_was_billed() -> N
     client = openai.DefaultHttpxClient(
         transport=httpx2.MockTransport(lambda _: httpx2.Response(200, json=cut))
     )
-    reviewer = OpenAIReviewer(model="gpt-test", effort=None, api_key=SECRET, http_client=client)
+    reviewer = _openai(client, "gpt-test", None)
 
     with pytest.raises(ReviewError, match="ran out of output tokens"):
         reviewer.review("s", "u")
@@ -433,8 +437,9 @@ def _dropping_then(*, recover: bool) -> tuple[AnthropicReviewer, list[httpx2.Req
             200, content=_sse(_message(json.dumps(REVIEW))), headers={"content-type": "text/event-stream"}
         )
 
-    client = anthropic.DefaultHttpxClient(transport=httpx2.MockTransport(handler))
-    return AnthropicReviewer(model="claude-opus-5-5", effort="high", api_key=SECRET, http_client=client), sent
+    http = anthropic.DefaultHttpxClient(transport=httpx2.MockTransport(handler))
+    client = anthropic.Anthropic(api_key=SECRET, http_client=http, max_retries=3)
+    return AnthropicReviewer(client=client, model="claude-opus-5-5", effort="high"), sent
 
 
 def test_a_dropped_stream_is_tried_once_more() -> None:
