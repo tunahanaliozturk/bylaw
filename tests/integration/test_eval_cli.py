@@ -170,3 +170,53 @@ def test_a_model_run_without_an_openai_key_names_its_variable(
 
     assert code == 2
     assert "OPENAI_API_KEY or BYLAW_API_KEY" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    "target",
+    [
+        ("bedrock", None),
+        ("vertex", "claude-sonnet-5-5"),
+        ("foundry", None),
+        ("azure-openai", "review-deployment"),
+    ],
+)
+def test_a_cloud_provider_run_needs_no_bylaw_key_and_keeps_the_spending_limit(
+    evalset: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    target: tuple[str, str | None],
+) -> None:
+    provider, model = target
+    monkeypatch.delenv("BYLAW_API_KEY", raising=False)
+    monkeypatch.setattr(cli, "make_reviewer", lambda *_args: NoModel())
+    runs = tmp_path / "r"
+    flags = ["--model", model] if model else []
+
+    code = main(
+        [
+            "eval",
+            "run",
+            "--set",
+            str(evalset),
+            "--out",
+            str(runs),
+            "--provider",
+            provider,
+            *flags,
+            "--effort",
+            "medium",
+            "--max-cost",
+            "5",
+            "--input-price",
+            "5",
+            "--output-price",
+            "25",
+        ]
+    )
+
+    identity = f"{provider}:{model or 'default model'}:medium"
+    assert code == 0
+    assert f"with {identity}" in capsys.readouterr().err
+    assert f'"reviewer": "{identity}"' in (runs / "one.json").read_text("utf-8")
