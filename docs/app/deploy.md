@@ -99,7 +99,7 @@ Settings, all from the environment:
 | `BYLAW_APP_PRIVATE_KEY_FILE` | required | Path to the app's private key. `BYLAW_APP_PRIVATE_KEY` holds the PEM itself where files are not possible. |
 | `BYLAW_WEBHOOK_SECRET_FILE` | required | Path to the webhook secret. `BYLAW_WEBHOOK_SECRET` holds it directly. |
 | `BYLAW_SECRETS_DIR` | unset | Folder with one subfolder per installation for model keys and tracker tokens; unset reads them from the environment instead (section 5). |
-| `BYLAW_PROVIDER` | `anthropic` | `anthropic` or `openai`, for every installation. |
+| `BYLAW_PROVIDER` | `anthropic` | `anthropic` or `openai`, for every installation. The cloud providers and local servers in [providers.md](../providers.md) are not offered: they sign in with the server's own credentials, which every installation would share. |
 | `BYLAW_MODEL`, `BYLAW_EFFORT` | provider default | As `--model` and `--effort` for `bylaw review`. |
 | `BYLAW_APP_WORKERS` | `2` | Pull requests reviewed at once. |
 | `BYLAW_APP_MAX_PENDING` | `100` | Pull requests that may wait; beyond that, deliveries get `503`. |

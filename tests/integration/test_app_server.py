@@ -385,6 +385,15 @@ def test_settings_come_from_the_environment_with_secrets_from_files(tmp_path: Pa
             },
             "BYLAW_PROVIDER must be one of",
         ),
+        (
+            {
+                "BYLAW_APP_CLIENT_ID": "x",
+                "BYLAW_APP_PRIVATE_KEY": "k",
+                "BYLAW_WEBHOOK_SECRET": "s",
+                "BYLAW_PROVIDER": "bedrock",
+            },
+            "BYLAW_PROVIDER must be one of anthropic, openai",
+        ),
     ],
 )
 def test_missing_or_wrong_settings_stop_the_server_with_the_variable_named(

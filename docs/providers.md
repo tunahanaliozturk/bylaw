@@ -145,3 +145,9 @@ jobs:
 For Vertex AI set `CLOUD_ML_REGION` and `ANTHROPIC_VERTEX_PROJECT_ID`; for Foundry
 `ANTHROPIC_FOUNDRY_RESOURCE`; for Azure OpenAI `AZURE_OPENAI_ENDPOINT` and `model: <deployment>`. A key,
 where you use one, belongs in a secret passed through `env`, never in `.bylaw.toml`.
+
+## In the GitHub App
+
+The self-hosted GitHub App offers only `anthropic` and `openai`. The other providers would sign in with
+the server's own credentials, the same ones for every installation, and the app never lets a server-wide
+credential review for an installation ([app/deploy.md](app/deploy.md)).

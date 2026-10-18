@@ -70,6 +70,9 @@ development environment installs them so the tests and the licence audit cover t
 - Nothing here has been run against a live cloud account: every provider is tested through a fake
   transport, with the SDK's real request building and, for Bedrock, the real SigV4 signer. Evaluation
   reports per provider and model (PRV-5) are still to come.
+- The GitHub App offers only `anthropic` and `openai`. The other providers sign in with the server's own
+  environment, which every installation would share, and ADR 0017 never lets a server-wide credential
+  review for an installation. Per-installation cloud credentials would be the way to add them.
 - Cost: four more clients to keep working across SDK releases, and an optional-dependency surface.
 
 ## Alternatives
