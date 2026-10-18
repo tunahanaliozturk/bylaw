@@ -113,8 +113,9 @@ def main() -> int:
             serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()
         )
     )
+    # The key goes in through a file and the webhook secret through the environment, so both paths run.
     webhook_secret = secrets.token_hex(32)
-    (work / "webhook-secret").write_text(webhook_secret, encoding="utf-8")
+    environ = {**os.environ, "BYLAW_WEBHOOK_SECRET": webhook_secret}
 
     github = FakeGitHub(base={".editorconfig": "root = true\n[*]\ntrim_trailing_whitespace = true\n"})
     github.org_defaults = 'severity_threshold = "low"\n'
@@ -127,23 +128,23 @@ def main() -> int:
         settings |= {
             "GITHUB_API_URL": f"http://host.docker.internal:{fake_port}",
             "BYLAW_APP_PRIVATE_KEY_FILE": "/run/secrets/app.pem",
-            "BYLAW_WEBHOOK_SECRET_FILE": "/run/secrets/webhook-secret",
         }
         name = f"bylaw-app-smoke-{app_port}"
         command = ["docker", "run", "--rm", "--name", name, "-p", f"127.0.0.1:{app_port}:8000"]
         command += ["--add-host", "host.docker.internal:host-gateway", "-v", f"{work}:/run/secrets:ro"]
         for variable, value in settings.items():
             command += ["-e", f"{variable}={value}"]
-        process = subprocess.Popen([*command, args.image])  # noqa: S603
+        # `-e NAME` without a value passes it from this process's environment, not the command line.
+        command += ["-e", "BYLAW_WEBHOOK_SECRET"]
+        process = subprocess.Popen([*command, args.image], env=environ)  # noqa: S603
     else:
         settings |= {
             "GITHUB_API_URL": f"http://127.0.0.1:{fake_port}",
             "BYLAW_APP_PRIVATE_KEY_FILE": str(work / "app.pem"),
-            "BYLAW_WEBHOOK_SECRET_FILE": str(work / "webhook-secret"),
             "PORT": str(app_port),
         }
         launch = "from bylaw.app.server import main; main()"
-        process = subprocess.Popen([sys.executable, "-c", launch], env={**os.environ, **settings})  # noqa: S603
+        process = subprocess.Popen([sys.executable, "-c", launch], env={**environ, **settings})  # noqa: S603
     try:
         base = f"http://127.0.0.1:{app_port}"
         _wait("the health endpoint", lambda: _healthy(f"{base}/healthz"))
