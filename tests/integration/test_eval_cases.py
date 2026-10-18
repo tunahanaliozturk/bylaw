@@ -192,3 +192,46 @@ def test_a_real_case_replays_the_frozen_pull_request_without_the_network(
     (issue,) = context.requirements
     assert (issue.source, issue.title) == ("issue#3", "Retries never stop")
     assert [c.key for c in issue.criteria] == ["AC-1"]
+
+
+def test_a_replay_never_hands_the_developers_tracker_tokens_to_a_frozen_config(
+    real: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def no_network(*_: object, **__: object) -> None:
+        raise AssertionError("a snapshot run opened a network connection")
+
+    monkeypatch.setattr(socket.socket, "connect", no_network)
+    monkeypatch.setattr(socket, "getaddrinfo", no_network)
+    monkeypatch.setenv("JIRA_EMAIL", "dev@example.com")
+    monkeypatch.setenv("JIRA_API_TOKEN", "a-real-token")
+    case_dir = real / "cases/octo-app-7"
+    _write(
+        case_dir / "base/.bylaw.toml", b'[jira]\nurl = "https://acme.atlassian.net"\nprojects = ["PROJ"]\n'
+    )
+    frozen = {**SNAPSHOT, "title": "PROJ-1 Cap retries"}
+    _write(case_dir / "snapshot.json", json.dumps(frozen).encode())
+    (case,) = load_cases(real)
+
+    context = build_case_context(real, case, tmp_path / "work")
+
+    assert [r.source for r in context.requirements] == ["issue#3"]
+
+
+def test_a_first_pass_next_to_two_people_is_still_provisional(real: Path) -> None:
+    toml = real / "cases/octo-app-7/case.toml"
+    toml.write_bytes(
+        toml.read_bytes().replace(b'["first pass (model)"]', b'["ada", "grace", "first pass (model)"]')
+    )
+
+    (case,) = load_cases(real)
+
+    assert case.provisional
+
+
+def test_a_planted_case_whose_project_does_not_exist_is_an_error(root: Path, tmp_path: Path) -> None:
+    toml = root / "cases/tabs/case.toml"
+    toml.write_bytes(toml.read_bytes().replace(b'project = "p"', b'project = "typo"'))
+    (case,) = load_cases(root)
+
+    with pytest.raises(ValueError, match="typo"):
+        build_case_context(root, case, tmp_path / "work")

@@ -137,8 +137,9 @@ class Case(_Frozen):
     @property
     def provisional(self) -> bool:
         """A real case two people have not labelled yet: reported, never counted as a measurement."""
-        people = set(self.labellers) - {FIRST_PASS}
-        return self.pull_request is not None and len(people) < 2  # noqa: PLR2004 - two labellers
+        # A draft left in the list means someone has not finished replacing it (docs/eval/labelling.md).
+        draft = FIRST_PASS in self.labellers or len(set(self.labellers)) < 2  # noqa: PLR2004 - two labellers
+        return self.pull_request is not None and draft
 
 
 def load_cases(root: Path) -> tuple[Case, ...]:
@@ -166,9 +167,11 @@ def load_cases(root: Path) -> tuple[Case, ...]:
 
 def build_case_context(root: Path, case: Case, work: Path) -> ReviewContext:
     """Commit the base project, then the change, and collect the context as `bylaw context --base` does."""
+    base = _base_directory(root, case)
+    if case.pull_request is None and not base.is_dir():
+        raise ValueError(f"eval case {case.id}: project {case.project} does not exist")
     repo = work / case.id
     repo.mkdir(parents=True)
-    base = _base_directory(root, case)
     if base.is_dir():
         shutil.copytree(base, repo, dirs_exist_ok=True, copy_function=shutil.copy)
     _git(repo, "init", "-q", "-b", "main")
@@ -185,7 +188,9 @@ def build_case_context(root: Path, case: Case, work: Path) -> ReviewContext:
     _git(repo, "add", "-A")
     _git(repo, "commit", "-q", "--allow-empty", "-m", case.message)
     source = LocalGitSource(repo, "main") if case.pull_request is None else _Replay(repo, case.pull_request)
-    return build_context(source).model_copy(update={"title": case.title})
+    # No environment: a frozen .bylaw.toml from another project must never reach a tracker with the
+    # developer's tokens, so an evaluation run reads nothing but the case.
+    return build_context(source, env={}).model_copy(update={"title": case.title})
 
 
 def _base_directory(root: Path, case: Case) -> Path:
