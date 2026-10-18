@@ -9,7 +9,7 @@ Teams write decisions down and then forget them. Flag a change that contradicts 
 ## Items
 
 - [x] **ADR-1** (M) Collect accepted ADRs from the configured globs, from the base branch. Done when: status parsing test.
-- [ ] **ADR-2** (M) A `decisions` block in the brief; findings cite `docs/adr/<file>.md:<line>`. Done when: prompt and validate tests.
+- [x] **ADR-2** (M) A `decisions` block in the brief; findings cite `docs/adr/<file>.md:<line>`. Done when: prompt and validate tests.
 - [ ] **ADR-3** (S) Superseded and rejected ADRs are left out. Done when: test.
 - [ ] **ADR-4** (M) Evaluation cases: a change that contradicts an ADR, and a clean change next to one. Done when: cases in the set.
 

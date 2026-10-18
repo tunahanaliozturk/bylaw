@@ -74,6 +74,9 @@ class _Checker:
             f.path: frozenset(a.number for a in f.added_lines) for f in context.files if f.status != "removed"
         }
         self._rules = {r.path: r for r in context.rules}
+        self._decisions = {
+            d.path: range(d.start, d.start + len(d.text.splitlines())) for d in context.decisions
+        }
         self.criteria = frozenset(f"{r.source}/{c.key}" for r in context.requirements for c in r.criteria)
         self._prose = frozenset(r.source for r in context.requirements if r.inferable)
 
@@ -119,6 +122,11 @@ class _Checker:
         if separator and tool in linters.TOOLS and rule_id and not rule_id.isdigit():
             return self._rule_id_problem(evidence, tool, linters.normalise(tool, rule_id), file)
         path, separator, line = evidence.rpartition(":")
+        if path in self._decisions:
+            # Only a line the reviewer was shown: the rest of an ADR, its context or rejected options, is
+            # not what was decided (ADR 0016).
+            shown = line.isdigit() and int(line) in self._decisions[path]
+            return None if shown else f"evidence {evidence} is not a line of the decision shown"
         rule = self._rules.get(path)
         if (
             not separator

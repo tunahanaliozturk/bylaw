@@ -7,6 +7,7 @@ from bylaw.model import (
     Criterion,
     CriterionResult,
     CriterionStatus,
+    Decision,
     Finding,
     Location,
     Requirement,
@@ -399,3 +400,22 @@ def test_an_earlier_memory_loses_the_text_of_a_work_item_now_kept_out_of_quotes(
 
     assert run.memory is not None
     assert "Secret" not in run.memory.model_dump_json()
+
+
+def test_a_changed_decision_means_a_full_review() -> None:
+    context = _context(OLD, NEW)
+    decided = context.model_copy(
+        update={
+            "decisions": (
+                Decision(
+                    path="docs/adr/0002-sqlite.md",
+                    title="Use SQLite",
+                    status="Accepted",
+                    start=11,
+                    text="## Decision\n\nWe store everything in SQLite.",
+                ),
+            )
+        }
+    )
+
+    assert inputs_key(decided) != inputs_key(context)

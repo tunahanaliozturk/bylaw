@@ -5,6 +5,7 @@ from bylaw.model import (
     Criterion,
     CriterionResult,
     CriterionStatus,
+    Decision,
     Finding,
     Location,
     Requirement,
@@ -419,3 +420,24 @@ def test_a_mention_inside_a_code_span_is_left_as_written() -> None:
     comment = inline_body(Group(finding=finding, fingerprint=FP, others=()))
 
     assert "Evidence: `packages/@scope/rules.md:2`" in comment
+
+
+def test_the_summary_lists_the_decisions_among_the_rule_sources() -> None:
+    decided = CONTEXT.model_copy(
+        update={
+            "decisions": (
+                Decision(
+                    path="docs/adr/0002-sqlite.md",
+                    title="Use SQLite",
+                    status="Accepted",
+                    start=11,
+                    text="## Decision\n\nWe store everything in SQLite.",
+                ),
+            )
+        }
+    )
+
+    body = summary_body(decided, ReviewResult(), _plan())
+
+    assert "<summary>Rule sources (1)</summary>" in body
+    assert "- `docs/adr/0002-sqlite.md`" in body

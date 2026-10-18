@@ -62,7 +62,8 @@ def inputs_key(context: ReviewContext) -> str:
     """What every file is reviewed against; when it changes, earlier answers no longer hold."""
     rules = [[rule.path, rule.kind, rule.text] for rule in context.rules]
     requirements = [requirement.model_dump(mode="json") for requirement in context.requirements]
-    return _hash(json.dumps([version("bylaw"), rules, requirements]))
+    decisions = [decision.model_dump(mode="json") for decision in context.decisions]
+    return _hash(json.dumps([version("bylaw"), rules, requirements, decisions]))
 
 
 def run_model_review(

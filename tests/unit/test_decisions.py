@@ -1,6 +1,6 @@
 import pytest
 
-from bylaw.decisions import accepted, collect_decisions, status_of
+from bylaw.decisions import DECISION_CHARS, DECISIONS_CHARS, accepted, collect_decisions, status_of
 from tests.unit.fakes import FakeSource
 
 GLOBS = ("docs/adr/**", "docs/decisions/**")
@@ -102,3 +102,35 @@ def test_an_accepted_adr_without_a_decision_section_is_left_out() -> None:
     decisions, _ = collect_decisions(source, GLOBS)
 
     assert decisions == ()
+
+
+def test_a_long_decision_is_cut_on_its_own_lines_and_noted() -> None:
+    paragraph = "We keep one paragraph on a single line, " * 80
+    markdown = f"# Long\n\nStatus: Accepted\n\n## Decision\n\nShort first line.\n{paragraph}\n\nMore.\n"
+    source = FakeSource(base={"docs/adr/0001-long.md": markdown})
+
+    (decision,), notes = collect_decisions(source, GLOBS)
+
+    assert decision.cut
+    assert len(decision.text) <= DECISION_CHARS
+    shown = decision.text.splitlines()
+    assert shown[:3] == ["## Decision", "", "Short first line."]
+    assert paragraph.startswith(shown[3])
+    assert any("docs/adr/0001-long.md" in note and "start" in note for note in notes)
+
+
+def test_older_decisions_beyond_the_total_budget_are_left_out_and_named() -> None:
+    base = {
+        f"docs/adr/{n:04}-d.md": f"# D{n}\n\nStatus: Accepted\n\n## Decision\n\n{'x' * 1500}\n"
+        for n in range(1, 13)
+    }
+
+    decisions, notes = collect_decisions(FakeSource(base=base), GLOBS)
+
+    assert sum(len(d.text) for d in decisions) <= DECISIONS_CHARS
+    shown = [d.path for d in decisions]
+    assert shown == sorted(shown, reverse=True)
+    assert shown[0] == "docs/adr/0012-d.md"
+    left_out = sorted(set(base) - set(shown))
+    assert left_out and max(left_out) < min(shown)
+    assert any("docs/adr/0001-d.md" in note and "left out" in note for note in notes)

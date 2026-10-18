@@ -18,6 +18,7 @@
 Most AI reviewers give general advice. bylaw reviews a pull request against what your repository already wrote down:
 
 - **Your rules.** `.editorconfig`, linter configs, `CONTRIBUTING.md`, `AGENTS.md`, including a package's own in a monorepo. Every rule finding cites the line it comes from, or a linter rule id your configuration enables, such as `ruff:S608`.
+- **Your decisions.** The accepted ADRs in `docs/adr/`. A change that goes against one gets a finding that cites the line of the decision it contradicts; superseded and proposed ADRs are left alone.
 - **Your requirements.** The acceptance criteria in the issues the pull request closes and the specs it links, including what maintainers added in the issue's comments. An issue written as prose gets criteria inferred from its text, marked as such. The summary says which are met, partly met or missing, and flags changes nobody asked for.
 - **Security and bugs.** Injection, secrets, unsafe deserialisation, missing authorisation, and plain bugs.
 
@@ -117,6 +118,8 @@ projects = ["PROJ"]
 ```
 
 Rule files need no setting. bylaw reads them from the base branch: the ones at the root and, in a monorepo, the nearest `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md` and linter configuration above each changed file, plus every `.editorconfig` on the way up as EditorConfig itself does, so `packages/api/` is reviewed against its own rules and the root ones. From Ruff (following `extend`), ESLint (`.eslintrc.json` or `.eslintrc.yml`), golangci-lint and .NET analyzer settings it also reads which rule ids are on, and findings can cite them as `ruff:S608`. A cited id is dropped when the configuration turns it off, or does not turn it on and bylaw read all of it; an id that may come from an ESLint `extends` or a .NET analysis level is kept. ESLint configs written in JavaScript are never run; they stay text.
+
+ADRs are read from the base branch too, from `adr_globs`. bylaw keeps the accepted ones, whether the status is a `Status: Accepted` line, a `## Status` section (Nygard, adr-tools) or MADR front matter, and shows the reviewer only each one's title, status and decision section, newest first, about 4,000 tokens at most; the summary notes what was cut or left out. Superseded, deprecated, rejected and proposed ADRs are left out, and so is an ADR without a status or a Decision section. A finding may cite only a decision line the reviewer was shown.
 
 Requirements can also come from Jira, Azure Boards (`AB#123`) and Linear. Each is an opt-in with an allow list and a token in the environment; setup, and `quote_trackers = false` for private trackers, are in [docs/trackers.md](https://github.com/tunahanaliozturk/bylaw/blob/main/docs/trackers.md).
 

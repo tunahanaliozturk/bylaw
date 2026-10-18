@@ -199,10 +199,11 @@ def _detail_line(group: Group) -> str:
 
 
 def _rule_sources(context: ReviewContext) -> str:
-    if not context.rules:
+    sources = [rule.path for rule in context.rules] + [decision.path for decision in context.decisions]
+    if not sources:
         return ""
-    paths = "\n".join(f"- {_code(rule.path)}" for rule in context.rules)
-    return f"<details><summary>Rule sources ({len(context.rules)})</summary>\n\n{paths}\n\n</details>"
+    paths = "\n".join(f"- {_code(path)}" for path in sources)
+    return f"<details><summary>Rule sources ({len(sources)})</summary>\n\n{paths}\n\n</details>"
 
 
 def _notes(context: ReviewContext) -> str:
