@@ -5,6 +5,7 @@ from collections.abc import Mapping, Sequence
 from pathlib import PurePosixPath
 
 from bylaw.config import load_config
+from bylaw.decisions import collect_decisions, is_adr
 from bylaw.editorconfig import EditorConfigResolver
 from bylaw.editorconfig_checks import check
 from bylaw.model import ChangedFile, Finding, ReviewContext
@@ -100,7 +101,7 @@ def build_context(source: RepoSource, env: Mapping[str, str] | None = None) -> R
         findings.extend(check(file, resolver.properties(file.path)))
     notes.extend(resolver.problems)
 
-    changed_rules = sorted(f.path for f in files if is_rule_file(f.path))
+    changed_rules = sorted(f.path for f in files if is_rule_file(f.path) or is_adr(f.path, config.adr_globs))
     if changed_rules:
         notes.append(
             f"This change edits {', '.join(changed_rules)}; it is reviewed against the base branch "
@@ -110,8 +111,10 @@ def build_context(source: RepoSource, env: Mapping[str, str] | None = None) -> R
     rules, rule_notes = collect_rules(files, source, resolver.files_read)
     notes.extend(rule_notes)
     requirements, requirement_notes = collect_requirements(
-        source, info, files, config.spec_globs, config.issue_repos
+        source, info, files, config.spec_globs, config.issue_repos, adr_globs=config.adr_globs
     )
+    decisions, decision_notes = collect_decisions(source, config.adr_globs)
+    notes.extend(decision_notes)
     # Work items are referenced from the same text as issues, and from the title, where keys often sit.
     work_items, work_item_notes = read_work_items(
         [info.title, info.body, *info.commit_messages],
@@ -125,6 +128,7 @@ def build_context(source: RepoSource, env: Mapping[str, str] | None = None) -> R
         title=info.title,
         files=files,
         rules=rules,
+        decisions=decisions,
         requirements=(*requirements, *work_items),
         findings=tuple(findings),
         notes=(*notes, *requirement_notes, *work_item_notes),

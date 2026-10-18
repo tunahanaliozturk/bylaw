@@ -178,6 +178,23 @@ def test_a_change_to_a_package_rule_file_is_noted_as_reviewed_against_the_base()
     assert any("packages/api/AGENTS.md" in note and "base branch" in note for note in context.notes)
 
 
+def test_accepted_adrs_are_decisions_from_the_base_branch_and_never_requirements_too() -> None:
+    adr = "# 1. Money\n\nStatus: Accepted\n\n## Decision\n\n- [ ] Amounts are integer cents.\n"
+    source = FakeSource(
+        # An older config that still lists docs/adr/** as specs must not count an ADR twice.
+        base={".bylaw.toml": 'spec_globs = ["docs/adr/**"]\n', "docs/adr/0001-money.md": adr},
+        head={"docs/adr/0001-money.md": adr.replace("Accepted", "Superseded")},
+        files=(_file("docs/adr/0001-money.md", "Status: Superseded"), _file("app/price.py", "x = 1.5")),
+        body="Follows [the money ADR](docs/adr/0001-money.md).",
+    )
+
+    context = build_context(source)
+
+    assert context.requirements == ()
+    assert [(d.path, d.status) for d in context.decisions] == [("docs/adr/0001-money.md", "Accepted")]
+    assert any("docs/adr/0001-money.md" in note and "base branch" in note for note in context.notes)
+
+
 def test_a_context_written_before_nested_rules_still_loads() -> None:
     old = (
         '{"base_sha": "b", "head_sha": "h", "title": "t", "files": [], "requirements": [], "findings": [],'
