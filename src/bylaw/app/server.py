@@ -17,7 +17,7 @@ from starlette.responses import JSONResponse, Response
 from starlette.routing import Route
 
 from bylaw.app.auth import DEFAULTS_PERMISSIONS, REVIEW_PERMISSIONS, app_jwt
-from bylaw.app.queue import Job, Outcome, ReviewQueue
+from bylaw.app.queue import Job, Outcome, ReviewQueue, flat
 from bylaw.app.secrets import DirectorySecrets, EnvSecrets, SecretStore
 from bylaw.app.webhook import review_job, verify_signature
 from bylaw.engine import PROVIDERS, Reviewer, api_key_for, make_reviewer
@@ -158,8 +158,7 @@ def review(settings: Settings, job: Job, bot_login: str, reviewer: ReviewerFacto
         make = lambda: reviewer(settings.provider, settings.model, settings.effort, key)  # noqa: E731
 
     def say(text: str) -> None:
-        # Flattened: text from a model or a pull request must not be able to forge a log line.
-        log.info("%s#%d: %s", job.repo, job.number, " ".join(text.splitlines()))
+        log.info("%s#%d: %s", job.repo, job.number, flat(text))
 
     with GitHubClient(token, settings.api_url, settings.graphql_url, bot_login=bot_login) as client:
         review_pull_request(
