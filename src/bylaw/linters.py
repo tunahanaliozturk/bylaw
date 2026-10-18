@@ -182,6 +182,8 @@ def _eslint_rules(rules: object) -> tuple[tuple[str, ...], tuple[str, ...]]:
     off: list[str] = []
     for rule, setting in _table(rules).items():
         level = setting[0] if isinstance(setting, list) and setting else setting
+        if isinstance(level, str):
+            level = level.lower()  # ESLint reads "Error" and "WARN" as well
         if level in ("error", "warn", 1, 2):
             on.append(rule)
         elif level in ("off", 0):  # 0 == False, so a YAML `false` counts too
