@@ -332,6 +332,64 @@ def test_a_memory_too_large_still_keeps_its_token_count() -> None:
     assert (review.files, review.findings, review.tokens, review.run_tokens) == ({}, (), 45_678, 12_345)
 
 
+def _work_item(*criteria: Criterion, quoted: bool) -> ReviewContext:
+    item = Requirement(
+        source="PROJ-123",
+        title="Private roadmap item",
+        text="Confidential plan",
+        criteria=criteria,
+        inferable=not criteria,
+        quoted=quoted,
+    )
+    return CONTEXT.model_copy(update={"requirements": (item,)})
+
+
+def test_a_work_item_mentioned_by_a_pull_request_has_its_criteria_in_the_summary() -> None:
+    context = _work_item(Criterion(key="AC-1", text="Signs in with SSO"), quoted=True)
+    result = ReviewResult(criteria=(CriterionResult(criterion="PROJ-123/AC-1", status=CriterionStatus.MET),))
+
+    body = summary_body(context, result, _plan())
+
+    assert "| `PROJ-123/AC-1` Signs in with SSO | met |" in body
+
+
+def test_a_work_item_kept_out_of_quotes_shows_keys_and_status_only() -> None:
+    context = _work_item(Criterion(key="AC-1", text="Secret criterion"), quoted=False)
+    result = ReviewResult(
+        criteria=(
+            CriterionResult(
+                criterion="PROJ-123/AC-1",
+                status=CriterionStatus.PARTIAL,
+                note="Secret note",
+                code=(Location(file="app.py", line=3),),
+            ),
+        )
+    )
+
+    body = summary_body(context, result, _plan())
+
+    assert "| `PROJ-123/AC-1` | partial | `app.py:3` |  |" in body
+    assert "Secret" not in body
+
+
+def test_inferred_criteria_of_a_work_item_kept_out_of_quotes_show_no_text() -> None:
+    result = ReviewResult(
+        criteria=(CriterionResult(criterion="PROJ-123/IC-1", status=CriterionStatus.MET, text="Secret rule"),)
+    )
+
+    body = summary_body(_work_item(quoted=False), result, _plan())
+
+    assert "| `PROJ-123/IC-1` (inferred) | met |" in body
+    assert "Secret" not in body
+
+
+def test_a_work_item_without_criteria_kept_out_of_quotes_shows_its_key_only() -> None:
+    body = summary_body(_work_item(quoted=False), ReviewResult(), _plan())
+
+    assert "| `PROJ-123` | no criteria listed |  |  |" in body
+    assert "Private roadmap item" not in body
+
+
 def test_escaped_brackets_count_toward_the_memory_limit() -> None:
     memory = _memory(message="<" * 300, count=60)
     plan = replace(_plan(), state=State(auto_resolved=frozenset(), review=memory))

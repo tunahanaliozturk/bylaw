@@ -78,6 +78,8 @@ class Config(BaseModel):
     jira: Jira | None = None
     azure_boards: AzureBoards | None = None
     linear: Linear | None = None
+    # False keeps work item text out of the public summary: criterion keys and status only (ADR 0014).
+    quote_trackers: bool = True
 
     @model_validator(mode="after")
     def _one_tracker_per_key(self) -> Self:
