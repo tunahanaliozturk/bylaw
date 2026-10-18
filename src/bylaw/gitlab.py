@@ -1,9 +1,12 @@
-"""Reads a GitLab merge request through the REST API v4 (ADR 0020).
+"""Reads and comments on a GitLab merge request through the REST API v4 (ADR 0020).
 
 Endpoints and fields are as documented at https://docs.gitlab.com/api/merge_requests/,
-https://docs.gitlab.com/api/repository_files/ and https://docs.gitlab.com/api/repositories/.
+https://docs.gitlab.com/api/repository_files/, https://docs.gitlab.com/api/repositories/,
+https://docs.gitlab.com/api/discussions/ and https://docs.gitlab.com/api/notes/.
 """
 
+import hashlib
+import re
 from collections.abc import Iterator, Mapping, Sequence
 from functools import cached_property
 from http import HTTPStatus
@@ -14,7 +17,10 @@ import httpx
 from pydantic import BaseModel, ConfigDict, TypeAdapter
 
 from bylaw.diff import parse_patch
+from bylaw.github import ReviewComment, SummaryComment
 from bylaw.model import ChangedFile
+from bylaw.plan import Thread, ThreadComment
+from bylaw.render import SUMMARY_MARKER
 from bylaw.source import ChangeInfo, SourceError
 
 _PAGE_SIZE = 100
@@ -28,6 +34,10 @@ Params = Mapping[str, str | int]
 
 class GitLabError(SourceError):
     """A GitLab API call failed. The message never contains the token."""
+
+    def __init__(self, message: str, status: int | None = None) -> None:
+        super().__init__(message)
+        self.status = status
 
 
 class _Model(BaseModel):
@@ -83,7 +93,31 @@ class _Member(_Model):
     access_level: int = 0
 
 
+class _Position(_Model):
+    new_path: str = ""
+    new_line: int | None = None
+    head_sha: str = ""
+
+
+class _Note(_Model):
+    id: int
+    body: str = ""
+    author: _User | None = None
+    system: bool = False
+    resolvable: bool = False
+    resolved: bool = False
+    position: _Position | None = None
+
+
+class _Discussion(_Model):
+    id: str
+    individual_note: bool = False
+    notes: list[_Note] = []
+
+
 _DIFFS = TypeAdapter(list[_Diff])
+_NOTES = TypeAdapter(list[_Note])
+_DISCUSSIONS = TypeAdapter(list[_Discussion])
 _COMMITS = TypeAdapter(list[_Commit])
 _TREE = TypeAdapter(list[_TreeEntry])
 
@@ -160,7 +194,8 @@ def _raise_for_status(response: httpx.Response) -> None:
         )
     request = response.request
     raise GitLabError(
-        f"GitLab returned {response.status_code} for {request.method} {request.url.path}: {message}"
+        f"GitLab returned {response.status_code} for {request.method} {request.url.path}: {message}",
+        response.status_code,
     )
 
 
@@ -170,7 +205,7 @@ def project_path(project: str) -> str:
 
 
 class GitLabMergeRequest:
-    """A merge request as a RepoSource."""
+    """A merge request as a RepoSource and as the Publisher that comments on it."""
 
     def __init__(self, client: GitLabClient, project: str, iid: int) -> None:
         self._client = client
@@ -279,6 +314,185 @@ class GitLabMergeRequest:
             f"{self._base}/repository/files/{quote(path, safe='')}/raw", {"ref": ref}
         )
         return None if response is None else response.content.decode("utf-8", errors="replace")
+
+    # Publishing (GLB-2). `repo` and `number` are part of the Publisher protocol; this object knows both.
+
+    @cached_property
+    def _own_id(self) -> int | None:
+        """bylaw's own account: the token's user, such as a project access token's bot user. A token that
+        cannot say who it is makes every summary someone else's, so its review memory is never trusted."""
+        try:
+            return _User.model_validate(self._client.get("/user")).id
+        except GitLabError:
+            return None
+
+    def _trusted(self, user: _User | None) -> bool:
+        """ADR 0008 on GitLab: bylaw's own account, or a Developer, Maintainer or Owner of the project."""
+        if user is None:
+            return False
+        return user.id == self._own_id or self.access_level(self._project, user.id) >= DEVELOPER
+
+    def review_threads(self, repo: str, number: int) -> list[Thread]:  # noqa: ARG002 - the Publisher protocol's arguments; this object knows them
+        author = self._mr.author.id if self._mr.author else None
+        head = self._refs.head_sha
+        threads: list[Thread] = []
+        for page in self._client.pages(f"{self._mr_path}/discussions"):
+            for discussion in _DISCUSSIONS.validate_python(page):
+                notes = [note for note in discussion.notes if not note.system]
+                if discussion.individual_note or not notes:
+                    continue
+                position = notes[0].position
+                resolvable = [note for note in notes if note.resolvable]
+                comments = tuple(
+                    ThreadComment(
+                        body=note.body,
+                        trusted=self._trusted(note.author),
+                        by_pr_author=note.author is not None and note.author.id == author,
+                    )
+                    for note in notes
+                )
+                threads.append(
+                    Thread(
+                        id=discussion.id,
+                        resolved=bool(resolvable) and all(note.resolved for note in resolvable),
+                        comments=comments,
+                        # A position GitLab could not carry to the newest diff stays on its old head.
+                        line=position.new_line if position and position.head_sha == head else None,
+                        original_line=position.new_line if position else None,
+                        path=position.new_path if position else "",
+                    )
+                )
+        return threads
+
+    def summary_comment(self, repo: str, number: int) -> SummaryComment | None:  # noqa: ARG002 - the Publisher protocol's arguments; this object knows them
+        """The note that opens with the summary marker, bylaw's own first (ADR 0008, ADR 0012)."""
+        fallback: SummaryComment | None = None
+        params = {"sort": "asc", "order_by": "created_at"}
+        for page in self._client.pages(f"{self._mr_path}/notes", params):
+            for note in _NOTES.validate_python(page):
+                if note.system or not note.body.startswith(SUMMARY_MARKER) or not self._trusted(note.author):
+                    continue
+                if note.author is not None and note.author.id == self._own_id:
+                    return SummaryComment(id=note.id, body=note.body, bot=True)
+                fallback = fallback or SummaryComment(id=note.id, body=note.body)
+        return fallback
+
+    def upsert_summary(self, repo: str, number: int, comment_id: int | None, body: str) -> None:  # noqa: ARG002 - the Publisher protocol's arguments; this object knows them
+        payload = {"body": _inert(body)}
+        if comment_id is None:
+            self._client.send("POST", f"{self._mr_path}/notes", json=payload)
+        else:
+            self._client.send("PUT", f"{self._mr_path}/notes/{comment_id}", json=payload)
+
+    def create_review(
+        self, repo: str, number: int, commit_id: str, body: str, comments: Sequence[ReviewComment]
+    ) -> None:
+        """One discussion per comment. GitLab has no review that groups them, so `body` is not posted, and
+        the position uses the diff refs the change was read at, the commit `commit_id` names."""
+        del repo, number, commit_id, body  # the Publisher protocol's arguments; this object knows them
+        refs = self._refs
+        files = {file.path: file for file in self._files}
+        for comment in comments:
+            file = files.get(comment.path)
+            position: dict[str, object] = {
+                "position_type": "text",
+                "base_sha": refs.base_sha,
+                "start_sha": refs.start_sha,
+                "head_sha": refs.head_sha,
+                "old_path": file.previous_path if file and file.previous_path else comment.path,
+                "new_path": comment.path,
+                "new_line": comment.line,
+            }
+            text = _note_body(comment.body, comment.line - comment.start_line)
+            if (span := _line_range(file, comment)) is not None:
+                try:
+                    self._post_discussion(text, {**position, "line_range": span})
+                    continue
+                except GitLabError as error:
+                    # The line codes are computed, not read; a range GitLab rejects still gets its comment.
+                    if error.status != HTTPStatus.BAD_REQUEST:
+                        raise
+            self._post_discussion(text, position)
+
+    def _post_discussion(self, body: str, position: dict[str, object]) -> None:
+        self._client.send("POST", f"{self._mr_path}/discussions", json={"body": body, "position": position})
+
+    def set_thread_resolved(self, thread_id: str, *, resolved: bool) -> None:
+        path = f"{self._mr_path}/discussions/{quote(thread_id, safe='')}"
+        self._client.send("PUT", path, params={"resolved": "true" if resolved else "false"})
+
+
+def _line_range(file: ChangedFile | None, comment: ReviewComment) -> dict[str, object] | None:
+    """A multi-line position. A line code is `<sha1 of the path>_<old>_<new>`, and an added line keeps the
+    old file's line counter where it was inserted, as GitLab's diff parser numbers it."""
+    if file is None or comment.start_line >= comment.line:
+        return None
+    old = _old_counters(file.patch)
+    if comment.start_line not in old or comment.line not in old:
+        return None
+    sha = hashlib.sha1(comment.path.encode("utf-8")).hexdigest()  # noqa: S324 - GitLab's format, not a secret
+
+    def end(line: int) -> dict[str, object]:
+        return {"line_code": f"{sha}_{old[line]}_{line}", "type": "new", "new_line": line}
+
+    return {"start": end(comment.start_line), "end": end(comment.line)}
+
+
+_HUNK = re.compile(r"^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@")
+
+
+def _old_counters(patch: str) -> dict[int, int]:
+    """For each added line's number in the new file, the old file's line counter at that point."""
+    counters: dict[int, int] = {}
+    old = new = 0
+    for line in patch.split("\n"):
+        if hunk := _HUNK.match(line):
+            old, new = int(hunk[1]), int(hunk[2])
+        elif line.startswith("+"):
+            counters[new] = old
+            new += 1
+        elif line.startswith("-"):
+            old += 1
+        elif not line.startswith("\\"):
+            old += 1
+            new += 1
+    return counters
+
+
+# The end of a body render.inline_body wrote: a suggestion's closing fence, "Also at", the fingerprint.
+_SUGGESTION_END = re.compile(r"\n(`{3,})\n\n(?:Also at [^\n]*\n\n)?<!-- bylaw:fp=[0-9a-f]{16} -->\Z")
+
+
+def _note_body(body: str, lines_above: int) -> str:
+    """An inline comment for GitLab. A suggestion must cover every line of the comment, which GitLab writes
+    `suggestion:-N+0` (https://docs.gitlab.com/user/project/merge_requests/reviews/suggestions/); every
+    other line is made inert."""
+    tail = _SUGGESTION_END.search(body)
+    if tail is None:
+        return _inert(body)
+    fence = tail[1]
+    # The suggestion holds no backtick run as long as its fence, so the last opener with it is bylaw's.
+    openers = list(re.finditer(rf"(?m)^{fence}suggestion$", body[: tail.start()]))
+    if not openers:
+        return _inert(body)
+    opener, close = openers[-1], tail.start() + 1 + len(fence)
+    offset = f":-{lines_above}+0" if lines_above > 0 else ""
+    return (
+        _inert(body[: opener.start()])
+        + body[opener.start() : opener.end()]
+        + offset
+        + body[opener.end() : close]
+        + _inert(body[close:])
+    )
+
+
+def _inert(text: str) -> str:
+    """GitLab runs a quick action (`/merge`, `/approve`, `/close`) from a note line that starts with a slash,
+    as the token's user (https://docs.gitlab.com/user/project/quick_actions/). Text from a model or a merge
+    request reaches these lines, so a zero-width space goes in front of every one. Lines in a code block
+    need none, but telling a code block apart exactly as GitLab's Markdown does is where a mistake would
+    hide, so only bylaw's own suggestion is left as written; GitLab reads no quick action inside it."""
+    return "\n".join(f"&#8203;{line}" if line.startswith("/") else line for line in text.split("\n"))
 
 
 def _changed(item: _Diff) -> ChangedFile:
