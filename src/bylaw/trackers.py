@@ -29,10 +29,13 @@ CREDENTIALS: dict[Tracker, tuple[str, ...]] = {
 }
 
 # PROJ-123 (Jira) and ENG-123 (Linear) share a shape; the allow lists decide which one a key is.
-_KEY_REF = re.compile(r"\b(?P<key>[A-Z][A-Z0-9_]*)-(?P<number>[1-9]\d{0,9})\b")
+# [0-9], not \d: \d also matches other scripts' digits, which no tracker uses in a key.
+_KEY_REF = re.compile(r"\b(?P<key>[A-Z][A-Z0-9_]*)-(?P<number>[1-9][0-9]{0,9})\b")
 # The mention Azure Boards itself links from GitHub:
 # https://learn.microsoft.com/en-us/azure/devops/boards/github/link-to-from-github
-_AB_REF = re.compile(r"\bAB#(?P<number>[1-9]\d{0,9})\b")
+_AB_REF = re.compile(r"\bAB#(?P<number>[1-9][0-9]{0,9})\b")
+# A pull request template's hidden examples; an unclosed comment hides the rest, as GitHub renders it.
+_HTML_COMMENT = re.compile(r"<!--.*?(?:-->|\Z)", re.DOTALL)
 
 
 @dataclass(frozen=True, slots=True)
@@ -45,7 +48,8 @@ def parse_work_item_refs(texts: Iterable[str], config: Config) -> tuple[WorkItem
     jira = frozenset(config.jira.projects if config.jira else ())
     linear = frozenset(config.linear.teams if config.linear else ())
     refs: list[WorkItemRef] = []
-    for text in texts:
+    for raw in texts:
+        text = _HTML_COMMENT.sub(" ", raw)
         found: list[tuple[int, WorkItemRef]] = []
         for match in _KEY_REF.finditer(text):
             if match["key"] in jira:
