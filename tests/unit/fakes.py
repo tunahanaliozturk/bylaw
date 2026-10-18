@@ -26,6 +26,14 @@ class FakeSource:
     def read_base(self, path: str) -> str | None:
         return self.base.get(path)
 
+    def list_base(self, directory: str) -> frozenset[str]:
+        prefix = f"{directory}/" if directory else ""
+        return frozenset(
+            path.removeprefix(prefix)
+            for path in self.base
+            if path.startswith(prefix) and "/" not in path.removeprefix(prefix)
+        )
+
     def read_head(self, path: str) -> str | None:
         return self.head.get(path)
 

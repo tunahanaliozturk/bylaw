@@ -49,6 +49,20 @@ class LocalGitSource:
     def read_head(self, path: str) -> str | None:
         return self._show(self._head, path)
 
+    def list_base(self, directory: str) -> frozenset[str]:
+        # --full-tree: paths from the repository root, as `git show` reads them, wherever bylaw runs. The
+        # trailing slash lists what is inside the directory rather than the directory entry itself.
+        paths = ("--", f"{directory}/") if directory else ()
+        result = self._run("ls-tree", "-z", "--full-tree", self._base, *paths)
+        if result.returncode != 0:
+            return frozenset()
+        names: set[str] = set()
+        for entry in result.stdout.decode("utf-8", errors="replace").split("\0"):
+            meta, _, path = entry.partition("\t")
+            if meta.split(" ")[1:2] == ["blob"]:
+                names.add(path.rpartition("/")[2])
+        return frozenset(names)
+
     def closing_issue_refs(self) -> tuple[IssueRef, ...]:
         return ()
 

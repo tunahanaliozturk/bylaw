@@ -375,6 +375,49 @@ def test_a_truncated_tree_falls_back_to_reading_the_one_blob(client: GitHubClien
 
 
 @respx.mock
+def test_base_directories_are_listed_from_one_tree_read(client: GitHubClient) -> None:
+    respx.get(f"{API}/repos/octo/app/pulls/5").mock(return_value=httpx.Response(200, json=PULL))
+    entries = [
+        {"path": "AGENTS.md", "type": "blob", "sha": "a"},
+        {"path": "packages", "type": "tree", "sha": "t"},
+        {"path": "packages/api/AGENTS.md", "type": "blob", "sha": "b"},
+        {"path": "packages/api/ruff.toml", "type": "blob", "sha": "c"},
+        {"path": "packages/api/src/app.py", "type": "blob", "sha": "d"},
+    ]
+    tree = respx.get(f"{API}/repos/octo/app/git/trees/b1").mock(
+        return_value=httpx.Response(200, json={"truncated": False, "tree": entries})
+    )
+    source = GitHubSource(client, "octo/app", 5)
+
+    assert source.list_base("packages/api") == {"AGENTS.md", "ruff.toml"}
+    assert source.list_base("packages") == frozenset()
+    assert source.list_base("missing") == frozenset()
+    assert tree.call_count == 1
+
+
+@respx.mock
+def test_a_truncated_tree_lists_a_directory_through_the_contents_api(client: GitHubClient) -> None:
+    respx.get(f"{API}/repos/octo/app/pulls/5").mock(return_value=httpx.Response(200, json=PULL))
+    respx.get(f"{API}/repos/octo/app/git/trees/b1").mock(
+        return_value=httpx.Response(200, json={"truncated": True, "tree": []})
+    )
+    listing = [
+        {"name": "AGENTS.md", "type": "file", "path": "packages/api/AGENTS.md"},
+        {"name": "src", "type": "dir", "path": "packages/api/src"},
+    ]
+    route = respx.get(f"{API}/repos/octo/app/contents/packages/api").mock(
+        return_value=httpx.Response(200, json=listing)
+    )
+    respx.get(f"{API}/repos/octo/app/contents/gone").mock(return_value=httpx.Response(404, json={}))
+
+    source = GitHubSource(client, "octo/app", 5)
+
+    assert source.list_base("packages/api") == {"AGENTS.md"}
+    assert route.calls[0].request.url.params["ref"] == "b1"
+    assert source.list_base("gone") == frozenset()
+
+
+@respx.mock
 def test_a_maintainer_comment_behind_a_hundred_outsider_comments_is_still_read(client: GitHubClient) -> None:
     respx.get(f"{API}/repos/octo/app/issues/9").mock(
         return_value=httpx.Response(200, json={"title": "Login", "body": ""})
