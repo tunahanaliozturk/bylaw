@@ -14,6 +14,8 @@ _STATUS_LINE = re.compile(r"^\s*(?:#{1,6}\s+|[-*+]\s+)?status\s*:\s*(?P<value>\S
 _STATUS_HEADING = re.compile(r"status", re.IGNORECASE)
 _DECISION_HEADING = re.compile(r"decision(?:\s+outcome)?:?", re.IGNORECASE)
 _ACCEPTED = re.compile(r"\b(?:accepted|approved)\b", re.IGNORECASE)
+# "Supersedes 0003" keeps an ADR in force; "superseded by 0012" does not.
+_RETIRED = re.compile(r"\b(?:superseded|deprecated|rejected|replaced|obsolete|withdrawn)\b", re.IGNORECASE)
 _WILDCARD = re.compile(r"[*?\[]")
 
 # Each ADR is one GitHub call; the newest are read first.
@@ -41,7 +43,8 @@ def status_of(markdown: str) -> str | None:
 
 
 def accepted(status: str) -> bool:
-    return _ACCEPTED.search(status) is not None
+    """In force: accepted, and not also retired, as in "Accepted, superseded by 0012" (ADR 0016)."""
+    return _ACCEPTED.search(status) is not None and _RETIRED.search(status) is None
 
 
 def is_adr(path: str, globs: Sequence[str]) -> bool:
