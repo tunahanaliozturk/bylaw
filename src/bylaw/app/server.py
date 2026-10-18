@@ -26,8 +26,17 @@ from bylaw.pull_review import review_pull_request
 
 log = logging.getLogger("bylaw.app")
 
-# A pull_request delivery is tens of kilobytes; GitHub caps any payload at 25 MB. Reading stops here.
-MAX_BODY = 1024 * 1024
+# Anyone can send bytes before the signature is checked, so the body is read only this far. GitHub
+# documents no size for a pull_request delivery, only a 25 MB cap on any payload. A typical one is tens
+# of kilobytes; the largest part is the pull request body, at most 65,536 characters, which is 256 KiB
+# even at four UTF-8 bytes each. BYLAW_APP_MAX_BODY raises the limit if a delivery is ever refused.
+MAX_BODY = 512 * 1024
+# A body that has not arrived by then is refused, so a slow sender cannot hold a connection open.
+BODY_SECONDS = 10.0
+# Open connections at once; beyond that Uvicorn answers 503. Idle keep-alive connections close after
+# five seconds. Both are for a server that only GitHub needs to reach.
+MAX_CONNECTIONS = 64
+KEEP_ALIVE_SECONDS = 5
 # GitHub answers this when a token asks for a repository the installation does not cover.
 _NOT_INSTALLED = frozenset({404, 422})
 
@@ -51,6 +60,7 @@ class Settings:
     graphql_url: str | None = None
     workers: int = 2
     max_pending: int = 100
+    max_body: int = MAX_BODY
 
     @classmethod
     def from_env(cls, environ: Mapping[str, str]) -> "Settings":
@@ -74,6 +84,7 @@ class Settings:
             graphql_url=environ.get("GITHUB_GRAPHQL_URL") or None,
             workers=_count(environ, "BYLAW_APP_WORKERS", 2),
             max_pending=_count(environ, "BYLAW_APP_MAX_PENDING", 100),
+            max_body=_count(environ, "BYLAW_APP_MAX_BODY", MAX_BODY),
         )
 
 
@@ -114,9 +125,10 @@ def create_app(settings: Settings, reviewer: ReviewerFactory = make_reviewer) ->
             yield
 
     async def webhook(request: Request) -> Response:
-        body = await _read_body(request)
-        if body is None:
-            return JSONResponse({"error": "payload too large"}, status_code=413)
+        try:
+            body = await read_body(request, settings.max_body)
+        except RefusedError as refused:
+            return JSONResponse({"error": refused.reason}, status_code=refused.status)
         # Nothing in the body is parsed before the signature says GitHub sent it.
         if not verify_signature(settings.webhook_secret, body, request.headers.get("X-Hub-Signature-256")):
             return JSONResponse({"error": "invalid signature"}, status_code=401)
@@ -198,17 +210,30 @@ def _app_login(settings: Settings) -> str:
         return app.app_login()
 
 
-async def _read_body(request: Request) -> bytes | None:
+class RefusedError(Exception):
+    """A delivery refused before it is read whole."""
+
+    def __init__(self, status: int, reason: str) -> None:
+        super().__init__(reason)
+        self.status = status
+        self.reason = reason
+
+
+async def read_body(request: Request, limit: int = MAX_BODY, seconds: float = BODY_SECONDS) -> bytes:
     declared = request.headers.get("content-length", "")
-    if declared.isdigit() and int(declared) > MAX_BODY:
-        return None
+    if declared.isdigit() and int(declared) > limit:
+        raise RefusedError(413, "payload too large")
     chunks: list[bytes] = []
     size = 0
-    async for chunk in request.stream():
-        size += len(chunk)
-        if size > MAX_BODY:
-            return None
-        chunks.append(chunk)
+    try:
+        async with asyncio.timeout(seconds):
+            async for chunk in request.stream():
+                size += len(chunk)
+                if size > limit:
+                    raise RefusedError(413, "payload too large")
+                chunks.append(chunk)
+    except TimeoutError:
+        raise RefusedError(408, "the body took too long to arrive") from None
     return b"".join(chunks)
 
 
@@ -222,4 +247,11 @@ def main() -> None:
     except SettingsError as error:
         raise SystemExit(f"bylaw-app: {error}") from None
     host = os.environ.get("BYLAW_APP_HOST", "127.0.0.1")
-    uvicorn.run(create_app(settings), host=host, port=_count(os.environ, "PORT", 8000), server_header=False)
+    uvicorn.run(
+        create_app(settings),
+        host=host,
+        port=_count(os.environ, "PORT", 8000),
+        server_header=False,
+        limit_concurrency=MAX_CONNECTIONS,
+        timeout_keep_alive=KEEP_ALIVE_SECONDS,
+    )
