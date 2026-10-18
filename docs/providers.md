@@ -18,9 +18,9 @@ no provider to pick: the host's own model reads the brief in your session ([host
 | OpenAI API | `openai` | OpenAI, under your API account; bylaw asks it not to store the response | `OPENAI_API_KEY` or `BYLAW_API_KEY` | none |
 | Amazon Bedrock | `bedrock` | Claude in Amazon Bedrock, in your AWS account and the region you set | `AWS_REGION`, then a Bedrock API key in `AWS_BEARER_TOKEN_BEDROCK`, or the AWS credential chain: `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`, `AWS_PROFILE`, SSO or a role | `bedrock`, for signing with the credential chain |
 | Google Vertex AI | `vertex` | Claude on Vertex AI, in your Google Cloud project and the region you set (`global`, `us`, `eu` or one region) | `CLOUD_ML_REGION`, `ANTHROPIC_VERTEX_PROJECT_ID`, and Application Default Credentials: `gcloud auth application-default login`, `GOOGLE_APPLICATION_CREDENTIALS` or workload identity | `vertex` |
-| Microsoft Foundry | `foundry` | Claude in your Foundry resource. Hosted on Azure, prompts and completions stay in Azure; hosted on Anthropic, inference runs on Anthropic's infrastructure | `ANTHROPIC_FOUNDRY_RESOURCE` (or `ANTHROPIC_FOUNDRY_BASE_URL`), then `ANTHROPIC_FOUNDRY_API_KEY` or Microsoft Entra ID | `azure`, for Entra ID |
-| Azure OpenAI | `azure-openai` | Your Azure OpenAI resource, in its region or the geography of a Global or Data Zone deployment; bylaw asks it not to store the response | `AZURE_OPENAI_ENDPOINT`, then `AZURE_OPENAI_API_KEY` or Microsoft Entra ID | `azure`, for Entra ID |
-| A local model | `openai-compatible` | The server at `--base-url`. On `localhost` nothing leaves the machine | none needed; `BYLAW_API_KEY` if the server wants a key | none |
+| Microsoft Foundry | `foundry` | Claude in your Foundry resource, under Anthropic's data use terms as Microsoft's processor. Hosted on Azure, prompts and completions stay in Azure, but usage metadata and content Anthropic's safety systems flag go to Anthropic; hosted on Anthropic, inference runs on Anthropic's infrastructure | `ANTHROPIC_FOUNDRY_RESOURCE` (or `ANTHROPIC_FOUNDRY_BASE_URL`), then `ANTHROPIC_FOUNDRY_API_KEY` or Microsoft Entra ID | `azure`, for Entra ID |
+| Azure OpenAI | `azure-openai` | Your Azure OpenAI resource, in its region or the geography of a Global or Data Zone deployment; bylaw asks it not to store the response | `AZURE_OPENAI_ENDPOINT` (the resource URL; a copied `/openai/v1` is dropped), then `AZURE_OPENAI_API_KEY` or Microsoft Entra ID | `azure`, for Entra ID |
+| A local model | `openai-compatible` | The server at `--base-url`. On `localhost` nothing leaves the machine; anywhere else it must be `https://` | none needed; `BYLAW_BASE_URL_KEY` (the Action's `base-url-api-key`) if the server wants a key | none |
 
 Each cloud keeps to its own terms for what it logs and for how long; read them before you choose one:
 [Amazon Bedrock data protection](https://docs.aws.amazon.com/bedrock/latest/userguide/data-protection.html),
@@ -43,9 +43,23 @@ error note names the provider, the status code and the error type only, because 
 message can quote part of a key and the note may be public.
 
 A key meant for one provider is never sent to another. `BYLAW_API_KEY`, the Action's `api-key` input, is
-used only by `anthropic`, `openai` and `openai-compatible`. The cloud providers ignore it, because a key
-left over from an earlier `provider` setting would otherwise travel to a different company. The local
-provider never sends `OPENAI_API_KEY`, and Azure OpenAI never falls back to it.
+used only by `anthropic` and `openai`. The cloud providers and the local one ignore it, because a key left
+over from an earlier `provider` setting would otherwise travel to a different company, or to whatever
+server `--base-url` names. A local server gets its own `BYLAW_BASE_URL_KEY` and nothing else: not
+`OPENAI_API_KEY`, and not the `OPENAI_ORG_ID` or `OPENAI_PROJECT_ID` the OpenAI SDK would add. Azure
+OpenAI gets neither of those either.
+
+Two more variables would break that rule, so bylaw stops with a note when they are set:
+`OPENAI_CUSTOM_HEADERS` for `openai-compatible` and `azure-openai`, and `ANTHROPIC_CUSTOM_HEADERS` for
+`foundry`. The SDKs add the headers listed there to every request, an `Authorization` line included.
+
+A key variable that is set but empty, which is what a workflow leaves when it passes a secret that does
+not exist, also stops the review with a note. Left alone, the SDK would send an empty key in place of
+signing in with the credential chain.
+
+A credential chain that finds nothing, or a token that cannot be refreshed, fails the model review with a
+note, and bylaw's own checks still run. Any other error is a bug and stops the run, so that it cannot hide
+behind a note while `fail-on` passes.
 
 ## Model names
 
@@ -64,8 +78,16 @@ The Claude API, Vertex AI, Foundry, OpenAI and Azure OpenAI constrain the answer
 and a local server may not either, or may accept the setting and not enforce it. For those, bylaw writes
 the schema into the prompt, checks the answer against it, and sends a wrong answer back once with what
 was wrong, by field path. A second wrong answer fails the model review with a note that names the
-problems; bylaw's own checks still run and post. The retry is a second call, so on a paid provider it is
-billed, and the token count in the summary includes it ([ADR 0018](adr/0018-model-providers.md)).
+problems; bylaw's own checks still run and post. The problems name only the schema's own fields and list
+indexes, because a field name the model made up is its text and the note may be public.
+
+The answer may come with a thinking block, prose or a code fence around it: bylaw drops `<think>` blocks
+and takes the first JSON object that decodes. An empty answer counts as no review and is not sent back.
+
+The retry is a second call, so on a paid provider it is billed, and the token count in the summary
+includes it. With `[budget] pr_tokens` set, bylaw skips the retry when the tokens used so far plus another
+input of the same size would pass what is left. In the fallback the brief is marked for the prompt cache,
+so a retry on Bedrock reads it at the cache price ([ADR 0018](adr/0018-model-providers.md)).
 
 Of these providers only the Claude API has server-side fallback, which retries a refused answer on
 another model, so bylaw asks for it only there.
@@ -81,9 +103,20 @@ bylaw review --context context.json --provider openai-compatible \
 ```
 
 A small model finds less than a large one, and the evaluation set says how much less
-([eval/README](eval/README.md)). In the Action, the server has to be reachable from the runner, which
-usually means a self-hosted runner next to it. Use `https://` for anything that is not on the same
-machine: the brief holds your code, and plain `http://` sends it in clear text.
+([eval/README](eval/README.md)).
+
+Mind the context length. Ollama gives a model 4k tokens of context on a machine with less than 24 GiB of
+VRAM (32k up to 48 GiB, 256k above), and a brief is often longer: the rules, the ADRs and the diff
+together. Ollama cuts what does not fit and the request still succeeds, so the model reviews part of the
+change. Start
+the server with a larger context, for example `OLLAMA_CONTEXT_LENGTH=32768 ollama serve`, or lower
+`input_token_budget` in `.bylaw.toml` to what the model can hold
+([Ollama: context length](https://docs.ollama.com/context-length)).
+
+In the Action, the server has to be reachable from the runner, which usually means a self-hosted runner
+next to it. bylaw refuses plain `http://` unless the server is on the same machine (`localhost`,
+`127.0.0.1` or `::1`): the brief holds your code, and plain `http://` would send it across the network in
+clear text. Put TLS in front of a server elsewhere, or reach it through a tunnel to `localhost`.
 
 ## In the Action
 
