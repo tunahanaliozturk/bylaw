@@ -378,6 +378,18 @@ class GitHubClient:
             if isinstance(e, dict) and e.get("type") == "blob" and isinstance(e.get("path"), str)
         }
 
+    def directory_files(self, repo: str, path: str, ref: str) -> frozenset[str]:
+        """Names of the files directly in a directory; empty when it does not exist."""
+        response = self._get_optional(f"/repos/{repo}/contents/{quote(path)}", {"ref": ref})
+        entries = response.json() if response is not None else None
+        if not isinstance(entries, list):  # a file, or nothing
+            return frozenset()
+        return frozenset(
+            e["name"]
+            for e in entries
+            if isinstance(e, dict) and e.get("type") == "file" and isinstance(e.get("name"), str)
+        )
+
     def blob_sha(self, repo: str, path: str, ref: str) -> str | None:
         response = self._get_optional(f"/repos/{repo}/contents/{quote(path)}", {"ref": ref})
         sha = response.json().get("sha") if response is not None else None
@@ -727,14 +739,29 @@ class GitHubSource:
             )
         return tuple(files)
 
-    def _base_blob(self, path: str) -> str | None:
-        # One tree read covers every moved file; per-file reads only when GitHub truncates the tree.
+    def _tree(self) -> dict[str, str] | None:
+        """The base tree, read once; None when GitHub truncated it."""
         if self._base_tree is None:
             self._base_tree = self._client.tree_shas(self._repo, self._pull.base.sha) or {}
             self._tree_complete = bool(self._base_tree)
-        if self._tree_complete:
-            return self._base_tree.get(path)
+        return self._base_tree if self._tree_complete else None
+
+    def _base_blob(self, path: str) -> str | None:
+        # One tree read covers every moved file; per-file reads only when GitHub truncates the tree.
+        if (tree := self._tree()) is not None:
+            return tree.get(path)
         return self._client.blob_sha(self._repo, path, self._pull.base.sha)
+
+    def list_base(self, directory: str) -> frozenset[str]:
+        # The same tree read serves every directory; a truncated tree costs one listing per directory.
+        if (tree := self._tree()) is None:
+            return self._client.directory_files(self._repo, directory, self._pull.base.sha)
+        prefix = f"{directory}/" if directory else ""
+        return frozenset(
+            path.removeprefix(prefix)
+            for path in tree
+            if path.startswith(prefix) and "/" not in path.removeprefix(prefix)
+        )
 
     def read_base(self, path: str) -> str | None:
         return self._client.file_text(self._repo, path, self._pull.base.sha)

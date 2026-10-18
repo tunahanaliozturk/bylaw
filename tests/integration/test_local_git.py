@@ -43,6 +43,26 @@ def test_base_and_head_reads_see_different_commits(repo: Path) -> None:
     assert source.read_head("app.py") is not None
 
 
+def test_a_base_directory_lists_only_the_files_directly_in_it(repo: Path) -> None:
+    _git(repo, "checkout", "-q", "main")
+    (repo / "packages" / "api" / "src").mkdir(parents=True)
+    (repo / "packages" / "api" / "AGENTS.md").write_text("Return errors as values.\n")
+    (repo / "packages" / "api" / "src" / "app.py").write_text("x = 1\n")
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-m", "packages")
+    _git(repo, "checkout", "-q", "feature")
+    _git(repo, "merge", "-q", "--no-edit", "main")
+    (repo / "packages" / "api" / "CLAUDE.md").write_text("only on the branch\n")
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-m", "head only")
+    source = LocalGitSource(repo, "main")
+
+    assert source.list_base("packages/api") == {"AGENTS.md"}
+    assert source.list_base("") == {".editorconfig", "CONTRIBUTING.md"}
+    assert source.list_base("packages") == frozenset()
+    assert source.list_base("missing") == frozenset()
+
+
 def test_undecodable_bytes_are_replaced_instead_of_failing(repo: Path) -> None:
     text = LocalGitSource(repo, "main").read_base("CONTRIBUTING.md")
 
