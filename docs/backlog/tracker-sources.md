@@ -8,7 +8,7 @@ Many teams keep requirements outside GitHub. Read the work items a pull request 
 
 ## Items
 
-- [ ] **TRK-1** (M) Work item reference parser: `PROJ-123` (Jira), `AB#123` (Azure Boards), `LIN-123` (Linear). Done when: parser tests.
+- [x] **TRK-1** (M) Work item reference parser: `PROJ-123` (Jira), `AB#123` (Azure Boards), `LIN-123` (Linear). Done when: parser tests.
 - [ ] **TRK-2** (M) Jira Cloud REST read with an API token; opt-in base URL and allowed projects. Done when: fake server tests.
 - [ ] **TRK-3** (M) Azure DevOps work items with a PAT, including the Acceptance Criteria field. Done when: fake server tests.
 - [ ] **TRK-4** (M) Linear GraphQL read. Done when: fake server tests.
