@@ -20,11 +20,16 @@ from bylaw.app.auth import DEFAULTS_PERMISSIONS, REVIEW_PERMISSIONS, app_jwt
 from bylaw.app.queue import Job, Outcome, ReviewQueue, flat
 from bylaw.app.secrets import DirectorySecrets, EnvSecrets, SecretStore
 from bylaw.app.webhook import review_job, verify_signature
-from bylaw.engine import PROVIDERS, Reviewer, api_key_for, make_reviewer
+from bylaw.engine import Reviewer, api_key_for, make_reviewer
 from bylaw.github import GitHubClient, GitHubError
 from bylaw.pull_review import review_pull_request
 
 log = logging.getLogger("bylaw.app")
+
+# Only providers whose key comes from the installation's own secrets. The cloud providers and local
+# servers authenticate through the server's environment, which every installation would share, and a
+# server-wide credential never reviews for an installation (ADR 0017, ADR 0018).
+APP_PROVIDERS = ("anthropic", "openai")
 
 # Anyone can send bytes before the signature is checked, so the body is read only this far. GitHub
 # documents no size for a pull_request delivery, only a 25 MB cap on any payload. A typical one is tens
@@ -69,8 +74,8 @@ class Settings:
         if not client_id:
             raise SettingsError("BYLAW_APP_CLIENT_ID is required: the app's client ID or app ID")
         provider = environ.get("BYLAW_PROVIDER") or "anthropic"
-        if provider not in PROVIDERS:
-            raise SettingsError(f"BYLAW_PROVIDER must be one of {', '.join(PROVIDERS)}")
+        if provider not in APP_PROVIDERS:
+            raise SettingsError(f"BYLAW_PROVIDER must be one of {', '.join(APP_PROVIDERS)}")
         secrets_dir = environ.get("BYLAW_SECRETS_DIR")
         api_url = environ.get("GITHUB_API_URL") or "https://api.github.com"
         return cls(
