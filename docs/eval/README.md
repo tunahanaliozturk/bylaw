@@ -71,3 +71,24 @@ Host models (Claude Code, Codex) review without an API key: `bylaw eval prepare 
 Prices are given on the command line, never stored in the code, because they change. Cost is per reviewed case and approximate: cached input is priced as plain input, and failed attempts are not counted. Latency is only reported for model runs; replayed host answers and `--no-model` have none.
 
 Committed results live in `eval/results/<name>/`: the per-case runs and `report.md`. The runs of 15, 16 and 18 October 2026 were made before the five `py-mono` cases were added, so they cover the other 50. No committed model run includes the two `py-ledger` cases yet.
+
+## Real pull requests
+
+The planted set's labels are certain but its changes are small and tidy. The second set, in `eval/real/`, holds real pull requests from permissively licensed projects, picked by the rules in [real-set.md](real-set.md) and frozen so a run never reads GitHub ([ADR 0015](../adr/0015-real-pull-request-set.md)). It is its own set root, so the commands are the same with `--set eval/real`:
+
+```
+bylaw eval run --set eval/real --no-model --out runs/real-checks
+bylaw eval score --set eval/real --runs runs/real-checks --label "bylaw checks only, real set"
+```
+
+Each case is the pull request at the commit a reviewer commented on, with the files it touches at the merge base (`base/`) and at that commit (`head/`), the rule and spec files bylaw reads, the linked issue in `snapshot.json`, and the project's licence notice. The matching rules are the ones above. What differs is what a label means: it is a problem a reviewer named and the author fixed, so a finding elsewhere can be a real problem nobody reported, and real precision is a lower bound.
+
+The report puts real cases in their own sections and never adds them to the planted numbers. A case two people have not labelled yet is reported under "provisional labels"; those numbers check the tooling, not the reviewer. How to label a case is in [labelling.md](labelling.md).
+
+To add a pull request, freeze it with a GitHub token (read-only use; it is never stored):
+
+```
+GH_TOKEN="$(gh auth token)" bylaw eval snapshot --repo pallets/click --pr 2800 --comment 1650000000 --id click-2800
+```
+
+`--comment` is the id of the review comment the case is built around; the snapshot is the commit it was made on. The tool refuses a project whose licence is not MIT, Apache-2.0 or BSD, and a snapshot whose diff does not match GitHub's. It writes no labels: add `case.toml` as [labelling.md](labelling.md) describes.
