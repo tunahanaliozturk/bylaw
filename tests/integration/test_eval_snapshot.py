@@ -201,6 +201,28 @@ def test_a_path_that_leaves_the_case_directory_or_cannot_exist_on_windows_is_ref
     assert [p for p in tmp_path.rglob("*") if "evil" in p.name.lower()] == []
 
 
+def test_a_file_without_a_patch_is_refused_unless_it_only_moved(tmp_path: Path) -> None:
+    # GitHub sends no patch and 0 changes for a modified binary file.
+    image = ChangedFile(path="logo.png", status="modified", patch_omitted=True, changes=0)
+    source = FakeSource(files=(image,), base={"logo.png": "PNG"}, head={"logo.png": "PNG2"})
+
+    with pytest.raises(ValueError, match="no text diff"):
+        freeze(source, tmp_path / "cases/c", url="u", number=1, licence=MIT)
+
+
+@pytest.mark.parametrize("text", ["a\x00b\n", "caf�\n"])
+def test_bytes_that_are_not_text_are_refused(tmp_path: Path, text: str) -> None:
+    with pytest.raises(ValueError, match="not UTF-8 text"):
+        freeze(_added("a.py", text), tmp_path / "cases/c", url="u", number=1, licence=MIT)
+
+
+def test_a_touched_file_over_the_size_cap_is_refused(tmp_path: Path) -> None:
+    big = "x = 1\n" * 12_000  # about 70 KB
+
+    with pytest.raises(ValueError, match="KB"):
+        freeze(_added("big.py", big), tmp_path / "cases/c", url="u", number=1, licence=MIT)
+
+
 @pytest.mark.parametrize("case_id", [".", "..", "Upper", "-dash", "a b", ""])
 def test_a_case_id_that_is_not_a_plain_name_is_refused(tmp_path: Path, case_id: str) -> None:
     (tmp_path / "cases/keep").mkdir(parents=True)

@@ -22,6 +22,8 @@ from bylaw.source import ChangeInfo, Issue, IssueRef, RepoSource
 
 # The licences that allow copying a project's files into this repository with their notice.
 LICENCES = frozenset({"MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause"})
+# "About 60 KB" per touched file, as the selection rules say (docs/eval/real-set.md).
+MAX_FILE_BYTES = 60 * 1024
 
 
 class PullRequestAt(GitHubSource):
@@ -174,21 +176,11 @@ def freeze(  # noqa: PLR0913 - what GitHub said about the pull request, all keyw
     patterns = generated_patterns(recorder.read_base(".gitattributes"))
     files = [f for f in recorder.changed_files() if not is_skipped(f.path, patterns)]
     left_out = tuple(f.path for f in recorder.changed_files() if is_skipped(f.path, patterns))
-    remove: list[str] = []
-    for file in files:
-        if file.patch_omitted and file.changes is None:
-            raise ValueError(f"{file.path} is binary; the real set takes text changes only")
-        if file.status != "added":
-            old = file.previous_path or file.path
-            if recorder.read_base(old) is None:
-                raise ValueError(f"{old} is missing at the base commit")
-            if file.status in {"removed", "renamed"}:
-                remove.append(old)
-        if file.status != "removed" and recorder.read_head(file.path) is None:
-            raise ValueError(f"{file.path} is missing at the reviewed commit")
+    remove = _check_changes(recorder, files)
     touched = {f.path for f in files if f.status != "removed"}
     base = {path: text for path, text in recorder.base.items() if text is not None}
     head = {path: text for path, text in recorder.head.items() if text is not None and path in touched}
+    _check_texts(files, base, head)
     # A spec read at the head that the change does not touch is the same at the base.
     base |= {p: t for p, t in recorder.head.items() if t is not None and p not in touched}
     spdx, licence_name, licence_text = licence
@@ -246,6 +238,36 @@ def freeze(  # noqa: PLR0913 - what GitHub said about the pull request, all keyw
     finally:
         shutil.rmtree(staging, ignore_errors=True)
     return pull
+
+
+def _check_changes(recorder: _Recorder, files: list[ChangedFile]) -> list[str]:
+    """Read both ends of every change and refuse what cannot be frozen; return the paths to remove."""
+    remove: list[str] = []
+    for file in files:
+        # A pure move has a patch-free entry that is not omitted; anything else without a patch is binary,
+        # or too large for GitHub to diff, and would be frozen as corrupted text.
+        if file.patch_omitted and file.status != "removed":
+            raise ValueError(f"{file.path} has no text diff; the real set takes text changes only")
+        if file.status != "added":
+            old = file.previous_path or file.path
+            if recorder.read_base(old) is None:
+                raise ValueError(f"{old} is missing at the base commit")
+            if file.status in {"removed", "renamed"}:
+                remove.append(old)
+        if file.status != "removed" and recorder.read_head(file.path) is None:
+            raise ValueError(f"{file.path} is missing at the reviewed commit")
+    return remove
+
+
+def _check_texts(files: list[ChangedFile], base: dict[str, str], head: dict[str, str]) -> None:
+    for path, text in (*base.items(), *head.items()):
+        # GitHub's text reads replace bytes that are not UTF-8; a NUL means a binary file slipped through.
+        if "\0" in text or "\ufffd" in text:
+            raise ValueError(f"{path} is not UTF-8 text; the real set takes text files only")
+    for path in {f.path for f in files} | {f.previous_path for f in files if f.previous_path}:
+        for side in (base.get(path), head.get(path)):
+            if side is not None and len(side.encode("utf-8")) > MAX_FILE_BYTES:
+                raise ValueError(f"{path} is over {MAX_FILE_BYTES // 1024} KB, the real set's cap per file")
 
 
 def _replace(out: Path, staging: Path) -> None:
