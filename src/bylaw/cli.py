@@ -197,6 +197,9 @@ def _eval(args: argparse.Namespace) -> int:
             reviewer = make_reviewer(args.provider, args.model, args.effort, key, args.base_url)
             make = lambda _: reviewer  # noqa: E731 - one reviewer for every case
             identity = f"{args.provider}:{args.model or 'default model'}:{args.effort or 'default effort'}"
+            if args.base_url:
+                # Two servers can serve different weights under one model name.
+                identity += f"@{args.base_url}"
         _say(f"reviewing {len(cases)} case(s) with {identity}; finished cases in {args.out} are reused")
         runs = run_all(root, cases, make, Path(args.out), identity, stop=limit)
         failed = sum(r.error is not None for r in runs)
