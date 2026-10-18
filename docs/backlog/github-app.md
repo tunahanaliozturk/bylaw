@@ -8,7 +8,7 @@ One install for an organisation instead of a workflow file per repository.
 
 ## Items
 
-- [ ] **APP-1** (M) ADR: hosting model, key storage, what runs where. Done when: ADR accepted.
+- [x] **APP-1** (M) ADR: hosting model, key storage, what runs where. Done when: ADR accepted.
 - [ ] **APP-2** (S) App manifest with the narrowest permissions. Done when: manifest.
 - [ ] **APP-3** (L) Webhook receiver on the same core, with a queue and idempotency by head SHA. Done when: integration tests.
 - [ ] **APP-4** (M) Organisation defaults from the `.github` repository's `.bylaw.toml`. Done when: config tests.
@@ -17,4 +17,5 @@ One install for an organisation instead of a workflow file per repository.
 
 ## Notes
 
-Needs a server, unlike the Action. The ADR decides between self-hosting only and offering a hosted instance later.
+Needs a server, unlike the Action. [ADR 0017](../adr/0017-github-app.md) settles it: self-hosted only; a
+hosted instance is out of scope until someone can operate it.
