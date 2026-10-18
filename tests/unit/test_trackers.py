@@ -706,3 +706,74 @@ def test_keys_inside_html_comments_of_a_pull_request_template_are_not_references
     body = "<!-- Name your issue, for example PROJ-1 or AB#2 -->\nImplements ENG-7\n<!-- unclosed PROJ-3"
 
     assert parse_work_item_refs([body], load_config(TRACKERS)) == (WorkItemRef("linear", "ENG-7"),)
+
+
+# In the GitHub App one installation's tracker token serves every repository, so the site it goes to
+# comes from the operator's secret store, never from a repository's .bylaw.toml (ADR 0017).
+ATTACKER = '[jira]\nurl = "https://collector.example"\nprojects = ["PROJ"]\n'
+
+
+@respx.mock
+def test_with_operator_sites_jira_is_read_only_from_the_site_the_operator_set() -> None:
+    route = respx.get(f"{JIRA}/rest/api/3/issue/PROJ-12").mock(
+        return_value=httpx.Response(200, json=_jira_issue())
+    )
+    env = {**JIRA_ENV, "JIRA_URL": "https://ACME.atlassian.net/"}
+
+    requirements, notes = read_work_items(["PROJ-12"], load_config(JIRA_CONFIG), env, operator_sites=True)
+
+    assert [r.source for r in requirements] == ["PROJ-12"]
+    assert not any("not read" in note for note in notes)
+    assert route.called
+
+
+@respx.mock
+def test_with_operator_sites_a_repository_cannot_send_the_jira_token_to_another_host() -> None:
+    env = {**JIRA_ENV, "JIRA_URL": JIRA}
+
+    requirements, notes = read_work_items(["PROJ-12"], load_config(ATTACKER), env, operator_sites=True)
+
+    assert requirements == ()
+    assert len(respx.calls) == 0
+    assert notes == (
+        "PROJ-12 was not read from Jira: .bylaw.toml names a Jira site other than the one the app's "
+        "operator set for this installation (JIRA_URL), and the installation's token goes only there.",
+    )
+    assert not _notes_leak(notes, env)
+
+
+@respx.mock
+def test_with_operator_sites_and_no_site_set_the_jira_token_goes_nowhere() -> None:
+    requirements, notes = read_work_items(
+        ["PROJ-12"], load_config(JIRA_CONFIG), JIRA_ENV, operator_sites=True
+    )
+
+    assert (requirements, len(respx.calls)) == ((), 0)
+    assert notes == (
+        "PROJ-12 was not read from Jira: the app's operator has not set JIRA_URL for this installation, "
+        "so its token is not sent anywhere.",
+    )
+
+
+@respx.mock
+def test_with_operator_sites_azure_boards_is_read_only_from_the_operator_s_organisation() -> None:
+    other = '[azure_boards]\norganization = "elsewhere"\nprojects = ["Fabrikam"]\n'
+    env = {**AZURE_ENV, "AZURE_DEVOPS_ORGANIZATION": "Acme"}
+    route = respx.get(f"{AZURE}/345").mock(return_value=httpx.Response(200, json=_work_item()))
+
+    kept, _ = read_work_items(["AB#345"], load_config(AZURE_CONFIG), env, operator_sites=True)
+    refused, notes = read_work_items(["AB#345"], load_config(other), env, operator_sites=True)
+
+    assert ([r.source for r in kept], refused, route.call_count) == (["AB#345"], (), 1)
+    assert "names an Azure DevOps organisation other than the one the app's operator set" in notes[0]
+
+
+@respx.mock
+def test_without_operator_sites_the_configured_jira_site_is_used_as_before() -> None:
+    route = respx.get("https://collector.example/rest/api/3/issue/PROJ-12").mock(
+        return_value=httpx.Response(200, json=_jira_issue())
+    )
+
+    read_work_items(["PROJ-12"], load_config(ATTACKER), {**JIRA_ENV, "JIRA_URL": JIRA})
+
+    assert route.called

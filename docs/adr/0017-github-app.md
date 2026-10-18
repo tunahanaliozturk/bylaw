@@ -64,6 +64,20 @@ Docker and Kubernetes mount secrets. Only the names bylaw reads are taken. A ser
 `ANTHROPIC_API_KEY` is never used for an installation, so one organisation's key cannot review another's
 code. An installation without a key gets the deterministic checks, as the Action does without one.
 
+**Where installation secrets may go is the operator's choice.** In the Action a tracker token belongs to
+one repository, and that repository's `.bylaw.toml` says which Jira site it goes to. In the app one token
+serves every repository of the installation, and anyone who can create a repository in the organisation
+writes a `.bylaw.toml` on its base branch. If that file could name the Jira site, it could send the
+organisation's Jira credentials to a host its author runs. So in the app the destination comes from the
+secret store, next to the token: `JIRA_URL` for Jira and `AZURE_DEVOPS_ORGANIZATION` for Azure Boards. A
+`[jira] url` or `[azure_boards] organization` that differs from it, or a tracker whose destination the
+operator did not set, is not read, and the summary says so; the token is never sent. Linear's key goes
+to one fixed host, so nothing in the configuration steers it. The project and team allow lists still
+come from the repository, so any repository can quote what the installation's token can read: give the
+app a tracker account that reads only what every repository may see. Any later setting that steers a
+key, such as a model provider's base URL, follows the same rule in the app: the operator sets it, not
+the repository.
+
 **Trust from a fixed identity.** ADR 0008 trusted any bot to carry bylaw's state, and ADR 0012 accepted a
 bot-written summary as review memory, because a workflow token, an app and a personal token all post as
 different accounts and an installation token cannot ask who it is. The app knows: it reads its slug from

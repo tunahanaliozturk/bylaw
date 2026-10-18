@@ -163,13 +163,25 @@ With `BYLAW_SECRETS_DIR`, one file per secret:
     ANTHROPIC_API_KEY
     JIRA_EMAIL
     JIRA_API_TOKEN
+    JIRA_URL
 ```
 
 Without it, from the environment: `BYLAW_INSTALLATION_12345678_ANTHROPIC_API_KEY=...`. The names are the
 ones the Action and the CLI read: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `BYLAW_API_KEY`, and the tracker
-tokens `JIRA_EMAIL`, `JIRA_API_TOKEN`, `AZURE_DEVOPS_TOKEN` and `LINEAR_API_KEY` ([trackers.md](../trackers.md)).
+tokens `JIRA_EMAIL`, `JIRA_API_TOKEN`, `AZURE_DEVOPS_TOKEN` and `LINEAR_API_KEY` ([trackers.md](../trackers.md)),
+plus `JIRA_URL` and `AZURE_DEVOPS_ORGANIZATION`, which only the app reads (below).
 Nothing else is read. Keys are read on every review, so a rotated key takes effect without a restart,
 and they are never written to the log.
+
+Tracker tokens need one more secret each: where they may go. A token in the store serves every repository
+of the installation, and anyone who can create a repository writes its `.bylaw.toml`, so the app does not
+let that file choose the destination. Set `JIRA_URL` (such as `https://acme.atlassian.net`) next to
+`JIRA_EMAIL` and `JIRA_API_TOKEN`, and `AZURE_DEVOPS_ORGANIZATION` next to `AZURE_DEVOPS_TOKEN`. A
+repository whose `[jira] url` or `[azure_boards] organization` differs gets a note in its summary instead
+of a request carrying the token, and without the pinning secret the tracker is not read at all. The
+project and team allow lists still come from `.bylaw.toml`, so give the app a tracker account that can
+read only what any repository in the organisation may quote. Linear's key always goes to Linear's API, so
+it needs no pinning.
 
 ## 6. Health, logs and limits
 
