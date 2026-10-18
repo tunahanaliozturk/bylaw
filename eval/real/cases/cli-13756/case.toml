@@ -1,0 +1,28 @@
+kind = "bug"
+labellers = ["first pass (model)"]
+
+[[findings]]
+file = "pkg/cmd/search/repos/repos.go"
+lines = [60, 60]
+categories = ["bug"]
+note = "The help example used an unquoted stars:>5000, which a shell treats as an output redirection."
+
+[[allowed]]
+file = "pkg/cmd/search/code/code.go"
+lines = [59, 61]
+
+[[allowed]]
+file = "pkg/cmd/search/commits/commits.go"
+lines = [58, 60]
+
+[[allowed]]
+file = "pkg/cmd/search/issues/issues.go"
+lines = [53, 55]
+
+[[allowed]]
+file = "pkg/cmd/search/prs/prs.go"
+lines = [55, 57]
+
+[[allowed]]
+file = "pkg/cmd/search/repos/repos.go"
+lines = [59, 61]

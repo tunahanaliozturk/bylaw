@@ -1,0 +1,42 @@
+{
+  "repo": "trpc/trpc",
+  "number": 6927,
+  "url": "https://github.com/trpc/trpc/pull/6927",
+  "licence": "MIT",
+  "base_sha": "a9b4d5fa75daf3c82e7c2b62e98a028199e4dcb5",
+  "head_sha": "3e17c698c62d81934033d3117473811d4534c5ec",
+  "title": "fix: export DataTransformer interface marked as @public",
+  "body": "# Pull Request Summary: Export DataTransformer Interface #6916 \r\n\r\n\r\nCloses #6926\r\nCloses #6916 \r\n\r\n## Description\r\nThis PR resolves an issue where the `DataTransformer` interface was marked as `@public` but not exported from either `@trpc/server` or `@trpc/client` packages, preventing users from properly typing their custom transformers.\r\n\r\n## Issue Fixed\r\n- **Problem**: Users couldn't import `DataTransformer` interface despite it being marked as public API\r\n- **Workaround**: Users had to use confusing `CombinedDataTransformer[\"input\"]` hack\r\n- **Root Cause**: Missing exports in package entry points\r\n- \r\n##  Changes Made\r\n### Server Package (`@trpc/server`)\r\n- Added `DataTransformer` export to main index\r\n- Added `TRPCDataTransformer` alias following naming conventions\r\n- Added backward compatibility deprecation notice\r\n\r\n### Client Package (`@trpc/client`) \r\n- Added convenient re-export of `DataTransformer` from server package\r\n- Maintains single source of truth\r\n\r\n## Testing\r\n- [x] All packages build successfully\r\n- [x] Type exports verified in built packages\r\n- [x] Existing transformer tests pass\r\n- [x] No breaking changes introduced\r\n- [x] Backward compatibility maintained\r\n## Usage\r\n### Before\r\n```typescript\r\nimport type { DataTransformer } from '@trpc/server';\r\ntype MyTransformer = CombinedDataTransformer[\"input\"];\r\n```\r\n### After\r\n```typescript\r\nimport type { DataTransformer } from '@trpc/server';\r\nimport type { DataTransformer } from '@trpc/client';\r\nconst myTransformer: DataTransformer = {\r\n  serialize: (obj) => obj,\r\n  deserialize: (obj) => obj,\r\n};\r\n```\r\n## Safety\r\n- **Breaking Changes**: None\r\n- **Runtime Impact**: None (types only)\r\n- **Backward Compatibility**: Full\r\n- **Code Style**: Follows project conventions\r\n## Contribution Guidelines Compliance\r\n- [x] Used pnpm for package management\r\n- [x] Ran `pnpm build` successfully\r\n- [x] Ran `pnpm lint-fix`\r\n- [x] Added proper documentation\r\n- [x] Followed existing code patterns\r\n- [x] Maintained type safety\r\n- [x] No cryptic errors introduced\r\n\r\n\r\n<!-- This is an auto-generated comment: release notes by coderabbit.ai -->\r\n\r\n## Summary by CodeRabbit\r\n\r\n* New Features\r\n  * Introduced TRPCDataTransformer type alias for clearer naming in server exports.\r\n  * Client package now publicly re-exports the DataTransformer type for convenience.\r\n\r\n* Documentation\r\n  * Deprecated DataTransformer in favor of TRPCDataTransformer across public exports.\r\n  * Clarified that these are type-only changes with no impact on runtime behavior.\r\n\r\n<!-- end of auto-generated comment: release notes by coderabbit.ai -->",
+  "commit_messages": [
+    "fix: export DataTransformer interface marked as @public\n\n- Export DataTransformer interface from @trpc/server package\n- Add convenient re-export from @trpc/client package\n- Provide TRPCDataTransformer alias for backward compatibility\n- Resolves issue where @public interface was not exported\n\nFixes #6916"
+  ],
+  "closing": [
+    {
+      "owner": "trpc",
+      "repo": "trpc",
+      "number": 6916
+    }
+  ],
+  "issues": [
+    {
+      "owner": "trpc",
+      "repo": "trpc",
+      "number": 6916,
+      "title": "bug: DataTransformer type is not exported",
+      "body": "### Provide environment information\n\n```\n  System:\n    OS: macOS 15.6\n    CPU: (12) arm64 Apple M3 Pro\n    Memory: 124.16 MB / 18.00 GB\n    Shell: 5.9 - /bin/zsh\n  Binaries:\n    Node: 24.5.0 - ~/.local/share/mise/installs/node/24.5.0/bin/node\n    npm: 11.5.1 - ~/.local/share/mise/installs/node/24.5.0/bin/npm\n    pnpm: 10.14.0 - ~/.local/share/mise/installs/node/24.5.0/bin/pnpm\n  Browsers:\n    Chrome: 139.0.7258.154\n    Safari: 18.6\n  npmPackages:\n    @trpc/client: ^11.4.4 => 11.4.4 \n    @trpc/server: ^11.4.4 => 11.4.4 \n    typescript: ^5.9.2 => 5.9.2 \n```\n\n### Describe the bug\n\nThe `DataTransformer` type is declared as public:\n\nhttps://github.com/trpc/trpc/blob/e6fc3098524eb248b77fbbd5b4f7806070c21d40/packages/server/src/unstable-core-do-not-import/transformer.ts#L10-L16\n\nHowever, it's not exported by neither `@trpc/server` nor `@trpc/client`. I believe it should be exported by both.\n\n### Link to reproduction\n\nhttps://stackblitz.com/edit/github-1imszvlx?file=src%2Futils%2Ftransformer.ts\n\n### To reproduce\n\nJust open the reproduction and see import error.\n\n### Additional information\n\nMy use case is that I want a single transformer object for both the client- and server-side (which I believe most people need), but there is no way to type it properly. Currently, I have to use `CombinedDataTransformer[\"input\"]` which is a hack and it misleads developers (because `input` is advertised to be client -> server transformer).\n\n### 👨‍👧‍👦 Contributing\n\n- [ ] 🙋‍♂️ Yes, I'd be down to file a PR fixing this bug!",
+      "comments": [],
+      "comments_unreadable": false
+    }
+  ],
+  "remove": [],
+  "left_out": [],
+  "evidence": {
+    "url": "https://github.com/trpc/trpc/pull/6927#discussion_r2325207970",
+    "path": "packages/client/src/index.ts",
+    "lines": [
+      21,
+      23
+    ],
+    "body": "I prefer just exporting it from one place\n\n```suggestion\n````"
+  }
+}
