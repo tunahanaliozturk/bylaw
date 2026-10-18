@@ -113,7 +113,8 @@ since v0.4 work items in Jira, Azure Boards and Linear.
   out in v1. Only the pull request's own repository and repositories listed under `issue_repos` are read
   ([ADR 0007](adr/0007-issue-references-stay-in-the-repository.md)).
 - **Spec files:** Markdown files linked from the PR body, plus changed files matching the spec glob
-  (default `docs/specs/**`, `docs/adr/**`, `**/REQUIREMENTS.md`).
+  (default `docs/specs/**`, `**/REQUIREMENTS.md`). ADRs are not specs: an accepted ADR is a decision the
+  change is held to (see Decisions below).
 - **Tracker work items:** Jira (`PROJ-123`), Azure Boards (`AB#123`) and Linear (`ENG-123`) keys in the
   PR title, body and commit messages, for trackers configured in `.bylaw.toml` with an allow list of
   projects or teams and a token in the environment. Rich text is turned into Markdown before criteria

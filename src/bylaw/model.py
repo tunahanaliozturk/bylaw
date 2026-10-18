@@ -100,6 +100,17 @@ class Requirement(_Frozen):
     quoted: bool = True
 
 
+class Decision(_Frozen):
+    """An accepted ADR from the base branch: the reviewer sees its title, status and decision (ADR 0016)."""
+
+    path: str
+    title: str
+    status: str
+    # The file's line the shown text starts on, so a finding cites the ADR's own line numbers.
+    start: int
+    text: str
+
+
 class Finding(_Frozen):
     file: str
     line_start: int
@@ -126,6 +137,8 @@ class ReviewContext(_Frozen):
     input_tokens: int = 300_000
     # Files an incremental review leaves out because their change is the same as at the last run.
     carried_over: tuple[str, ...] = ()
+    # Accepted ADRs the change is held to, newest first (ADR 0016).
+    decisions: tuple[Decision, ...] = ()
 
 
 class CriterionStatus(StrEnum):

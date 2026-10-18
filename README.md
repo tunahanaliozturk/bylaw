@@ -102,7 +102,8 @@ Optional `.bylaw.toml` at the repository root, always read from the base branch:
 ```toml
 severity_threshold = "medium"   # inline comments at or above this; the rest go in the summary
 max_comments = 15               # inline comments per run, 0 to 50
-spec_globs = ["docs/specs/**", "docs/adr/**", "**/REQUIREMENTS.md"]
+spec_globs = ["docs/specs/**", "**/REQUIREMENTS.md"]
+adr_globs = ["docs/adr/**", "docs/decisions/**"]  # accepted ADRs here are decisions a change is held to
 issue_repos = []                # other repositories whose issues may be quoted, e.g. ["acme/roadmap"]
 input_token_budget = 300000     # model input in tokens; the largest files are left out first
 incremental = true              # on a new push, send the model only the files whose change differs

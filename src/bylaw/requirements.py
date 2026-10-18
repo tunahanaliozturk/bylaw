@@ -5,6 +5,7 @@ from collections.abc import Iterable, Sequence
 from pathlib import PurePosixPath
 from urllib.parse import unquote
 
+from bylaw.decisions import is_adr
 from bylaw.model import ChangedFile, Criterion, Requirement
 from bylaw.source import ChangeInfo, IssueRef, RepoSource
 
@@ -43,8 +44,13 @@ def parse_issue_refs(texts: Iterable[str], default_repo: str | None) -> tuple[Is
 
 
 def spec_paths(
-    changed: Sequence[ChangedFile], body: str, globs: Sequence[str], repo: str | None
+    changed: Sequence[ChangedFile],
+    body: str,
+    globs: Sequence[str],
+    repo: str | None,
+    adr_globs: Sequence[str] = (),
 ) -> tuple[str, ...]:
+    """Spec files the change touches or links to. An ADR is a decision, not a spec (ADR 0016)."""
     candidates = [
         f.path
         for f in changed
@@ -57,7 +63,9 @@ def spec_paths(
             candidates.append(unquote(match["path"]))
     candidates.extend(m["target"] for m in _MD_LINK.finditer(body) if "://" not in m["target"])
     normalised = (_normalise(path) for path in candidates)
-    return tuple(dict.fromkeys(path for path in normalised if path is not None))
+    return tuple(
+        dict.fromkeys(path for path in normalised if path is not None and not is_adr(path, adr_globs))
+    )
 
 
 def extract_criteria(markdown: str) -> tuple[Criterion, ...]:
@@ -95,12 +103,14 @@ def extract_criteria(markdown: str) -> tuple[Criterion, ...]:
     return tuple(Criterion(key=f"AC-{i}", text=text) for i, text in enumerate(unique, start=1))
 
 
-def collect_requirements(
+def collect_requirements(  # noqa: PLR0913 - the ADR globs only take paths away from the specs
     source: RepoSource,
     info: ChangeInfo,
     changed: Sequence[ChangedFile],
     spec_globs: Sequence[str],
     issue_repos: Sequence[str],
+    *,
+    adr_globs: Sequence[str] = (),
 ) -> tuple[tuple[Requirement, ...], tuple[str, ...]]:
     requirements: list[Requirement] = []
     notes: list[str] = []
@@ -123,7 +133,7 @@ def collect_requirements(
         requirements.append(_requirement(label, issue.title, issue.body, issue.comments, issue=True))
         if issue.comments_unreadable:
             notes.append(f"{label}: its comments could not be read; only the issue text is used.")
-    for path in spec_paths(changed, info.body, spec_globs, source.repo):
+    for path in spec_paths(changed, info.body, spec_globs, source.repo, adr_globs):
         text = source.read_head(path)
         if text is None:
             notes.append(f"Linked spec {path} does not exist at the head commit.")
@@ -138,7 +148,7 @@ def _requirement(
 ) -> Requirement:
     # Criteria come from the body only, so their keys stay stable as the discussion grows.
     criteria = extract_criteria(text)
-    # Specs are left as written: a prose ADR in the change is context, not a list of things to check.
+    # Specs are left as written: a prose design note in the change is context, not a list to check.
     inferable = issue and (not criteria or bool(comments))
     return Requirement(
         source=source, title=title, text=text, criteria=criteria, comments=comments, inferable=inferable
