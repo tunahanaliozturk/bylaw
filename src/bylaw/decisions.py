@@ -17,10 +17,22 @@ _NUMBER = re.compile(r"^\d+[.)]?\s*")
 # `Status: Accepted`, `* Status: accepted` (MADR 2), `status: accepted` (MADR front matter), `## Status: x`.
 _STATUS_LINE = re.compile(r"^\s*(?:#{1,6}\s+|[-*+]\s+)?status\s*:\s*(?P<value>\S.*)$", re.IGNORECASE)
 _FRONT_TITLE = re.compile(r"^title\s*:\s*(?P<title>\S.*?)\s*$", re.IGNORECASE)
+_STATUS_ROW = re.compile(r"^\s*\|\s*status\s*\|\s*(?P<value>[^|]*?)\s*\|", re.IGNORECASE)
 _DECISION_NAMES = frozenset({"decision", "decision outcome"})
-_ACCEPTED = re.compile(r"\b(?:accepted|approved)\b", re.IGNORECASE)
-# "Supersedes 0003" keeps an ADR in force; "superseded by 0012" does not.
-_RETIRED = re.compile(r"\b(?:superseded|deprecated|rejected|replaced|obsolete|withdrawn)\b", re.IGNORECASE)
+# A status is read clause by clause, each by its first word, and the last clause that says something wins:
+# "Accepted, superseded by 0012" is superseded, a history ending in "2023-02-01 accepted" is accepted, and
+# "Supersedes [3. Keep the deprecated logger](...)" or "the old way is now obsolete" says nothing.
+_IN_FORCE = frozenset({"accepted", "approved", "implemented", "adopted", "decided"})
+_RETIRED = frozenset(
+    {"superseded", "deprecated", "rejected", "replaced", "obsolete", "withdrawn", "declined", "not"}
+)
+_PENDING = frozenset({"proposed", "draft", "pending", "wip", "rfc", "review"})
+_LINK = re.compile(r"!?\[[^\]]*\]\([^)]*\)")
+_CLAUSE = re.compile(r"[.;,]|\s/\s|\s-\s")
+# Bullets, a repeated "Status:", a leading date and "under" or "in" (review) come before the word.
+_LEAD = re.compile(
+    r"^[\s\-*+:|]*(?:status\s*:\s*)?(?:\d{4}-\d{2}-\d{2}\b[\s:,\-]*)?(?:under\s+|in\s+)?", re.IGNORECASE
+)
 _WILDCARD = re.compile(r"[*?\[]")
 
 # Each ADR is one GitHub call; the newest are read first.
@@ -29,6 +41,8 @@ MAX_ADR_FILES = 40
 DECISION_CHARS = 2_000
 DECISIONS_CHARS = 12_000
 _LISTED = 10
+# The status line the brief shows, which may be a long history entry.
+_STATUS_CHARS = 120
 
 
 @dataclass(frozen=True, slots=True)
@@ -100,16 +114,32 @@ def status_of(markdown: str) -> str | None:
         heading = document.headings.get(index)
         if heading and _name(heading[1]) == "status":
             return _section_status(document, index)
-        if (preamble or heading) and (match := _STATUS_LINE.match(_unbold(line))):
+        if (preamble or heading) and (
+            match := _STATUS_LINE.match(_unbold(line)) or (preamble and _STATUS_ROW.match(_unbold(line)))
+        ):
             return match["value"].strip()
         if heading and heading[0] > 1:
             preamble = False
     return None
 
 
+def effective(status: str) -> tuple[str, str] | None:
+    """The status line that decides, and whether it is `in force`, `retired` or `pending`; None when no
+    clause names a status bylaw knows."""
+    found: tuple[str, str] | None = None
+    for line in status.split("\n"):
+        for clause in _CLAUSE.split(_LINK.sub("", line)):
+            words = _LEAD.sub("", clause).lower().split()
+            word = words[0] if words else ""
+            for kind, known in (("in force", _IN_FORCE), ("retired", _RETIRED), ("pending", _PENDING)):
+                if word in known:
+                    found = (kind, line.strip().lstrip("-*+ ").strip())
+    return found
+
+
 def accepted(status: str) -> bool:
-    """In force: accepted, and not also retired, as in "Accepted, superseded by 0012" (ADR 0016)."""
-    return _ACCEPTED.search(status) is not None and _RETIRED.search(status) is None
+    """In force: the last clause that names a status says accepted or the like (ADR 0016)."""
+    return (found := effective(status)) is not None and found[0] == "in force"
 
 
 def is_adr(path: str, globs: Sequence[str]) -> bool:
@@ -167,7 +197,8 @@ def _cut(decision: Decision) -> Decision:
 
 def _decision(path: str, markdown: str) -> Decision | None:
     status = status_of(markdown)
-    if status is None or not accepted(status):
+    found = effective(status) if status is not None else None
+    if found is None or found[0] != "in force":
         return None
     document = _parse(markdown)
     start = next(
@@ -180,7 +211,7 @@ def _decision(path: str, markdown: str) -> Decision | None:
         body.pop()
     title = _title(document) or PurePosixPath(path).stem
     return Decision(
-        path=path, title=title, status=status.splitlines()[0], start=start + 1, text="\n".join(body)
+        path=path, title=title, status=found[1][:_STATUS_CHARS], start=start + 1, text="\n".join(body)
     )
 
 
