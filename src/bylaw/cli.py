@@ -28,11 +28,12 @@ from bylaw.evaluation.report import report
 from bylaw.evaluation.run import AnswerReviewer, CaseRun, NoModel, prepare, run_all
 from bylaw.evaluation.snapshot import snapshot_pull_request
 from bylaw.github import GitHubClient, GitHubError, GitHubSource
+from bylaw.gitlab import GitLabClient, GitLabMergeRequest
 from bylaw.local_git import LocalGitSource
 from bylaw.model import Finding, ReviewContext, ReviewResult, Severity
 from bylaw.prompt import render_input, system_prompt
 from bylaw.publish import preview, publish
-from bylaw.pull_review import check, review_pull_request, with_model_review
+from bylaw.pull_review import check, review_change, review_pull_request, with_model_review
 from bylaw.source import SourceError
 from bylaw.validate import Validated, validate
 
@@ -79,13 +80,24 @@ def _parser() -> argparse.ArgumentParser:
     run = commands.add_parser("review", help="review a change end to end: context, model, checks, comments")
     source = run.add_mutually_exclusive_group(required=True)
     source.add_argument("--pr", type=int, help="pull request number")
+    source.add_argument(
+        "--gitlab-mr", type=int, metavar="IID", help="GitLab merge request IID (needs GITLAB_TOKEN)"
+    )
     source.add_argument("--context", help="ReviewContext JSON from `bylaw context`")
     run.add_argument("--repo", help="owner/name; defaults to GITHUB_REPOSITORY")
+    run.add_argument(
+        "--project",
+        help="GitLab project id or path; defaults to CI_MERGE_REQUEST_PROJECT_ID, then CI_PROJECT_ID",
+    )
     run.add_argument("--provider", choices=PROVIDERS, default="anthropic", help="see docs/providers.md")
     run.add_argument("--model", help=_MODEL_HELP)
     run.add_argument("--effort", help="reasoning effort passed to the model (anthropic default: high)")
     run.add_argument("--base-url", help="server URL for openai-compatible, such as http://localhost:11434/v1")
-    run.add_argument("--post", action="store_true", help="publish to the pull request (needs --pr)")
+    run.add_argument(
+        "--post",
+        action="store_true",
+        help="publish to the pull request or merge request (needs --pr or --gitlab-mr)",
+    )
     run.add_argument(
         "--fail-on",
         choices=[*Severity, "none"],
@@ -348,9 +360,17 @@ def _review(args: argparse.Namespace) -> int:
             "Dependabot), so bylaw skipped it. Use the pull_request_target recipe for these (docs/recipes)."
         )
         return 0
-    if args.post and args.pr is None:
-        raise SourceError("--post needs --pr")
-    if args.pr is None:
+    if args.post and args.pr is None and args.gitlab_mr is None:
+        raise SourceError("--post needs --pr or --gitlab-mr")
+    if args.gitlab_mr is not None:
+        if _gitlab_fork_without_token():
+            _say(
+                "This merge request pipeline runs in a fork, without the project's GITLAB_TOKEN, so bylaw "
+                "skipped it. See docs/hosts.md for reviewing merge requests from forks."
+            )
+            return 0
+        checked, counted = _review_merge_request(args)
+    elif args.pr is None:
         context = _read(ReviewContext, args.context)
         context, run = with_model_review(context, _reviewer(args), _say)
         checked = check(context, run.result, _say)
@@ -370,6 +390,41 @@ def _review_pull_request(args: argparse.Namespace) -> tuple[Validated, tuple[Fin
     with GitHubClient(token, api_url, os.environ.get("GITHUB_GRAPHQL_URL")) as client:
         review = review_pull_request(client, repo, args.pr, make=_reviewer(args), post=args.post, say=_say)
     return review.checked, review.counted
+
+
+def _review_merge_request(args: argparse.Namespace) -> tuple[Validated, tuple[Finding, ...]]:
+    """Review a GitLab merge request (ADR 0020); the same flow as a pull request."""
+    project = args.project or os.environ.get("CI_MERGE_REQUEST_PROJECT_ID") or os.environ.get("CI_PROJECT_ID")
+    token = os.environ.get("GITLAB_TOKEN")
+    if not project:
+        raise SourceError("--project or CI_MERGE_REQUEST_PROJECT_ID is required with --gitlab-mr")
+    if not token:
+        # CI_JOB_TOKEN cannot read a merge request's diff or post a note (docs/recipes/gitlab-ci.yml).
+        raise SourceError(
+            "GITLAB_TOKEN, a project access token with the Developer role, is required with --gitlab-mr"
+        )
+    api_url = os.environ.get("CI_API_V4_URL", "https://gitlab.com/api/v4")
+    with GitLabClient(token, api_url) as client:
+        merge_request = GitLabMergeRequest(client, project, args.gitlab_mr)
+        config = load_config(merge_request.read_base(".bylaw.toml"))
+        review = review_change(
+            merge_request,
+            merge_request,
+            merge_request.repo,
+            args.gitlab_mr,
+            config,
+            make=_reviewer(args),
+            post=args.post,
+            say=_say,
+        )
+    return review.checked, review.counted
+
+
+def _gitlab_fork_without_token() -> bool:
+    """A merge request pipeline from a fork runs in the fork, without the target project's variables."""
+    source = os.environ.get("CI_MERGE_REQUEST_SOURCE_PROJECT_ID")
+    fork = source is not None and source != os.environ.get("CI_MERGE_REQUEST_PROJECT_ID")
+    return fork and not os.environ.get("GITLAB_TOKEN")
 
 
 def _reviewer(args: argparse.Namespace) -> Callable[[], Reviewer] | None:
