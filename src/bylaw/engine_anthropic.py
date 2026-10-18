@@ -103,6 +103,14 @@ class AnthropicReviewer:
             raise ReviewError(f"could not reach {self._service}") from error
         except (anthropic.AnthropicError, ValueError) as error:
             raise ReviewError(f"the Anthropic SDK rejected the request ({type(error).__name__})") from error
+        except ReviewError:
+            raise
+        except Exception as error:
+            # A cloud credential chain (botocore, google-auth) raises its own errors from inside the request
+            # when it finds no credentials or cannot refresh them. The review fails with a note, not the run.
+            raise ReviewError(
+                f"the request to {self._service} failed ({type(error).__name__}); check its credentials"
+            ) from error
         # Recorded first: a refused or truncated answer is billed too, and so is the first of two tries.
         usage = response.usage
         self.last_usage = added(
@@ -127,7 +135,7 @@ def bedrock_reviewer(
     fallback (ADR 0018). Credentials and region come from the AWS chain: a Bedrock API key in
     AWS_BEARER_TOKEN_BEDROCK, or SigV4 with AWS_ACCESS_KEY_ID, a profile, SSO or a role."""
     # SigV4 signing needs botocore; a Bedrock API key does not.
-    if not any(os.environ.get(name) for name in _BEDROCK_KEYS) and find_spec("botocore") is None:
+    if not any(os.environ.get(name) for name in _BEDROCK_KEYS) and not _installed("botocore"):
         raise ReviewError(
             "signing Amazon Bedrock requests needs the bedrock extra: pip install 'bylaw[bedrock]'"
         )
@@ -144,6 +152,43 @@ def bedrock_reviewer(
         structured=False,
         server_fallback=False,
     )
+
+
+def vertex_reviewer(
+    model: str | None, effort: str | None, http_client: httpx2.Client | None
+) -> AnthropicReviewer:
+    """Claude on Google Cloud's Vertex AI, with structured outputs but no server-side fallback (ADR 0018).
+    Credentials are Application Default Credentials; the region and project come from CLOUD_ML_REGION and
+    ANTHROPIC_VERTEX_PROJECT_ID."""
+    if not _installed("google.auth"):
+        raise ReviewError(
+            "Vertex AI needs the vertex extra for Google credentials: pip install 'bylaw[vertex]'"
+        )
+    # Checked here: the SDK would find the missing project only inside the request, as a RuntimeError.
+    if os.environ.get("CLOUD_ML_REGION") and not os.environ.get("ANTHROPIC_VERTEX_PROJECT_ID"):
+        raise ReviewError(
+            "Vertex AI is not set up: set ANTHROPIC_VERTEX_PROJECT_ID to the Google Cloud project"
+        )
+    try:
+        client = anthropic.AnthropicVertex(http_client=http_client, max_retries=3)
+    except (anthropic.AnthropicError, ValueError) as error:
+        raise ReviewError(f"Vertex AI is not set up: {error}") from error
+    return AnthropicReviewer(
+        # Vertex's messages resource reuses the first-party stream method, whose self the SDK types as the
+        # first-party resource; the call is the same.
+        client=cast(anthropic.Anthropic, client),
+        model=model or DEFAULT_MODEL,
+        effort=effort,
+        service="Vertex AI",
+        server_fallback=False,
+    )
+
+
+def _installed(module: str) -> bool:
+    try:
+        return find_spec(module) is not None
+    except ModuleNotFoundError:  # the parent package is missing too
+        return False
 
 
 def _error_type(body: object) -> str:
