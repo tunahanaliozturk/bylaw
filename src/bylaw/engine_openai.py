@@ -19,7 +19,9 @@ from bylaw.engine import (
     credential_errors,
     entra_token_provider,
     json_instructions,
+    refuse_header_list,
     review_with_retry,
+    without_openai_ids,
 )
 from bylaw.model import ReviewResult
 
@@ -91,11 +93,13 @@ def azure_reviewer(deployment: str, effort: str | None, http_client: httpx2.Clie
     endpoint = os.environ.get("AZURE_OPENAI_ENDPOINT")
     if not endpoint:
         raise ReviewError("Azure OpenAI is not set up: set AZURE_OPENAI_ENDPOINT to the resource's endpoint")
+    refuse_header_list("OPENAI_CUSTOM_HEADERS", "Azure OpenAI")
     # Always a credential of its own: left empty, the SDK would send OPENAI_API_KEY to Azure.
     key = os.environ.get("AZURE_OPENAI_API_KEY") or entra_token_provider("AZURE_OPENAI_API_KEY")
     client = openai.OpenAI(
         api_key=key, base_url=f"{endpoint.rstrip('/')}/openai/v1/", http_client=http_client, max_retries=3
     )
+    without_openai_ids(client)
     return OpenAIReviewer(client=client, model=deployment, effort=effort, service="Azure OpenAI", cloud=True)
 
 

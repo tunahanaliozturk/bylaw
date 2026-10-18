@@ -7,7 +7,7 @@ branding:
 
 inputs:
   api-key:
-    description: API key for the model provider. Leave empty to run only the deterministic checks.
+    description: API key for the anthropic or openai provider. Leave empty to run only the deterministic checks. The cloud providers ignore it and read their own credentials from the job's environment, and openai-compatible uses base-url-api-key (docs/providers.md).
     required: false
     default: ""
   provider:
@@ -19,7 +19,11 @@ inputs:
     required: false
     default: ""
   base-url:
-    description: Server URL for the openai-compatible provider, such as a vLLM server the runner can reach (https://vllm.internal/v1).
+    description: Server URL for the openai-compatible provider, such as a vLLM server the runner can reach (https://vllm.internal/v1). Plain http is accepted only for localhost.
+    required: false
+    default: ""
+  base-url-api-key:
+    description: Key for the server at base-url, if it wants one. Pass it from a secret. It is never sent anywhere else, and api-key is never sent there.
     required: false
     default: ""
   effort:
@@ -67,6 +71,7 @@ runs:
         BYLAW_MODEL: ${{ inputs.model }}
         BYLAW_EFFORT: ${{ inputs.effort }}
         BYLAW_BASE_URL: ${{ inputs.base-url }}
+        BYLAW_BASE_URL_KEY: ${{ inputs.base-url-api-key }}
         BYLAW_FAIL_ON: ${{ inputs.fail-on }}
         JIRA_EMAIL: ${{ inputs.jira-email }}
         JIRA_API_TOKEN: ${{ inputs.jira-api-token }}
