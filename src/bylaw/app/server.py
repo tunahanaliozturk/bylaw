@@ -175,7 +175,15 @@ def review(settings: Settings, job: Job, bot_login: str, reviewer: ReviewerFacto
 
     with GitHubClient(token, settings.api_url, settings.graphql_url, bot_login=bot_login) as client:
         done = review_pull_request(
-            client, job.repo, job.number, make=make, post=True, say=say, defaults=defaults, env=secrets
+            client,
+            job.repo,
+            job.number,
+            make=make,
+            post=True,
+            say=say,
+            defaults=defaults,
+            env=secrets,
+            shared_secrets=True,
         )
     return done.head_sha
 

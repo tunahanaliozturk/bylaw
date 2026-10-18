@@ -36,15 +36,18 @@ def review_pull_request(  # noqa: PLR0913 - two callers, every argument is a dis
     say: Say,
     defaults: str | None = None,
     env: Mapping[str, str] | None = None,
+    shared_secrets: bool = False,
 ) -> PullReview:
     """Review a pull request.
 
     `make` builds the model reviewer, None for the deterministic checks only. `defaults` is the
     organisation's `.bylaw.toml` (ADR 0017) and `env` holds the tracker tokens (ADR 0014).
+    `shared_secrets`: the keys and tokens belong to a GitHub App installation, not to this repository, so
+    the repository's settings cannot say where they go (ADR 0017).
     """
     source = GitHubSource(client, repo, number)
     config = load_config(source.read_base(".bylaw.toml"), defaults)
-    context = build_context(source, env, config)
+    context = build_context(source, env, config, operator_sites=shared_secrets)
     memory = trusted_memory(client.summary_comment(repo, number))
     context, run = with_model_review(context, make, say, config, memory)
     checked = check(context, run.result, say)

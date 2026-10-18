@@ -41,6 +41,7 @@ class FakeGitHub:
     reviews: list[dict[str, Any]] = field(default_factory=list)
     calls: list[Call] = field(default_factory=list)
     patch: str = "@@ -0,0 +1,2 @@\n+x = 1   \n+y = 2\n"
+    title: str = "Add x"
 
     def __call__(self, request: httpx.Request) -> httpx.Response:
         body = json.loads(request.content) if request.content else None
@@ -99,7 +100,7 @@ class FakeGitHub:
 
     def _pull(self) -> dict[str, Any]:
         return {
-            "title": "Add x",
+            "title": self.title,
             "body": "",
             "changed_files": 1,
             "user": {"type": "User", "login": "contributor"},

@@ -89,9 +89,18 @@ ClientFactory = Callable[[list[str]], httpx.Client]
 
 
 def read_work_items(
-    texts: Iterable[str], config: Config, env: Mapping[str, str], *, author_trusted: bool = True
+    texts: Iterable[str],
+    config: Config,
+    env: Mapping[str, str],
+    *,
+    author_trusted: bool = True,
+    operator_sites: bool = False,
 ) -> tuple[tuple[Requirement, ...], tuple[str, ...]]:
-    """Requirements from the work items the texts reference, and notes on the ones left out."""
+    """Requirements from the work items the texts reference, and notes on the ones left out.
+
+    With `operator_sites`, as in the GitHub App, the tokens in `env` belong to a whole installation, so
+    where they may go comes from `env` too (SITES): a tracker whose configured site differs is not read.
+    """
     refs = parse_work_item_refs(texts, config)
     if refs and not author_trusted and not config.trackers_for_all_authors:
         # The author decides which keys a pull request names; only a trusted one may spend the token.
@@ -113,6 +122,9 @@ def read_work_items(
     for tracker, (reader, client) in _readers(config).items():
         keys = [ref.key for ref in refs if ref.tracker == tracker]
         if not keys:
+            continue
+        if operator_sites and (refused := _off_site(tracker, config, env, keys)):
+            notes.append(refused)
             continue
         names = CREDENTIALS[tracker]
         secrets = [env.get(name, "") for name in names]
@@ -155,6 +167,37 @@ def read_work_items(
                 )
     notes.extend(f"{r.source} has no structured acceptance criteria." for r in requirements if not r.criteria)
     return tuple(requirements), tuple(notes)
+
+
+# The settings that decide where a tracker's token is sent, and the secret that pins each one when the
+# token is shared by many repositories. Linear has a single fixed host, so nothing there steers its key.
+SITES: dict[Tracker, str] = {"jira": "JIRA_URL", "azure_boards": "AZURE_DEVOPS_ORGANIZATION"}
+_SITE_KIND: dict[Tracker, str] = {"jira": "a Jira site", "azure_boards": "an Azure DevOps organisation"}
+
+
+def _off_site(tracker: Tracker, config: Config, env: Mapping[str, str], keys: list[str]) -> str | None:
+    """A note when the configured site is not the one the operator pinned, None when it is."""
+    if tracker not in SITES:
+        return None
+    variable = SITES[tracker]
+    named = ", ".join(keys)
+    was = "was" if len(keys) == 1 else "were"
+    pinned = env.get(variable, "").strip().rstrip("/").lower()
+    if not pinned:
+        return (
+            f"{named} {was} not read from {_NAMES[tracker]}: the app's operator has not set {variable} "
+            "for this installation, so its token is not sent anywhere."
+        )
+    configured = config.jira.url if tracker == "jira" and config.jira else ""
+    if tracker == "azure_boards" and config.azure_boards:
+        configured = config.azure_boards.organization
+    if configured.rstrip("/").lower() == pinned:
+        return None
+    return (
+        f"{named} {was} not read from {_NAMES[tracker]}: .bylaw.toml names {_SITE_KIND[tracker]} other "
+        f"than the one the app's operator set for this installation ({variable}), and the installation's "
+        "token goes only there."
+    )
 
 
 def _readers(config: Config) -> dict[Tracker, tuple[Reader, ClientFactory]]:

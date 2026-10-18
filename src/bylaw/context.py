@@ -73,10 +73,15 @@ def _no_patch_note(file: ChangedFile) -> str | None:
 
 
 def build_context(
-    source: RepoSource, env: Mapping[str, str] | None = None, config: Config | None = None
+    source: RepoSource,
+    env: Mapping[str, str] | None = None,
+    config: Config | None = None,
+    *,
+    operator_sites: bool = False,
 ) -> ReviewContext:
     """`env` holds the tracker tokens; the process environment when not given (ADR 0014). `config` is the
-    base branch's `.bylaw.toml`, read here when not given."""
+    base branch's `.bylaw.toml`, read here when not given. `operator_sites`: the tokens serve a whole
+    GitHub App installation, so `env` also says where they may go (ADR 0017)."""
     info = source.info()
     if config is None:
         config = load_config(source.read_base(".bylaw.toml"))
@@ -142,6 +147,7 @@ def build_context(
         config,
         os.environ if env is None else env,
         author_trusted=info.author_trusted is not False,
+        operator_sites=operator_sites,
     )
     return ReviewContext(
         base_sha=info.base_sha,
