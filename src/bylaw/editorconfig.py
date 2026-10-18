@@ -11,6 +11,8 @@ from dataclasses import dataclass
 from pathlib import PurePosixPath
 from typing import Self
 
+from bylaw.model import text_lines
+
 _KNOWN = frozenset(
     {
         "indent_style",
@@ -132,7 +134,7 @@ def read_sections(text: str) -> tuple[_Properties, list[tuple[str, _Properties]]
     preamble: _Properties = []
     raw: list[tuple[str, _Properties]] = []
     # Visual Studio saves .editorconfig with a byte order mark, which would hide the first line.
-    for number, line in enumerate(text.removeprefix("﻿").splitlines(), start=1):
+    for number, line in enumerate(text_lines(text.removeprefix("﻿")), start=1):
         stripped = line.strip()
         if not stripped or stripped[0] in "#;":
             continue

@@ -6,6 +6,18 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 
+def text_lines(text: str) -> list[str]:
+    """Lines as GitHub and editors number them, which is what evidence like `CONTRIBUTING.md:12` means.
+
+    Only a newline ends a line, and a carriage return before it belongs to the break. str.splitlines()
+    also breaks at form feeds, U+2028 and others, so its numbers drift from the file's.
+    """
+    lines = text.split("\n")
+    if lines[-1] == "":
+        lines.pop()
+    return [line.removesuffix("\r") for line in lines]
+
+
 class Category(StrEnum):
     SECURITY = "security"
     BUG = "bug"

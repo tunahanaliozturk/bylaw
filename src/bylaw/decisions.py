@@ -2,17 +2,22 @@
 
 import re
 from collections.abc import Sequence
+from dataclasses import dataclass
 from itertools import takewhile
 from pathlib import PurePosixPath
 
-from bylaw.model import Decision
+from bylaw.model import Decision, text_lines
 from bylaw.rules import BaseReader
 
-_HEADING = re.compile(r"^(?P<hashes>#{1,6})\s+(?P<title>.+?)\s*#*\s*$")
+_ATX = re.compile(r"^ {0,3}(?P<hashes>#{1,6})\s+(?P<title>.+?)\s*#*\s*$")
+_SETEXT = re.compile(r"^ {0,3}(?:=+|-+)\s*$")
+_FENCE = re.compile(r"^ {0,3}(?P<fence>`{3,}|~{3,})")
+_LIST_ITEM = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s")
+_NUMBER = re.compile(r"^\d+[.)]?\s*")
 # `Status: Accepted`, `* Status: accepted` (MADR 2), `status: accepted` (MADR front matter), `## Status: x`.
 _STATUS_LINE = re.compile(r"^\s*(?:#{1,6}\s+|[-*+]\s+)?status\s*:\s*(?P<value>\S.*)$", re.IGNORECASE)
-_STATUS_HEADING = re.compile(r"status", re.IGNORECASE)
-_DECISION_HEADING = re.compile(r"decision(?:\s+outcome)?:?", re.IGNORECASE)
+_FRONT_TITLE = re.compile(r"^title\s*:\s*(?P<title>\S.*?)\s*$", re.IGNORECASE)
+_DECISION_NAMES = frozenset({"decision", "decision outcome"})
 _ACCEPTED = re.compile(r"\b(?:accepted|approved)\b", re.IGNORECASE)
 # "Supersedes 0003" keeps an ADR in force; "superseded by 0012" does not.
 _RETIRED = re.compile(r"\b(?:superseded|deprecated|rejected|replaced|obsolete|withdrawn)\b", re.IGNORECASE)
@@ -26,18 +31,78 @@ DECISIONS_CHARS = 12_000
 _LISTED = 10
 
 
+@dataclass(frozen=True, slots=True)
+class _Document:
+    """An ADR's lines as GitHub numbers them, with its headings outside code fences and front matter."""
+
+    lines: list[str]
+    # Line index to (level, title), ATX and setext alike.
+    headings: dict[int, tuple[int, str]]
+    # Lines inside code fences, fence lines included: never headings, never a status.
+    fenced: frozenset[int]
+    # The index after a leading `---` front matter block, 0 without one.
+    front_end: int
+
+    def section(self, start: int) -> list[int]:
+        """The line indexes of the section a heading opens, up to the next heading of its level or higher."""
+        level = self.headings[start][0]
+        end = next(
+            (i for i in sorted(self.headings) if i > start and self.headings[i][0] <= level), len(self.lines)
+        )
+        return list(range(start, end))
+
+
+def _parse(markdown: str) -> _Document:
+    lines = text_lines(markdown)
+    front_end = 0
+    if lines and lines[0].strip() == "---":
+        close = next((i for i in range(1, len(lines)) if lines[i].strip() in {"---", "..."}), None)
+        front_end = 0 if close is None else close + 1
+    headings: dict[int, tuple[int, str]] = {}
+    fenced: set[int] = set()
+    fence: str | None = None
+    for index in range(front_end, len(lines)):
+        line = lines[index]
+        if fence is not None:
+            fenced.add(index)
+            if line.lstrip().startswith(fence):
+                fence = None
+            continue
+        if opened := _FENCE.match(line):
+            fence = opened["fence"]
+            fenced.add(index)
+        elif atx := _ATX.match(line):
+            headings[index] = (len(atx["hashes"]), atx["title"])
+        elif (
+            index + 1 < len(lines)
+            and line.strip()
+            and not _LIST_ITEM.match(line)
+            and index - 1 not in headings
+            and _SETEXT.match(lines[index + 1])
+        ):
+            headings[index] = (1 if "=" in lines[index + 1] else 2, line.strip())
+    return _Document(lines, headings, frozenset(fenced), front_end)
+
+
+def _name(title: str) -> str:
+    """A heading's name for matching: `## **3. Decision:**` is `decision`."""
+    return _NUMBER.sub("", _unbold(title).strip()).strip().rstrip(":").strip().lower()
+
+
 def status_of(markdown: str) -> str | None:
     """The status as written, from a `Status:` line or front matter key above the first section, or from a
     Status section (Nygard, adr-tools). A `Status:` further down is prose about something else."""
-    lines = markdown.splitlines()
+    document = _parse(markdown)
     preamble = True
-    for index, line in enumerate(lines):
-        heading = _HEADING.match(line)
-        if heading and _STATUS_HEADING.fullmatch(heading["title"]):
-            return _section_status(lines[index + 1 :])
+    for index, line in enumerate(document.lines):
+        if index in document.fenced:
+            continue
+        heading = document.headings.get(index)
+        if heading and _name(heading[1]) == "status":
+            return _section_status(document, index)
         if (preamble or heading) and (match := _STATUS_LINE.match(_unbold(line))):
             return match["value"].strip()
-        if heading and len(heading["hashes"]) > 1:
+        if heading and heading[0] > 1:
             preamble = False
     return None
 
@@ -89,7 +154,7 @@ def _cut(decision: Decision) -> Decision:
         return decision
     kept: list[str] = []
     size = 0
-    for line in decision.text.splitlines():
+    for line in text_lines(decision.text):
         if size + len(line) + 1 > DECISION_CHARS:
             # A paragraph is often one long line: show its start rather than nothing.
             if room := DECISION_CHARS - size:
@@ -104,28 +169,19 @@ def _decision(path: str, markdown: str) -> Decision | None:
     status = status_of(markdown)
     if status is None or not accepted(status):
         return None
-    lines = markdown.splitlines()
-    for index, line in enumerate(lines):
-        heading = _HEADING.match(line)
-        if heading is None or not _DECISION_HEADING.fullmatch(heading["title"]):
-            continue
-        level = len(heading["hashes"])
-        end = next(
-            (
-                j
-                for j in range(index + 1, len(lines))
-                if (h := _HEADING.match(lines[j])) and len(h["hashes"]) <= level
-            ),
-            len(lines),
-        )
-        body = lines[index:end]
-        while body and not body[-1].strip():
-            body.pop()
-        title = _title(lines) or PurePosixPath(path).stem
-        return Decision(
-            path=path, title=title, status=status.splitlines()[0], start=index + 1, text="\n".join(body)
-        )
-    return None
+    document = _parse(markdown)
+    start = next(
+        (i for i in sorted(document.headings) if _name(document.headings[i][1]) in _DECISION_NAMES), None
+    )
+    if start is None:
+        return None
+    body = [document.lines[i] for i in document.section(start)]
+    while body and not body[-1].strip():
+        body.pop()
+    title = _title(document) or PurePosixPath(path).stem
+    return Decision(
+        path=path, title=title, status=status.splitlines()[0], start=start + 1, text="\n".join(body)
+    )
 
 
 def _adr_paths(source: BaseReader, globs: Sequence[str]) -> list[str]:
@@ -148,17 +204,28 @@ def _number(path: str) -> tuple[int, str]:
     return (int(match[0]) if match else -1, name)
 
 
-def _section_status(lines: list[str]) -> str | None:
-    text = list(takewhile(lambda line: _HEADING.match(line) is None, lines))
-    values = [_unbold(line).strip().lstrip("-*+ ").strip() for line in text]
-    status = "\n".join(value for value in values if value)
-    return status or None
+def _section_status(document: _Document, start: int) -> str | None:
+    values: list[str] = []
+    for index in document.section(start)[1:]:
+        line = document.lines[index]
+        if index in document.fenced or index in document.headings or _SETEXT.match(line):
+            continue
+        if value := _unbold(line).strip().lstrip("-*+ ").strip():
+            values.append(value)
+    return "\n".join(values) or None
 
 
-def _title(lines: list[str]) -> str | None:
-    headings = [match for line in lines if (match := _HEADING.match(line))]
-    first = next((h for h in headings if len(h["hashes"]) == 1), headings[0] if headings else None)
-    return first["title"] if first else None
+def _title(document: _Document) -> str | None:
+    """The first level one heading after any front matter, else the front matter's `title:`, else the first
+    heading. MADR's template starts its front matter with a YAML comment that is not a title."""
+    headings = [document.headings[i][1] for i in sorted(document.headings) if document.headings[i][0] == 1]
+    if headings:
+        return headings[0]
+    for line in document.lines[1 : max(document.front_end - 1, 1)]:
+        if match := _FRONT_TITLE.match(line):
+            return match["title"].strip("'\"")
+    first = min(document.headings, default=None)
+    return None if first is None else document.headings[first][1]
 
 
 def _unbold(line: str) -> str:

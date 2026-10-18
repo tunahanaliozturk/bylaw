@@ -68,6 +68,12 @@ def test_a_later_section_wins_and_its_line_is_the_evidence() -> None:
     assert resolver.properties("a.py")["indent_style"] == Property("space", ".editorconfig", 5)
 
 
+def test_the_evidence_line_counts_only_newlines_as_line_breaks() -> None:
+    resolver = _resolver({".editorconfig": "# a\x0cform feed\n[*.py]\nindent_style = space\n"})
+
+    assert resolver.properties("a.py")["indent_style"] == Property("space", ".editorconfig", 3)
+
+
 def test_only_files_that_exist_are_reported_as_read() -> None:
     resolver = _resolver({".editorconfig": "[*]\nindent_size = 2\n"})
     resolver.properties("src/deep/a.py")

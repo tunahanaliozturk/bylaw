@@ -173,3 +173,61 @@ def test_an_adr_that_supersedes_another_is_still_in_force() -> None:
     (decision,), _ = collect_decisions(source, GLOBS)
 
     assert decision.status == "Accepted. Supersedes 0003."
+
+
+def test_headings_inside_code_fences_are_not_sections() -> None:
+    markdown = (
+        "# 4. Deploy\n\n```md\n# Not the title\n## Status\nRejected\n```\n\nStatus: Accepted\n\n"
+        "## Decision\n\nRun the script first:\n\n```sh\n# setup\n./setup.sh\n```\n\n"
+        "~~~\n## Consequences\n~~~\n\n"
+        "Never deploy by hand.\n\n## Consequences\n\nSlower.\n"
+    )
+    source = FakeSource(base={"docs/adr/0004-deploy.md": markdown})
+
+    (decision,), _ = collect_decisions(source, GLOBS)
+
+    assert decision.title == "4. Deploy"
+    assert decision.text.splitlines()[-1] == "Never deploy by hand."
+    assert (
+        markdown.splitlines()[decision.start - 1 + len(decision.text.splitlines()) - 1]
+        == "Never deploy by hand."
+    )
+
+
+def test_the_title_skips_front_matter_and_falls_back_to_its_title_key() -> None:
+    template = (
+        "---\n# These are optional elements. Feel free to remove any of them.\nstatus: accepted\n"
+        "title: Use MADR\n---\n\n## Context\n\nWe need a format.\n\n## Decision Outcome\n\nMADR.\n"
+    )
+    with_h1 = template.replace("## Context", "# Use MADR 4\n\n## Context")
+    source = FakeSource(base={"docs/adr/0001-madr.md": template, "docs/adr/0002-madr.md": with_h1})
+
+    decisions, _ = collect_decisions(source, GLOBS)
+
+    assert [d.title for d in decisions] == ["Use MADR 4", "Use MADR"]
+
+
+def test_numbered_bold_and_setext_headings_are_recognised() -> None:
+    numbered = "Use X\n=====\n\n## **Status**\n\nAccepted\n\n## 3. Decision\n\nWe use X.\n"
+    setext = (
+        "# Use Y\n\nStatus: Accepted\n\nDecision\n--------\n\nWe use Y.\n\n"
+        "Consequences\n------------\n\nNone.\n"
+    )
+    source = FakeSource(base={"docs/adr/0001-x.md": numbered, "docs/adr/0002-y.md": setext})
+
+    y, x = collect_decisions(source, GLOBS)[0]
+
+    assert (x.title, x.start, x.text) == ("Use X", 8, "## 3. Decision\n\nWe use X.")
+    assert (y.title, y.start, y.text) == ("Use Y", 5, "Decision\n--------\n\nWe use Y.")
+
+
+def test_lines_are_numbered_as_github_numbers_them() -> None:
+    markdown = (
+        "# T\r\n\r\nStatus: Accepted\r\n\r\n## Decision\r\n\r\nUse a\u2028b and c\x0cd.\r\nSecond rule.\r\n"
+    )
+    source = FakeSource(base={"docs/adr/0001-t.md": markdown})
+
+    (decision,), _ = collect_decisions(source, GLOBS)
+
+    assert decision.start == 5
+    assert decision.text == "## Decision\n\nUse a\u2028b and c\x0cd.\nSecond rule."
