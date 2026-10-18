@@ -80,6 +80,9 @@ class Config(BaseModel):
     linear: Linear | None = None
     # False keeps work item text out of the public summary: criterion keys and status only (ADR 0014).
     quote_trackers: bool = True
+    # Work items are read only for pull requests by owners, members and collaborators unless this is set:
+    # anyone else could name allowed keys to pull their text into a comment (ADR 0014).
+    trackers_for_all_authors: bool = False
 
     @model_validator(mode="after")
     def _one_tracker_per_key(self) -> Self:

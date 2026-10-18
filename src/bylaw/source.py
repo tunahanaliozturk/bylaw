@@ -19,6 +19,9 @@ class ChangeInfo:
     commit_messages: tuple[str, ...]
     # How many files the host says the change touches; GitHub's file listing stops at 3000.
     file_count: int | None = None
+    # Whether the author is an owner, member or collaborator (ADR 0008); None when there is no author,
+    # as for a local branch.
+    author_trusted: bool | None = None
 
 
 @dataclass(frozen=True, slots=True)

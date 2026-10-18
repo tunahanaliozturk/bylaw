@@ -61,6 +61,7 @@ class PullRequest(_Model):
     body: str | None = None
     changed_files: int | None = None
     user: "_User | None" = None
+    author_association: str = "NONE"
     base: _Ref
     head: _Ref
 
@@ -709,7 +710,13 @@ class GitHubSource:
         pull = self._pull
         messages = tuple(self._client.pull_commit_messages(self._repo, self._number))
         return ChangeInfo(
-            pull.base.sha, pull.head.sha, pull.title, pull.body or "", messages, pull.changed_files
+            pull.base.sha,
+            pull.head.sha,
+            pull.title,
+            pull.body or "",
+            messages,
+            pull.changed_files,
+            pull.author_association in TRUSTED_ASSOCIATIONS,
         )
 
     def changed_files(self) -> tuple[ChangedFile, ...]:

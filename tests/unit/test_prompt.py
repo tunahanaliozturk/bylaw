@@ -241,3 +241,17 @@ def test_criteria_for_a_discussed_prose_issue_come_from_its_text_and_its_comment
     text, _ = render_input(context, nonce="feedc0de")
 
     assert "from the text and its maintainer_comments" in text
+
+
+def test_a_work_item_kept_out_of_quotes_is_marked_in_the_brief() -> None:
+    private = Requirement(source="PROJ-1", title="Plan", text="Secret", criteria=(), quoted=False)
+    context = CONTEXT.model_copy(update={"requirements": (*CONTEXT.requirements, private)})
+
+    text, _ = render_input(context, nonce="feedc0de")
+
+    assert "PROJ-1: Plan\nQuotable: no" in text
+    assert "Quotable" not in text.split("PROJ-1: Plan")[0]
+
+
+def test_the_system_prompt_forbids_quoting_a_work_item_marked_not_quotable() -> None:
+    assert "`Quotable: no`" in system_prompt()

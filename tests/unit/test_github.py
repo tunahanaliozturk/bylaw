@@ -81,6 +81,24 @@ def test_info_carries_title_body_shas_and_commit_messages(client: GitHubClient) 
     assert info.file_count == 7
 
 
+@pytest.mark.parametrize(
+    ("association", "trusted"),
+    [("OWNER", True), ("MEMBER", True), ("COLLABORATOR", True), ("CONTRIBUTOR", False), ("NONE", False)],
+)
+@respx.mock
+def test_info_says_whether_the_pull_request_author_is_trusted(
+    client: GitHubClient, association: str, trusted: bool
+) -> None:
+    respx.get(f"{API}/repos/octo/app/pulls/5").mock(
+        return_value=httpx.Response(200, json={**PULL, "author_association": association})
+    )
+    respx.get(url__startswith=f"{API}/repos/octo/app/pulls/5/commits").mock(
+        return_value=httpx.Response(200, json=[])
+    )
+
+    assert GitHubSource(client, "octo/app", 5).info().author_trusted is trusted
+
+
 @respx.mock
 def test_a_rate_limit_error_says_so_and_never_shows_the_token(client: GitHubClient) -> None:
     respx.get(f"{API}/repos/octo/app/pulls/5").mock(

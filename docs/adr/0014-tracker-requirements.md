@@ -26,6 +26,12 @@ branch configuration.
   project or team is listed, which is also what keeps `UTF-8`, `SHA-256` or `ISO-27001` from reading as
   work items. At most ten work items are read per run, because the pull request text decides how many
   calls bylaw makes with the token.
+- **Only for trusted authors, unless the repository says otherwise.** Work items are read only when the
+  pull request's author is an `OWNER`, `MEMBER` or `COLLABORATOR`, the associations ADR 0008 trusts.
+  Anyone else, such as a fork author under the `pull_request_target` recipe, could name ten allowed keys
+  per push and have their text read into the review. For them a note says the work items were not read.
+  `trackers_for_all_authors = true` reads them for every author, for repositories where that is fine. A
+  local review (`bylaw context --base`) has no author and reads them as before.
 - **The answer is checked as well as the reference.** Jira answers the key of a moved issue with the
   issue under its new key, and Linear resolves an old identifier after a team move, so the project or
   team in the answer must be on the list too. `AB#123` names no project at all, so for Azure Boards the
@@ -47,8 +53,15 @@ branch configuration.
 - **Quoting.** By default the summary quotes work item criteria as it quotes issue criteria. With
   `quote_trackers = false` the summary shows, for work items, only the criterion keys, their status and
   the code and test locations: no title, no criterion text, no inferred criterion text and no note from
-  the reviewer, since a note often restates the criterion. The reviewer still reads the full text, so
-  the review is as good either way.
+  the reviewer, since a note often restates the criterion. The review memory in the summary's hidden
+  state leaves out the same text and notes. The reviewer still reads the full text, so the review is as
+  good either way, and the brief marks such a work item `Quotable: no` and tells the reviewer to refer
+  to it by its labels only, never quoting or paraphrasing it in findings or scope notes.
+- **What `quote_trackers = false` is for.** It guards against accidental quoting by bylaw and by an
+  honest reviewer model. It is not a guard against a determined pull request author: text in the diff
+  can ask the model to repeat a work item, and a model can paraphrase whatever it reads. The trust check
+  above is what keeps outside authors away from the text; a repository whose tracker text must never
+  appear in a pull request should not configure that tracker.
 
 ## Consequences
 
@@ -58,10 +71,13 @@ branch configuration.
   text may not reach a model provider should not configure a tracker.
 - `quote_trackers = false` makes the summary harder to read: a reader has to open the work item to see
   what `PROJ-123/AC-2` means. That is the price of keeping the words private.
-- Cost: `quote_trackers` covers the requirement table, not the model's own prose. A requirement finding
-  or a scope note written by the model can still paraphrase a criterion. The brief does not yet ask the
-  model to avoid that, because the prompt is being reworked on another branch; until it does, a
-  repository with confidential criteria should keep the model's comments to a private repository.
+- Cost: `quote_trackers` controls what bylaw writes, and only asks the model. A requirement finding or a
+  scope note written by the model can still paraphrase a criterion, by mistake or because the pull
+  request asks it to.
+- Cost: GitHub keeps the edit history of the summary comment, so turning `quote_trackers` off after
+  work item text was posted does not remove the old revisions. The summary has to be deleted for that.
+- Cost: a pull request from an outside contributor gets no work item criteria unless the repository
+  sets `trackers_for_all_authors`.
 - Cost: for Azure Boards, bylaw reads a work item before it knows whether its project is allowed. The
   text of a work item in a project that is not listed is read into memory and dropped, never into the
   context, the brief or a comment. A token scoped to the right projects avoids even that read.

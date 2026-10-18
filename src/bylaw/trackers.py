@@ -76,10 +76,18 @@ ClientFactory = Callable[[list[str]], httpx.Client]
 
 
 def read_work_items(
-    texts: Iterable[str], config: Config, env: Mapping[str, str]
+    texts: Iterable[str], config: Config, env: Mapping[str, str], *, author_trusted: bool = True
 ) -> tuple[tuple[Requirement, ...], tuple[str, ...]]:
     """Requirements from the work items the texts reference, and notes on the ones left out."""
     refs = parse_work_item_refs(texts, config)
+    if refs and not author_trusted and not config.trackers_for_all_authors:
+        # The author decides which keys a pull request names; only a trusted one may spend the token.
+        named = ", ".join(ref.key for ref in refs[:MAX_WORK_ITEMS])
+        was = "was" if len(refs) == 1 else "were"
+        return (), (
+            f"{named} {was} not read: the pull request author is not an owner, member or collaborator. "
+            "trackers_for_all_authors = true in .bylaw.toml reads work items for every author.",
+        )
     notes: list[str] = []
     if len(refs) > MAX_WORK_ITEMS:
         left_out = ", ".join(ref.key for ref in refs[MAX_WORK_ITEMS:])

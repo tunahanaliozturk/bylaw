@@ -513,3 +513,28 @@ def test_quote_trackers_decides_whether_work_item_text_may_be_quoted(setting: st
     assert requirement.quoted is quoted
     # The reviewer still reads the text: only the public summary leaves it out.
     assert requirement.text == "- [ ] Sends a welcome email"
+
+
+@respx.mock
+def test_work_items_named_by_an_untrusted_author_are_not_read() -> None:
+    route = respx.post(LINEAR)
+
+    requirements, notes = read_work_items(
+        ["ENG-7"], load_config(LINEAR_CONFIG), LINEAR_ENV, author_trusted=False
+    )
+
+    assert (requirements, route.called) == ((), False)
+    assert notes == (
+        "ENG-7 was not read: the pull request author is not an owner, member or collaborator. "
+        "trackers_for_all_authors = true in .bylaw.toml reads work items for every author.",
+    )
+
+
+@respx.mock
+def test_trackers_for_all_authors_reads_work_items_for_any_author() -> None:
+    respx.post(LINEAR).mock(return_value=httpx.Response(200, json=_linear_issue()))
+    config = load_config("trackers_for_all_authors = true\n" + LINEAR_CONFIG)
+
+    requirements, _ = read_work_items(["ENG-7"], config, LINEAR_ENV, author_trusted=False)
+
+    assert [r.source for r in requirements] == ["ENG-7"]
