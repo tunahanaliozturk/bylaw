@@ -30,6 +30,14 @@ inputs:
     description: Token used to read the pull request and write comments.
     required: false
     default: ${{ github.token }}
+  jira-email:
+    description: Account email for Jira Cloud, with jira-api-token. Used only when .bylaw.toml has a [jira] table (docs/trackers.md).
+    required: false
+    default: ""
+  jira-api-token:
+    description: Jira Cloud API token. Pass it from a secret.
+    required: false
+    default: ""
 
 runs:
   using: composite
@@ -47,6 +55,8 @@ runs:
         BYLAW_MODEL: ${{ inputs.model }}
         BYLAW_EFFORT: ${{ inputs.effort }}
         BYLAW_FAIL_ON: ${{ inputs.fail-on }}
+        JIRA_EMAIL: ${{ inputs.jira-email }}
+        JIRA_API_TOKEN: ${{ inputs.jira-api-token }}
         BYLAW_PR: ${{ github.event.pull_request.number }}
       run: |
         args=(review --pr "$BYLAW_PR" --post --provider "$BYLAW_PROVIDER" --fail-on "$BYLAW_FAIL_ON")
