@@ -28,7 +28,8 @@ else the token can reach ([ADR 0014](adr/0014-tracker-requirements.md)).
 Only a key whose project or team is listed. With `projects = ["PROJ"]`, `PROJ-123` is a reference, while
 `UTF-8`, `SHA-256`, `ISO-27001` and `OTHER-5` are not. Keys are upper case, as the trackers write them.
 A key inside a link (`https://acme.atlassian.net/browse/PROJ-123`) or a branch name in a merge commit
-(`feature/PROJ-123-login`) counts too.
+(`feature/PROJ-123-login`) counts too. A key inside an HTML comment (`<!-- for example PROJ-1 -->`, as
+pull request templates often have) does not.
 
 At most ten work items are read per run. The rest are named in a note.
 
@@ -160,6 +161,13 @@ Work item text also goes to the model provider, as issue text does ([privacy.md]
 ## When something is left out
 
 Every work item that was referenced but not used gets a line under **Notes** in the summary, saying why:
-the token is not set, the tracker answered with an HTTP error or a redirect (bylaw never follows one with
-credentials), the item moved outside the allow list, or more than ten were named. The note carries the
-key and the reason, never the token or the tracker's own error text. The review goes on without the item.
+the author is not trusted, the token is not set or has characters an HTTP header cannot carry, the
+tracker answered with an HTTP error or a redirect (bylaw never follows one with credentials), or more
+than ten were named. A work item that does not exist and one outside the allow list get the same note,
+"could not read, or it is outside the allow list", so the notes do not reveal which keys exist in other
+projects. The note carries the key and the reason, never the token or the tracker's own error text. The
+review goes on without the item.
+
+If `.bylaw.toml` itself is invalid, the error names the setting but never its value. If you put a token
+in the file by mistake, remove it and rotate the token: the file is public in a public repository, and
+its history keeps the old value.
