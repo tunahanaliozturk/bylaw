@@ -1,0 +1,65 @@
+{
+  "case_id": "cs-creep-discount",
+  "result": {
+    "findings": [
+      {
+        "file": "OrderService.cs",
+        "line_start": 32,
+        "line_end": 32,
+        "category": "bug",
+        "severity": "low",
+        "message": "For an unknown order id, `FirstAsync` throws a generic `InvalidOperationException`. A caller cannot cleanly tell a missing order apart from other failures, which it needs in order to return `NotFound()`.",
+        "suggestion": null,
+        "evidence": null
+      }
+    ],
+    "criteria": [
+      {
+        "criterion": "docs/specs/order-notes.md/AC-1",
+        "status": "met",
+        "text": null,
+        "code": [
+          {
+            "file": "OrderService.cs",
+            "line": 26
+          },
+          {
+            "file": "Order.cs",
+            "line": 9
+          }
+        ],
+        "tests": [],
+        "note": "Implemented, but no test proves a note is stored."
+      },
+      {
+        "criterion": "docs/specs/order-notes.md/AC-2",
+        "status": "met",
+        "text": null,
+        "code": [
+          {
+            "file": "OrderService.cs",
+            "line": 28
+          }
+        ],
+        "tests": [],
+        "note": "Implemented, but no test covers a note longer than 200 characters."
+      }
+    ],
+    "scope_creep": [
+      {
+        "file": "OrderService.cs",
+        "line": 15,
+        "message": "A 20% discount for customers ending in `@staff.example` silently changes order totals in `PlaceAsync`. The order-notes spec does not ask for this."
+      }
+    ]
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": 9.484085900010541,
+  "input_tokens": 4974,
+  "output_tokens": 931,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "a8e2ba9b356a9e5b6e15ef5f9fa23eda9c34ede27ca816f82bfe05a76580efd9",
+  "dropped_findings": 0
+}

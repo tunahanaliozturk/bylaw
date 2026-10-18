@@ -1,0 +1,17 @@
+{
+  "case_id": "go-clean-handler",
+  "result": {
+    "findings": [],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 0,
+  "seconds": 3.14390419999836,
+  "input_tokens": 4882,
+  "output_tokens": 194,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "aa053f2d4d6308709726fb5c8a70e1b44c7635f2e065768e7f2e737ae5bcb759",
+  "dropped_findings": 0
+}

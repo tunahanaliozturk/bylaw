@@ -1,0 +1,50 @@
+{
+  "case_id": "ts-req-quantity-range",
+  "result": {
+    "findings": [
+      {
+        "file": "src/cart.ts",
+        "line_start": 28,
+        "line_end": 28,
+        "category": "requirement",
+        "severity": "high",
+        "message": "`setQuantity` applies any number without checking it, so 0, negatives, values above 99 and NaN are stored instead of being rejected with a `RangeError` as the spec requires.",
+        "suggestion": "  if (!Number.isInteger(quantity) || !(quantity >= 1 && quantity <= 99)) {\n    throw new RangeError(`quantity must be an integer between 1 and 99, got ${quantity}`);\n  }\n  return { ...cart, items: cart.items.map((i) => (i.sku === sku ? { ...i, quantity } : i)) };",
+        "evidence": "docs/specs/quantity.md/AC-2"
+      }
+    ],
+    "criteria": [
+      {
+        "criterion": "docs/specs/quantity.md/AC-1",
+        "status": "met",
+        "text": null,
+        "code": [
+          {
+            "file": "src/cart.ts",
+            "line": 28
+          }
+        ],
+        "tests": [],
+        "note": "Implemented, but no test covers changing the quantity of an item in the cart."
+      },
+      {
+        "criterion": "docs/specs/quantity.md/AC-2",
+        "status": "missing",
+        "text": null,
+        "code": [],
+        "tests": [],
+        "note": "There is no range check and no `RangeError` is thrown for quantities below 1 or above 99. No tests cover this."
+      }
+    ],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": 8.565453800023533,
+  "input_tokens": 4536,
+  "output_tokens": 861,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "aa9cd495c81b95e8ab8b89ff85e37e507a1d31a2643b35a72b2404d481a1215a",
+  "dropped_findings": 0
+}

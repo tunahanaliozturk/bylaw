@@ -1,0 +1,52 @@
+{
+  "case_id": "go-creep-timeout",
+  "result": {
+    "findings": [
+      {
+        "file": "main.go",
+        "line_start": 24,
+        "line_end": 24,
+        "category": "security",
+        "severity": "low",
+        "message": "The server-wide WriteTimeout goes from 10s to 120s, which has nothing to do with the health endpoint. It lets slow or stalled clients hold connections and goroutines twelve times longer on every route.",
+        "suggestion": "\t\tWriteTimeout: 10 * time.Second,",
+        "evidence": null
+      }
+    ],
+    "criteria": [
+      {
+        "criterion": "docs/specs/health.md/AC-1",
+        "status": "met",
+        "text": null,
+        "code": [
+          {
+            "file": "main.go",
+            "line": 19
+          },
+          {
+            "file": "handlers.go",
+            "line": 57
+          }
+        ],
+        "tests": [],
+        "note": "The handler writes 200 and `ok`, but no test exercises `GET /healthz`."
+      }
+    ],
+    "scope_creep": [
+      {
+        "file": "main.go",
+        "line": 24,
+        "message": "Raising the server WriteTimeout from 10s to 120s is not part of the health check requirement."
+      }
+    ]
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": 7.234899599978235,
+  "input_tokens": 4655,
+  "output_tokens": 629,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "2f8867f88d76ab1b8957dbd854fa020d0e23420167d97a1f47494541af9ffc1c",
+  "dropped_findings": 0
+}

@@ -1,0 +1,38 @@
+{
+  "case_id": "py-swallowed-commit",
+  "result": {
+    "findings": [
+      {
+        "file": "app/db.py",
+        "line_start": 20,
+        "line_end": 21,
+        "category": "bug",
+        "severity": "high",
+        "message": "The `except` block now swallows every exception raised inside the `with connect()` block and drops the rollback. Callers believe a failed write succeeded, the uncommitted changes are silently discarded when the connection closes, and nothing actually retries them, so data is lost without any error or log.",
+        "suggestion": "        connection.rollback()\n        raise",
+        "evidence": null
+      },
+      {
+        "file": "app/db.py",
+        "line_start": 21,
+        "line_end": 21,
+        "category": "rule",
+        "severity": "low",
+        "message": "This changes how database errors are handled (they are now suppressed instead of propagated), but no test comes with the change.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:15"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 2,
+  "seconds": 7.82759779994376,
+  "input_tokens": 4157,
+  "output_tokens": 646,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "a274de5d66b0204b2f3c67929df44a4817d369197d3901539fda8ae923d19fd5",
+  "dropped_findings": 0
+}

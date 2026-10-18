@@ -1,0 +1,28 @@
+{
+  "case_id": "ts-console-log",
+  "result": {
+    "findings": [
+      {
+        "file": "src/server.ts",
+        "line_start": 27,
+        "line_end": 27,
+        "category": "rule",
+        "severity": "low",
+        "message": "The change replaces the structured `logger.info` call with `console.log`, which the contributing rules forbid. It also drops the structured `orderId` field from the log entry.",
+        "suggestion": "  logger.info(\"order created\", { orderId: order.id });",
+        "evidence": "CONTRIBUTING.md:8"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": 3.389239600044675,
+  "input_tokens": 4133,
+  "output_tokens": 168,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "1cfc2ea3d4a5dfb8946c128820fe6c3e1a333680cfa07295dd26f944d3f5bdd7",
+  "dropped_findings": 0
+}

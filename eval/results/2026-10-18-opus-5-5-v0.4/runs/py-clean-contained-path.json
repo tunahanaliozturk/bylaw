@@ -1,0 +1,28 @@
+{
+  "case_id": "py-clean-contained-path",
+  "result": {
+    "findings": [
+      {
+        "file": "app/files.py",
+        "line_start": 23,
+        "line_end": 23,
+        "category": "bug",
+        "severity": "low",
+        "message": "`target` is resolved, but it is compared against an unresolved `UPLOAD_DIR`. If `UPLOAD_DIR` is relative or passes through a symlink, every legitimate upload is refused with `PermissionError`. This is not a traversal hole, but downloads would break silently.",
+        "suggestion": "    if not target.is_relative_to(UPLOAD_DIR.resolve()):",
+        "evidence": null
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": 7.942730100010522,
+  "input_tokens": 4706,
+  "output_tokens": 700,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "0ce913d7ea7e2bd68d521b851f70dae8249d1cd62745a20bc350dca59bcafcc4",
+  "dropped_findings": 0
+}

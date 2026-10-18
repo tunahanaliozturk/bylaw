@@ -1,0 +1,48 @@
+{
+  "case_id": "ts-missing-await",
+  "result": {
+    "findings": [
+      {
+        "file": "src/server.ts",
+        "line_start": 34,
+        "line_end": 34,
+        "category": "rule",
+        "severity": "high",
+        "message": "`saveOrder(order)` is not awaited, so the handler responds with 201 before the order is persisted. A failed save becomes an unhandled rejection, and the client is told an order exists that may never have been stored.",
+        "suggestion": "  await saveOrder(order);",
+        "evidence": "CONTRIBUTING.md:11"
+      },
+      {
+        "file": "src/server.ts",
+        "line_start": 33,
+        "line_end": 33,
+        "category": "security",
+        "severity": "high",
+        "message": "The express endpoint never checks for a signed-in user and never ties the new order to one. Anyone can create orders, and nothing records who owns them, so later ownership checks have nothing to compare against.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:10"
+      },
+      {
+        "file": "src/server.ts",
+        "line_start": 32,
+        "line_end": 32,
+        "category": "security",
+        "severity": "medium",
+        "message": "`req.body as Cart` is only a type assertion; the untrusted body is not validated. A malformed or tampered cart reaches `orderFromCart`, which can crash the handler or, if the cart carries client-supplied prices, produce manipulated totals.",
+        "suggestion": null,
+        "evidence": null
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 3,
+  "seconds": 11.55567329999758,
+  "input_tokens": 4207,
+  "output_tokens": 1112,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "e9507e5f3308c9bc82c6c45df97f2ddb55359f3a352f7650521c363c26d65cb5",
+  "dropped_findings": 0
+}

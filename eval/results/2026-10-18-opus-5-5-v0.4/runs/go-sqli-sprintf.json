@@ -1,0 +1,38 @@
+{
+  "case_id": "go-sqli-sprintf",
+  "result": {
+    "findings": [
+      {
+        "file": "store.go",
+        "line_start": 46,
+        "line_end": 47,
+        "category": "security",
+        "severity": "critical",
+        "message": "The widget name is interpolated directly into the SQL string with fmt.Sprintf, so a name containing a quote can inject arbitrary SQL. The repository rule requires placeholders for queries instead.",
+        "suggestion": "\trows, err := s.db.QueryContext(ctx, \"SELECT id, name FROM widgets WHERE name = ?\", name)",
+        "evidence": "CONTRIBUTING.md:10"
+      },
+      {
+        "file": "store.go",
+        "line_start": 60,
+        "line_end": 60,
+        "category": "rule",
+        "severity": "low",
+        "message": "The error from rows.Err() is returned unwrapped, unlike the other errors in this function. The repository rule requires wrapping errors with %w.",
+        "suggestion": "\tif err := rows.Err(); err != nil {\n\t\treturn nil, fmt.Errorf(\"iterate widgets: %w\", err)\n\t}\n\treturn found, nil",
+        "evidence": "CONTRIBUTING.md:7"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 2,
+  "seconds": 9.020686300005764,
+  "input_tokens": 4366,
+  "output_tokens": 910,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "e02e8561cb050097db5d16deb072089f6c1a6823939008599eddc1c4affd468e",
+  "dropped_findings": 0
+}
