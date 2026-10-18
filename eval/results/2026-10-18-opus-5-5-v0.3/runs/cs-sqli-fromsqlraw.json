@@ -1,0 +1,28 @@
+{
+  "case_id": "cs-sqli-fromsqlraw",
+  "result": {
+    "findings": [
+      {
+        "file": "OrderService.cs",
+        "line_start": 24,
+        "line_end": 24,
+        "category": "security",
+        "severity": "critical",
+        "message": "`customer` is interpolated into a raw SQL string passed to `FromSqlRaw`. This allows SQL injection: a value such as `x' OR '1'='1` returns every customer's orders, and worse payloads are possible. It also breaks the repository rule that raw SQL may only go through `FromSql` with interpolated parameters.",
+        "suggestion": "        return db.Orders.FromSql($\"SELECT * FROM Orders WHERE Customer = {customer}\").ToListAsync(cancellationToken);",
+        "evidence": "CONTRIBUTING.md:9"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": 7.382976700027939,
+  "input_tokens": 3836,
+  "output_tokens": 679,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "d843f63dbc07b2338cf206df26828024a56aa3fc48034daa4b5a887ddd977310",
+  "dropped_findings": 0
+}

@@ -1,0 +1,83 @@
+{
+  "case_id": "py-req-missing-lockout",
+  "result": {
+    "findings": [
+      {
+        "file": "app/login.py",
+        "line_start": 14,
+        "line_end": 15,
+        "category": "requirement",
+        "severity": "high",
+        "message": "There is no lockout. Failed attempts are never counted, and a correct password always succeeds. That leaves the account open to unlimited password guessing, contrary to the spec.",
+        "suggestion": null,
+        "evidence": "docs/specs/login.md/AC-3"
+      },
+      {
+        "file": "app/login.py",
+        "line_start": 9,
+        "line_end": 9,
+        "category": "rule",
+        "severity": "medium",
+        "message": "This adds new sign-in behaviour with no tests. Nothing proves the match, mismatch or lockout cases.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:15"
+      },
+      {
+        "file": "app/login.py",
+        "line_start": 14,
+        "line_end": 14,
+        "category": "bug",
+        "severity": "medium",
+        "message": "Rows are read by column name (`row[\"salt\"]`), which only works if the caller set `connection.row_factory = sqlite3.Row`. With a default connection, rows are tuples and `login` raises `TypeError`.",
+        "suggestion": null,
+        "evidence": null
+      }
+    ],
+    "criteria": [
+      {
+        "criterion": "docs/specs/login.md/AC-1",
+        "status": "partial",
+        "text": null,
+        "code": [
+          {
+            "file": "app/login.py",
+            "line": 16
+          }
+        ],
+        "tests": [],
+        "note": "Code returns the user on a match, but no test covers it."
+      },
+      {
+        "criterion": "docs/specs/login.md/AC-2",
+        "status": "partial",
+        "text": null,
+        "code": [
+          {
+            "file": "app/login.py",
+            "line": 15
+          }
+        ],
+        "tests": [],
+        "note": "Code returns None for an unknown email or a wrong password, but no test covers it."
+      },
+      {
+        "criterion": "docs/specs/login.md/AC-3",
+        "status": "missing",
+        "text": null,
+        "code": [],
+        "tests": [],
+        "note": "No failed-attempt counter or account lock is implemented."
+      }
+    ],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 3,
+  "seconds": 9.163601099979132,
+  "input_tokens": 4318,
+  "output_tokens": 984,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "df275cadac25bedd70c6fc7bb7246a76033728ed6e5021c9dbe01c8a98402feb",
+  "dropped_findings": 0
+}

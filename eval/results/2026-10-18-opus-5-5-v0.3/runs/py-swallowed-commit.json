@@ -1,0 +1,38 @@
+{
+  "case_id": "py-swallowed-commit",
+  "result": {
+    "findings": [
+      {
+        "file": "app/db.py",
+        "line_start": 20,
+        "line_end": 21,
+        "category": "bug",
+        "severity": "critical",
+        "message": "Inside this context-manager generator, catching the exception thrown at `yield` and not re-raising makes `contextmanager` suppress it. The caller carries on as if the write succeeded, and the uncommitted transaction is silently discarded when the connection closes, so data is lost with no error and no retry. Commit failures are also swallowed, and the explicit rollback is gone.",
+        "suggestion": "        connection.rollback()\n        raise",
+        "evidence": null
+      },
+      {
+        "file": "app/db.py",
+        "line_start": 20,
+        "line_end": 21,
+        "category": "rule",
+        "severity": "medium",
+        "message": "This changes behaviour: database errors are now suppressed instead of propagated. No test accompanies the change.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:15"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 2,
+  "seconds": 6.345149200002197,
+  "input_tokens": 3765,
+  "output_tokens": 600,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "a274de5d66b0204b2f3c67929df44a4817d369197d3901539fda8ae923d19fd5",
+  "dropped_findings": 0
+}

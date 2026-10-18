@@ -1,0 +1,41 @@
+{
+  "case_id": "go-creep-timeout",
+  "result": {
+    "findings": [],
+    "criteria": [
+      {
+        "criterion": "docs/specs/health.md/AC-1",
+        "status": "met",
+        "text": null,
+        "code": [
+          {
+            "file": "handlers.go",
+            "line": 57
+          },
+          {
+            "file": "main.go",
+            "line": 19
+          }
+        ],
+        "tests": [],
+        "note": "The handler writes 200 with the body `ok` and is registered on `GET /healthz`, but no test covers it."
+      }
+    ],
+    "scope_creep": [
+      {
+        "file": "main.go",
+        "line": 24,
+        "message": "Raising the server WriteTimeout from 10s to 120s is unrelated to the health check. It also lengthens how long slow clients can hold connections open."
+      }
+    ]
+  },
+  "dropped": [],
+  "model_findings": 0,
+  "seconds": 5.261558300000615,
+  "input_tokens": 4248,
+  "output_tokens": 496,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "2f8867f88d76ab1b8957dbd854fa020d0e23420167d97a1f47494541af9ffc1c",
+  "dropped_findings": 0
+}

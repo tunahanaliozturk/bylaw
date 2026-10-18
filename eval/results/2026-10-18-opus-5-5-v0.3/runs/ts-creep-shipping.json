@@ -1,0 +1,48 @@
+{
+  "case_id": "ts-creep-shipping",
+  "result": {
+    "findings": [
+      {
+        "file": "src/orders.ts",
+        "line_start": 21,
+        "line_end": 21,
+        "category": "bug",
+        "severity": "high",
+        "message": "Every order total is now silently increased by a hard-coded 499 cents. No requirement asks for this, and it overcharges every order created from a cart.",
+        "suggestion": "  return { id, userId: cart.userId, totalCents: subtotalCents(cart) };",
+        "evidence": null
+      }
+    ],
+    "criteria": [
+      {
+        "criterion": "docs/specs/coupons.md/AC-1",
+        "status": "met",
+        "text": null,
+        "code": [
+          {
+            "file": "src/cart.ts",
+            "line": 28
+          }
+        ],
+        "tests": [],
+        "note": "Implemented with Math.max(0, ...) on integer cents. No tests cover it, and the function is not wired into order totals."
+      }
+    ],
+    "scope_creep": [
+      {
+        "file": "src/orders.ts",
+        "line": 21,
+        "message": "Adds an unexplained 499-cent charge to every order total, which the coupon spec does not ask for."
+      }
+    ]
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": 6.975581399980001,
+  "input_tokens": 4201,
+  "output_tokens": 593,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "d727156e3fcf53e5c0157277c3182f8a0e65dbbbc71bfdf8185bcc7341e3e535",
+  "dropped_findings": 0
+}

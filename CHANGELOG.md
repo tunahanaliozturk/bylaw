@@ -4,6 +4,8 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## Unreleased
 
+## 0.3.0 - 2026-10-18
+
 - Monorepos: a package's own `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md` and linter configuration now apply to the files changed under it, next to the root rules. For each changed file and each of those names, the nearest one above it on the base branch is read; directories without changed files are not read. Ruff's `.ruff.toml`, `ruff.toml` and `pyproject.toml` count as one name, in Ruff's order. `.github/CONTRIBUTING.md` and `docs/CONTRIBUTING.md` stay rules for the whole repository. The brief groups the rules by directory, names the changed files each group covers, and tells the reviewer that the nearest directory wins (ADR 0013).
 - Validation accepts a rule line from a package's own rule files as evidence, and drops a finding that cites a rule of another package than the file it is on.
 - Linter configuration is read as rule ids, without running anything: Ruff's selected and ignored codes and per-file ignores (`ruff.toml`, `.ruff.toml`, `pyproject.toml`), following `extend` on the base branch, ESLint rules and overrides from `.eslintrc.json` and `.eslintrc.yml`, golangci-lint's enabled linters (v1 and v2 files), and .NET `dotnet_diagnostic` severities from `.editorconfig` and `.globalconfig`. What names no ids, such as an ESLint `extends`, a golangci-lint preset, a .NET category severity or the analysis level, is noted in the brief. ESLint configs written in JavaScript stay text. A file that does not parse is noted in the summary. YAML is read with `ruamel.yaml`'s safe loader, a new dependency.

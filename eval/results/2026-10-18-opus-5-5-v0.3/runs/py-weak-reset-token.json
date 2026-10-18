@@ -1,0 +1,38 @@
+{
+  "case_id": "py-weak-reset-token",
+  "result": {
+    "findings": [
+      {
+        "file": "app/auth.py",
+        "line_start": 29,
+        "line_end": 29,
+        "category": "security",
+        "severity": "high",
+        "message": "Password reset tokens are now generated with `random.choices`, which uses the non-cryptographic Mersenne Twister PRNG. An attacker who observes enough outputs can predict future reset tokens and take over accounts. The previous `secrets.token_urlsafe` was already URL-safe.",
+        "suggestion": "    token = \"\".join(secrets.choice(alphabet) for _ in range(32))",
+        "evidence": null
+      },
+      {
+        "file": "app/auth.py",
+        "line_start": 28,
+        "line_end": 30,
+        "category": "rule",
+        "severity": "low",
+        "message": "The token format and generation changed, but no test accompanies the change. The rules require a test for every change in behaviour.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:15"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 2,
+  "seconds": 4.453700499958359,
+  "input_tokens": 4001,
+  "output_tokens": 308,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "e3bb5bbad6a0aaa36623913d53c4fe61d6b862112bbd169bbe992dc2c9c65906",
+  "dropped_findings": 0
+}

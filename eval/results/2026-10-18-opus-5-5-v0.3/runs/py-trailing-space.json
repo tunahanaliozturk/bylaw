@@ -1,0 +1,38 @@
+{
+  "case_id": "py-trailing-space",
+  "result": {
+    "findings": [
+      {
+        "file": "app/auth.py",
+        "line_start": 34,
+        "line_end": 34,
+        "category": "rule",
+        "severity": "low",
+        "message": "Trailing whitespace on line 34.",
+        "suggestion": null,
+        "evidence": ".editorconfig:5"
+      },
+      {
+        "file": "app/auth.py",
+        "line_start": 34,
+        "line_end": 34,
+        "category": "rule",
+        "severity": "low",
+        "message": "The new `token_hint` function adds behaviour but the change includes no test. The contributing guide requires every behaviour change to come with a test.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:15"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": 8.52641599997878,
+  "input_tokens": 3829,
+  "output_tokens": 545,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "b4faa4e8c9ae7ceca7eae9120ae5aa15bae10e77a2808f4357a3382ab9587d06",
+  "dropped_findings": 0
+}

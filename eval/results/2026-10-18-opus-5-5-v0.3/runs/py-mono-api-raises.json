@@ -1,0 +1,38 @@
+{
+  "case_id": "py-mono-api-raises",
+  "result": {
+    "findings": [
+      {
+        "file": "packages/api/api/handlers.py",
+        "line_start": 26,
+        "line_end": 26,
+        "category": "rule",
+        "severity": "medium",
+        "message": "The handler raises `LookupError` when the order is missing. Handlers in the API package must never raise to the caller; they must return a failed `Result` so the HTTP layer can build a response. `get_order` already does this for the same case.",
+        "suggestion": "        return Result(ok=False, error=f\"order {order_id} not found\")",
+        "evidence": "packages/api/AGENTS.md:3"
+      },
+      {
+        "file": "packages/api/api/handlers.py",
+        "line_start": 29,
+        "line_end": 29,
+        "category": "bug",
+        "severity": "medium",
+        "message": "The status check and the UPDATE are separate statements with no guard, so an order shipped between the SELECT and the UPDATE is still set to 'cancelled'. Making the condition part of the UPDATE (`AND status != 'shipped'`) and checking `rowcount` would make the check atomic.",
+        "suggestion": null,
+        "evidence": null
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 2,
+  "seconds": 7.419361599953845,
+  "input_tokens": 4269,
+  "output_tokens": 719,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "49a09ff48706ed2e1630a39896f6b2341447ee5f0ee2fd5159fc9673a01481c9",
+  "dropped_findings": 0
+}

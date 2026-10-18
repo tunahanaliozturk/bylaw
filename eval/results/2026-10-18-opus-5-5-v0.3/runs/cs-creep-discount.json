@@ -1,0 +1,65 @@
+{
+  "case_id": "cs-creep-discount",
+  "result": {
+    "findings": [
+      {
+        "file": "OrderService.cs",
+        "line_start": 15,
+        "line_end": 18,
+        "category": "security",
+        "severity": "medium",
+        "message": "`PlaceAsync` now gives a 20% discount to any order whose customer string ends with `@staff.example`. The caller supplies that string and nothing verifies it, so anyone who can choose the customer value gets the discount. No requirement asks for this.",
+        "suggestion": null,
+        "evidence": null
+      }
+    ],
+    "criteria": [
+      {
+        "criterion": "docs/specs/order-notes.md/AC-1",
+        "status": "met",
+        "text": null,
+        "code": [
+          {
+            "file": "OrderService.cs",
+            "line": 26
+          },
+          {
+            "file": "Order.cs",
+            "line": 9
+          }
+        ],
+        "tests": [],
+        "note": "`AddNoteAsync` loads the order, sets `Note` and saves it. No test covers this."
+      },
+      {
+        "criterion": "docs/specs/order-notes.md/AC-2",
+        "status": "met",
+        "text": null,
+        "code": [
+          {
+            "file": "OrderService.cs",
+            "line": 28
+          }
+        ],
+        "tests": [],
+        "note": "Notes over 200 characters throw `ArgumentException`. No test covers this."
+      }
+    ],
+    "scope_creep": [
+      {
+        "file": "OrderService.cs",
+        "line": 15,
+        "message": "A staff discount in `PlaceAsync` that is unrelated to order notes."
+      }
+    ]
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": 7.716318699996918,
+  "input_tokens": 4604,
+  "output_tokens": 780,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "a8e2ba9b356a9e5b6e15ef5f9fa23eda9c34ede27ca816f82bfe05a76580efd9",
+  "dropped_findings": 0
+}

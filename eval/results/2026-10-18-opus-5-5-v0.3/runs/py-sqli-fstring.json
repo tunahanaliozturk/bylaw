@@ -1,0 +1,38 @@
+{
+  "case_id": "py-sqli-fstring",
+  "result": {
+    "findings": [
+      {
+        "file": "app/users.py",
+        "line_start": 40,
+        "line_end": 40,
+        "category": "security",
+        "severity": "critical",
+        "message": "The email is interpolated into the SQL string with an f-string, allowing SQL injection via a crafted email value. It also breaks the rule requiring parameterised SQL.",
+        "suggestion": "    row = connection.execute(\"SELECT id, email, name FROM users WHERE email = ?\", (email,)).fetchone()",
+        "evidence": "CONTRIBUTING.md:7"
+      },
+      {
+        "file": "app/users.py",
+        "line_start": 38,
+        "line_end": 38,
+        "category": "rule",
+        "severity": "medium",
+        "message": "The new public function `find_by_email` is a change in behaviour, but the PR adds no test for it.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:15"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 2,
+  "seconds": 3.409336099983193,
+  "input_tokens": 3929,
+  "output_tokens": 293,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "3dddabe5088dcc57b3d4af89be3a05ad1cce7974b0a282e8ca1d37a785f8b9a3",
+  "dropped_findings": 0
+}

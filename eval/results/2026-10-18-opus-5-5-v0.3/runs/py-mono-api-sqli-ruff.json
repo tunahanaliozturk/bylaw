@@ -1,0 +1,38 @@
+{
+  "case_id": "py-mono-api-sqli-ruff",
+  "result": {
+    "findings": [
+      {
+        "file": "packages/api/api/handlers.py",
+        "line_start": 24,
+        "line_end": 24,
+        "category": "security",
+        "severity": "critical",
+        "message": "`status` is interpolated straight into the SQL string, so a caller-supplied value like `x' OR '1'='1` can read or tamper with arbitrary data (SQL injection). Pass it as a bound parameter instead.",
+        "suggestion": "    rows = connection.execute(\"SELECT id FROM orders WHERE status = ?\", (status,)).fetchall()",
+        "evidence": "ruff:S608"
+      },
+      {
+        "file": "packages/api/api/handlers.py",
+        "line_start": 24,
+        "line_end": 25,
+        "category": "rule",
+        "severity": "medium",
+        "message": "Any `sqlite3.Error` raised by the query (for example a locked database or a missing table) propagates to the caller. API handlers must instead return a `Result` with `ok=False` and an error message.",
+        "suggestion": null,
+        "evidence": "packages/api/AGENTS.md:3"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 2,
+  "seconds": 8.414700100023765,
+  "input_tokens": 4130,
+  "output_tokens": 806,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "05d79034fe1a5ea110e7bedea587d0fea23259a74977e54a0f756e4c8f362227",
+  "dropped_findings": 0
+}

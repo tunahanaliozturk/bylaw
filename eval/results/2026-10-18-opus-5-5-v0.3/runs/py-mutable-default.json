@@ -1,0 +1,38 @@
+{
+  "case_id": "py-mutable-default",
+  "result": {
+    "findings": [
+      {
+        "file": "app/users.py",
+        "line_start": 38,
+        "line_end": 42,
+        "category": "bug",
+        "severity": "high",
+        "message": "The mutable default `recipients: list[str] = []` is created once and shared by every call, so addresses accumulate across calls. Later batches would send welcome emails to users who were already welcomed, and callers who pass their own list have it mutated in place.",
+        "suggestion": "def welcome_recipients(new_users: list[User], recipients: list[str] | None = None) -> list[str]:\n    \"\"\"Collect the addresses to send the welcome email to.\"\"\"\n    result = list(recipients) if recipients is not None else []\n    for user in new_users:\n        result.append(user.email)\n    return result",
+        "evidence": null
+      },
+      {
+        "file": "app/users.py",
+        "line_start": 38,
+        "line_end": 38,
+        "category": "rule",
+        "severity": "low",
+        "message": "The new `welcome_recipients` behaviour comes without a test. A test calling it twice would have caught the shared-default bug.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:15"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 2,
+  "seconds": 5.747214700037148,
+  "input_tokens": 3899,
+  "output_tokens": 504,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "7b409ab90ca93566067ae05caa02c37cd87d4b03a8017659caea83853e9461d1",
+  "dropped_findings": 0
+}

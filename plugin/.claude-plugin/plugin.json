@@ -1,6 +1,6 @@
 {
   "name": "bylaw",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Review pull requests against your repository's own rules and the requirements they claim to implement.",
   "author": {
     "name": "Tunahan Ali Ozturk"

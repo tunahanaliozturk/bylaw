@@ -1,0 +1,58 @@
+{
+  "case_id": "py-path-traversal",
+  "result": {
+    "findings": [
+      {
+        "file": "app/files.py",
+        "line_start": 22,
+        "line_end": 22,
+        "category": "security",
+        "severity": "critical",
+        "message": "`read_upload` joins a client-supplied name straight onto `UPLOAD_DIR`. A value like `../../etc/passwd` or an absolute path lets any caller read arbitrary files on the server.",
+        "suggestion": "    path = (UPLOAD_DIR / name).resolve()\n    if not path.is_relative_to(UPLOAD_DIR.resolve()) or not path.is_file():\n        raise FileNotFoundError(name)\n    return path.read_bytes()",
+        "evidence": null
+      },
+      {
+        "file": "app/web.py",
+        "line_start": 35,
+        "line_end": 36,
+        "category": "security",
+        "severity": "high",
+        "message": "The download handler never checks who is asking or whether that user owns the requested file. Even without traversal, anyone can fetch any other user's uploads by guessing names.",
+        "suggestion": null,
+        "evidence": null
+      },
+      {
+        "file": "app/web.py",
+        "line_start": 36,
+        "line_end": 36,
+        "category": "bug",
+        "severity": "medium",
+        "message": "Several inputs crash the handler with an unhandled exception and an HTTP 500 instead of a proper error response. A missing file raises `FileNotFoundError`, an empty `file` parameter reads the directory and raises `IsADirectoryError`, and `.decode()` raises `UnicodeDecodeError` on binary uploads such as images.",
+        "suggestion": null,
+        "evidence": null
+      },
+      {
+        "file": "app/web.py",
+        "line_start": 33,
+        "line_end": 33,
+        "category": "rule",
+        "severity": "low",
+        "message": "This adds a new download endpoint and a new file-reading function but no test. The contributing guide requires a test for every change in behaviour.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:15"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 4,
+  "seconds": 10.25253930001054,
+  "input_tokens": 4106,
+  "output_tokens": 1076,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "8d887b679ae0f772a926850463c35121dc8dd9a1451dea60a8957831acf7fab5",
+  "dropped_findings": 0
+}
