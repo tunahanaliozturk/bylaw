@@ -5,13 +5,27 @@ allowed project or team is read: tracker text can end up in a public comment, as
 """
 
 import re
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
-from typing import Literal
+from typing import Any, Literal
 
-from bylaw.config import Config
+import httpx
+
+from bylaw.config import Config, Jira
+from bylaw.model import Requirement
+from bylaw.requirements import extract_criteria
 
 Tracker = Literal["jira", "azure_boards", "linear"]
+# A pull request's text decides how many calls bylaw makes with the tracker token, so it is capped.
+MAX_WORK_ITEMS = 10
+_TIMEOUT = 20.0
+_NAMES: dict[Tracker, str] = {"jira": "Jira", "azure_boards": "Azure Boards", "linear": "Linear"}
+# Tokens come from the environment only, never from .bylaw.toml (ADR 0014).
+CREDENTIALS: dict[Tracker, tuple[str, ...]] = {
+    "jira": ("JIRA_EMAIL", "JIRA_API_TOKEN"),
+    "azure_boards": ("AZURE_DEVOPS_TOKEN",),
+    "linear": ("LINEAR_API_KEY",),
+}
 
 # PROJ-123 (Jira) and ENG-123 (Linear) share a shape; the allow lists decide which one a key is.
 _KEY_REF = re.compile(r"\b(?P<key>[A-Z][A-Z0-9_]*)-(?P<number>[1-9]\d{0,9})\b")
@@ -43,3 +57,281 @@ def parse_work_item_refs(texts: Iterable[str], config: Config) -> tuple[WorkItem
             )
         refs.extend(ref for _, ref in sorted(found, key=lambda pair: pair[0]))
     return tuple(dict.fromkeys(refs))
+
+
+@dataclass(frozen=True, slots=True)
+class WorkItem:
+    title: str
+    # Markdown, so the criteria extraction that reads issues reads work items too.
+    text: str
+
+
+class _UnreadableError(Exception):
+    """A work item could not be used. The message is a note safe to publish: no token, no tracker text."""
+
+
+Reader = Callable[[httpx.Client, str], WorkItem]
+ClientFactory = Callable[[list[str]], httpx.Client]
+
+
+def read_work_items(
+    texts: Iterable[str], config: Config, env: Mapping[str, str]
+) -> tuple[tuple[Requirement, ...], tuple[str, ...]]:
+    """Requirements from the work items the texts reference, and notes on the ones left out."""
+    refs = parse_work_item_refs(texts, config)
+    notes: list[str] = []
+    if len(refs) > MAX_WORK_ITEMS:
+        left_out = ", ".join(ref.key for ref in refs[MAX_WORK_ITEMS:])
+        notes.append(
+            f"{len(refs)} work items are referenced; only the first {MAX_WORK_ITEMS} are read. "
+            f"Left out: {left_out}."
+        )
+        refs = refs[:MAX_WORK_ITEMS]
+    requirements: list[Requirement] = []
+    for tracker, (reader, client) in _readers(config).items():
+        keys = [ref.key for ref in refs if ref.tracker == tracker]
+        if not keys:
+            continue
+        names = CREDENTIALS[tracker]
+        secrets = [env.get(name, "") for name in names]
+        if not all(secrets):
+            verb = "are" if len(names) > 1 else "is"
+            was = "was" if len(keys) == 1 else "were"
+            notes.append(
+                f"{' and '.join(names)} {verb} not set, so {', '.join(keys)} {was} not read "
+                f"from {_NAMES[tracker]}."
+            )
+            continue
+        with client(secrets) as http:
+            for key in keys:
+                try:
+                    item = reader(http, key)
+                except _UnreadableError as error:
+                    notes.append(str(error))
+                    continue
+                criteria = extract_criteria(item.text)
+                # ADR 0011: a work item written as prose gets inferred criteria, as an issue does.
+                requirements.append(
+                    Requirement(
+                        source=key,
+                        title=item.title,
+                        text=item.text,
+                        criteria=criteria,
+                        inferable=not criteria,
+                    )
+                )
+    notes.extend(f"{r.source} has no structured acceptance criteria." for r in requirements if not r.criteria)
+    return tuple(requirements), tuple(notes)
+
+
+def _readers(config: Config) -> dict[Tracker, tuple[Reader, ClientFactory]]:
+    readers: dict[Tracker, tuple[Reader, ClientFactory]] = {}
+    if (jira := config.jira) is not None:
+        # Basic auth with the account email and an API token:
+        # https://developer.atlassian.com/cloud/jira/platform/basic-auth-for-rest-apis/
+        readers["jira"] = (
+            lambda http, key: _read_jira(http, jira, key),
+            lambda secrets: _client(auth=httpx.BasicAuth(secrets[0], secrets[1])),
+        )
+    return readers
+
+
+def _client(*, auth: httpx.Auth | None = None, headers: Mapping[str, str] | None = None) -> httpx.Client:
+    # No redirects: one could carry the credentials to another host.
+    return httpx.Client(
+        auth=auth,
+        headers={"Accept": "application/json", "User-Agent": "bylaw", **(headers or {})},
+        timeout=_TIMEOUT,
+        follow_redirects=False,
+    )
+
+
+def _fetch(http: httpx.Client, key: str, tracker: Tracker, request: httpx.Request) -> dict[str, Any]:
+    where = f"Could not read {key} from {_NAMES[tracker]}"
+    after = "it is left out of the requirement check."
+    try:
+        response = http.send(request)
+    except httpx.HTTPError:
+        # The exception text is left out: the note does not need it, and it may name more than it should.
+        raise _UnreadableError(f"{where} (network error); {after}") from None
+    if response.is_redirect:
+        raise _UnreadableError(f"{where} (a redirect, which bylaw does not follow with credentials); {after}")
+    if response.status_code != httpx.codes.OK:
+        raise _UnreadableError(f"{where} (HTTP {response.status_code}); {after}")
+    try:
+        data = response.json()
+    except ValueError:
+        data = None
+    if not isinstance(data, dict):
+        raise _UnreadableError(f"{where} (the answer was not a JSON object); {after}")
+    return data
+
+
+def _read_jira(http: httpx.Client, jira: Jira, key: str) -> WorkItem:
+    # Get issue, Jira Cloud REST v3:
+    # https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issues/#api-rest-api-3-issue-issueidorkey-get
+    fields = ["summary", "description", *([jira.criteria_field] if jira.criteria_field else [])]
+    request = http.build_request(
+        "GET", f"{jira.url}/rest/api/3/issue/{key}", params={"fields": ",".join(fields)}
+    )
+    data = _fetch(http, key, "jira", request)
+    # Jira answers a moved issue's old key with the issue under its new key, not with a redirect, so the
+    # project is checked on the answer as well as on the reference.
+    found = data.get("key")
+    if not isinstance(found, str) or found.partition("-")[0] not in jira.projects:
+        raise _UnreadableError(
+            f"{key} has moved to a Jira project that is not listed under [jira] projects; it is left out."
+        )
+    values = _mapping(data.get("fields"))
+    criteria = _rich_text(values.get(jira.criteria_field)) if jira.criteria_field else ""
+    title = values.get("summary")
+    return WorkItem(
+        title=title if isinstance(title, str) and title else key,
+        text=with_criteria(_rich_text(values.get("description")), criteria),
+    )
+
+
+def _mapping(value: object) -> Mapping[str, Any]:
+    return value if isinstance(value, dict) else {}
+
+
+def _rich_text(value: object) -> str:
+    """Jira v3 sends rich text as an Atlassian Document Format tree; a plain text field is a string."""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, dict):
+        return adf_markdown(value)
+    return ""
+
+
+_LIST_LINE = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s")
+
+
+def with_criteria(text: str, criteria: str) -> str:
+    """The text, with a tracker's own acceptance criteria field added as a section the extraction reads.
+
+    Every line of that field counts as a criterion, so a field written as plain lines is still a checklist.
+    """
+    lines = [
+        line if _LIST_LINE.match(line) else f"- {line.lstrip('# ').strip()}"
+        for line in criteria.splitlines()
+        if line.strip() and not line.lstrip().startswith(("```", "~~~"))
+    ]
+    if not lines:
+        return text
+    return f"{text}\n\n## Acceptance criteria\n\n" + "\n".join(lines)
+
+
+# Atlassian Document Format: https://developer.atlassian.com/cloud/jira/platform/apis/document/structure/
+_ADF_BLOCKS = frozenset(
+    {
+        "paragraph",
+        "heading",
+        "bulletList",
+        "orderedList",
+        "taskList",
+        "decisionList",
+        "listItem",
+        "taskItem",
+        "decisionItem",
+        "codeBlock",
+        "blockquote",
+        "panel",
+        "expand",
+        "nestedExpand",
+        "table",
+        "tableRow",
+        "tableHeader",
+        "tableCell",
+        "rule",
+        "mediaGroup",
+        "mediaSingle",
+    }
+)
+_ADF_LISTS = frozenset({"bulletList", "orderedList", "taskList", "decisionList"})
+
+
+def adf_markdown(doc: Mapping[str, Any]) -> str:
+    """Markdown for an Atlassian Document Format tree: headings, lists and action items keep their shape."""
+    blocks = [_adf_block(child, "") for child in _children(doc)]
+    return "\n\n".join("\n".join(lines) for lines in blocks if lines)
+
+
+def _children(node: Mapping[str, Any]) -> list[Mapping[str, Any]]:
+    content = node.get("content")
+    return [child for child in content if isinstance(child, dict)] if isinstance(content, list) else []
+
+
+def _adf_block(node: Mapping[str, Any], indent: str) -> list[str]:
+    kind = node.get("type")
+    if kind == "heading":
+        level = _mapping(node.get("attrs")).get("level")
+        hashes = "#" * min(max(level, 1), 6) if isinstance(level, int) else "#"
+        return [f"{indent}{hashes} {_adf_inline(node)}"]
+    if kind == "paragraph":
+        return [f"{indent}{line}" for line in _adf_inline(node).splitlines() if line.strip()]
+    if kind == "codeBlock":
+        # Fenced, so a checklist inside a code sample is not read as criteria.
+        return [
+            f"{indent}```",
+            *(f"{indent}{line}" for line in _adf_inline(node).splitlines()),
+            f"{indent}```",
+        ]
+    if kind in _ADF_LISTS:
+        lines: list[str] = []
+        for number, item in enumerate(_children(node), start=1):
+            lines.extend(_adf_item(item, _marker(kind, number, item), indent))
+        return lines
+    if kind == "blockquote":
+        return [f"{indent}> {line.strip()}" for line in _adf_content(node, indent)]
+    return _adf_content(node, indent)
+
+
+def _marker(kind: object, number: int, item: Mapping[str, Any]) -> str:
+    if kind == "orderedList":
+        return f"{number}. "
+    if kind == "taskList":
+        return "- [x] " if _mapping(item.get("attrs")).get("state") == "DONE" else "- [ ] "
+    return "- "
+
+
+def _adf_item(item: Mapping[str, Any], marker: str, indent: str) -> list[str]:
+    inner = indent + "  "
+    lines = _adf_content(item, inner)
+    if not lines:
+        return []
+    return [f"{indent}{marker}{lines[0].removeprefix(inner)}", *lines[1:]]
+
+
+def _adf_content(node: Mapping[str, Any], indent: str) -> list[str]:
+    """Block children in order; a run of inline children (an action item's text) is one paragraph."""
+    lines: list[str] = []
+    inline: list[Mapping[str, Any]] = []
+    for child in [*_children(node), None]:
+        if child is not None and child.get("type") not in _ADF_BLOCKS:
+            inline.append(child)
+            continue
+        if inline:
+            lines.extend(_adf_block({"type": "paragraph", "content": inline}, indent))
+            inline = []
+        if child is not None:
+            lines.extend(_adf_block(child, indent))
+    return lines
+
+
+def _adf_inline(node: Mapping[str, Any]) -> str:
+    parts: list[str] = []
+    for child in _children(node):
+        kind = child.get("type")
+        attrs = _mapping(child.get("attrs"))
+        if kind == "text":
+            parts.append(str(child.get("text", "")))
+        elif kind == "hardBreak":
+            parts.append("\n")
+        elif kind in {"mention", "emoji", "status", "date"}:
+            parts.append(str(attrs.get("text") or attrs.get("shortName") or ""))
+        elif kind in {"inlineCard", "blockCard"}:
+            parts.append(str(attrs.get("url", "")))
+        else:
+            parts.append(_adf_inline(child))
+    return "".join(parts)
