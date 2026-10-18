@@ -6,7 +6,7 @@ import pytest
 import respx
 
 from bylaw.config import ConfigError, load_config
-from bylaw.trackers import WorkItemRef, parse_work_item_refs, read_work_items
+from bylaw.trackers import WorkItemRef, html_markdown, parse_work_item_refs, read_work_items
 
 TRACKERS = """
 [jira]
@@ -327,3 +327,106 @@ def test_a_pull_request_naming_many_work_items_reads_only_the_first_ten() -> Non
     assert route.call_count == 10
     assert len(requirements) == 10
     assert notes[0] == "12 work items are referenced; only the first 10 are read. Left out: PROJ-11, PROJ-12."
+
+
+AZURE = "https://dev.azure.com/acme/_apis/wit/workitems"
+AZURE_ENV = {"AZURE_DEVOPS_TOKEN": "azure-secret-pat"}
+AZURE_CONFIG = '[azure_boards]\norganization = "acme"\nprojects = ["Fabrikam"]\n'
+
+
+def _work_item(project: str = "Fabrikam", **fields: object) -> dict[str, object]:
+    return {"id": 345, "fields": {"System.TeamProject": project, "System.Title": "Export to CSV", **fields}}
+
+
+@respx.mock
+def test_an_azure_boards_work_item_becomes_a_requirement_with_its_acceptance_criteria_field() -> None:
+    route = respx.get(f"{AZURE}/345").mock(
+        return_value=httpx.Response(
+            200,
+            json=_work_item(
+                **{
+                    "System.Description": "<div>Finance needs the report as a file.</div>",
+                    "Microsoft.VSTS.Common.AcceptanceCriteria": (
+                        "<div>Exports every visible column</div><div>Keeps the sort order&nbsp;</div>"
+                    ),
+                }
+            ),
+        )
+    )
+
+    requirements, notes = read_work_items(["Implements AB#345"], load_config(AZURE_CONFIG), AZURE_ENV)
+
+    assert notes == ()
+    [requirement] = requirements
+    assert (requirement.source, requirement.title) == ("AB#345", "Export to CSV")
+    assert [c.text for c in requirement.criteria] == ["Exports every visible column", "Keeps the sort order"]
+    assert requirement.text.startswith("Finance needs the report as a file.")
+    request = route.calls.last.request
+    assert request.url.params["api-version"] == "7.1"
+    expected = base64.b64encode(b":azure-secret-pat").decode()
+    assert request.headers["authorization"] == f"Basic {expected}"
+
+
+def test_html_from_azure_boards_keeps_its_lists_and_headings() -> None:
+    html = (
+        "<h2>Acceptance criteria</h2><ol><li>One &amp; two</li><li><p>Three</p><ul><li>nested</li></ul></li>"
+        "</ol><p>Plain<br>text <b>bold</b></p><script>alert(1)</script>"
+    )
+
+    assert html_markdown(html).splitlines() == [
+        "## Acceptance criteria",
+        "1. One & two",
+        "2. Three",
+        "  - nested",
+        "Plain",
+        "text bold",
+    ]
+
+
+@respx.mock
+def test_a_work_item_in_a_project_outside_the_allow_list_is_left_out() -> None:
+    respx.get(f"{AZURE}/345").mock(
+        return_value=httpx.Response(200, json=_work_item("Secret", **{"System.Description": "x"}))
+    )
+
+    requirements, notes = read_work_items(["AB#345"], load_config(AZURE_CONFIG), AZURE_ENV)
+
+    assert requirements == ()
+    assert notes == (
+        "AB#345 is in an Azure DevOps project that is not listed under [azure_boards] projects; "
+        "it is left out.",
+    )
+
+
+@respx.mock
+def test_azure_project_names_match_without_case() -> None:
+    respx.get(f"{AZURE}/345").mock(
+        return_value=httpx.Response(200, json=_work_item("fabrikam", **{"System.Description": "- [ ] x"}))
+    )
+
+    requirements, _ = read_work_items(["AB#345"], load_config(AZURE_CONFIG), AZURE_ENV)
+
+    assert [r.source for r in requirements] == ["AB#345"]
+
+
+@respx.mock
+def test_azure_boards_is_not_called_without_a_token() -> None:
+    route = respx.get(url__startswith="https://dev.azure.com")
+
+    requirements, notes = read_work_items(["AB#345"], load_config(AZURE_CONFIG), {})
+
+    assert (requirements, route.called) == ((), False)
+    assert notes == ("AZURE_DEVOPS_TOKEN is not set, so AB#345 was not read from Azure Boards.",)
+
+
+@respx.mock
+def test_an_unreadable_work_item_is_a_note_that_never_shows_the_token() -> None:
+    respx.get(f"{AZURE}/345").mock(return_value=httpx.Response(203, text="<html>sign in</html>"))
+
+    requirements, notes = read_work_items(["AB#345"], load_config(AZURE_CONFIG), AZURE_ENV)
+
+    assert requirements == ()
+    assert notes == (
+        "Could not read AB#345 from Azure Boards (HTTP 203); it is left out of the requirement check.",
+    )
+    assert not _notes_leak(notes, AZURE_ENV)

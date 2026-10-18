@@ -7,11 +7,12 @@ allowed project or team is read: tracker text can end up in a public comment, as
 import re
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
+from html.parser import HTMLParser
 from typing import Any, Literal
 
 import httpx
 
-from bylaw.config import Config, Jira
+from bylaw.config import AzureBoards, Config, Jira
 from bylaw.model import Requirement
 from bylaw.requirements import extract_criteria
 
@@ -133,6 +134,13 @@ def _readers(config: Config) -> dict[Tracker, tuple[Reader, ClientFactory]]:
             lambda http, key: _read_jira(http, jira, key),
             lambda secrets: _client(auth=httpx.BasicAuth(secrets[0], secrets[1])),
         )
+    if (boards := config.azure_boards) is not None:
+        # A personal access token as Basic auth with an empty user name:
+        # https://learn.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate
+        readers["azure_boards"] = (
+            lambda http, key: _read_azure_boards(http, boards, key),
+            lambda secrets: _client(auth=httpx.BasicAuth("", secrets[0])),
+        )
     return readers
 
 
@@ -189,6 +197,102 @@ def _read_jira(http: httpx.Client, jira: Jira, key: str) -> WorkItem:
         title=title if isinstance(title, str) and title else key,
         text=with_criteria(_rich_text(values.get("description")), criteria),
     )
+
+
+def _read_azure_boards(http: httpx.Client, boards: AzureBoards, key: str) -> WorkItem:
+    # Work Items - Get Work Item, REST 7.1; the project is optional in the path because ids are unique
+    # across an organisation's projects:
+    # https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/work-items/get-work-item?view=azure-devops-rest-7.1
+    # No `fields` list: asking for a field a process does not define is an error, and all fields are small.
+    number = key.removeprefix("AB#")
+    url = f"https://dev.azure.com/{boards.organization}/_apis/wit/workitems/{number}"
+    data = _fetch(http, key, "azure_boards", http.build_request("GET", url, params={"api-version": "7.1"}))
+    # Field reference names:
+    # https://learn.microsoft.com/en-us/azure/devops/boards/queries/titles-ids-descriptions?view=azure-devops
+    values = _mapping(data.get("fields"))
+    project = values.get("System.TeamProject")
+    # AB#123 names no project, so the allow list is checked on the answer; project names ignore case.
+    allowed = {name.casefold() for name in boards.projects}
+    if not isinstance(project, str) or project.casefold() not in allowed:
+        raise _UnreadableError(
+            f"{key} is in an Azure DevOps project that is not listed under [azure_boards] projects; "
+            "it is left out."
+        )
+    title = values.get("System.Title")
+    return WorkItem(
+        title=title if isinstance(title, str) and title else key,
+        text=with_criteria(
+            html_markdown(_string(values.get("System.Description"))),
+            html_markdown(_string(values.get("Microsoft.VSTS.Common.AcceptanceCriteria"))),
+        ),
+    )
+
+
+def _string(value: object) -> str:
+    return value if isinstance(value, str) else ""
+
+
+_HTML_BLOCKS = frozenset({"p", "div", "br", "tr", "table", "blockquote", "pre", "hr"})
+_HTML_SKIPPED = frozenset({"script", "style"})
+_HTML_HEADINGS = {f"h{level}": level for level in range(1, 7)}
+_EMPTY_LINE = re.compile(r"^\s*(?:[-*]|\d+\.|#+)?\s*$")
+
+
+class _HtmlText(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.lines = [""]
+        self._lists: list[tuple[str, int]] = []  # open lists: tag and items so far
+        self._skipping = 0
+
+    def _break(self) -> None:
+        # A line holding only a list marker or heading hashes is where the next text belongs.
+        if not _EMPTY_LINE.match(self.lines[-1]):
+            self.lines.append("")
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:  # noqa: ARG002
+        if tag in _HTML_SKIPPED:
+            self._skipping += 1
+        elif tag in {"ul", "ol"}:
+            self._break()
+            self._lists.append((tag, 0))
+        elif tag == "li":
+            self._break()
+            kind, count = self._lists[-1] if self._lists else ("ul", 0)
+            if self._lists:
+                self._lists[-1] = (kind, count + 1)
+            marker = f"{count + 1}. " if kind == "ol" else "- "
+            self.lines[-1] = "  " * max(len(self._lists) - 1, 0) + marker
+        elif tag in _HTML_HEADINGS:
+            self._break()
+            self.lines[-1] = "#" * _HTML_HEADINGS[tag] + " "
+        elif tag in _HTML_BLOCKS:
+            self._break()
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in _HTML_SKIPPED:
+            self._skipping = max(self._skipping - 1, 0)
+        elif tag in {"ul", "ol"}:
+            if self._lists:
+                self._lists.pop()
+            self._break()
+        elif tag == "li" or tag in _HTML_HEADINGS or tag in _HTML_BLOCKS:
+            self._break()
+
+    def handle_data(self, data: str) -> None:
+        if not self._skipping:
+            # Whitespace in HTML is not layout; a non-breaking space counts as one too.
+            self.lines[-1] += re.sub(r"\s+", " ", data.replace("\xa0", " "))
+
+
+def html_markdown(html: str) -> str:
+    """Markdown for the HTML of an Azure DevOps rich text field: lists and headings keep their shape."""
+    parser = _HtmlText()
+    parser.feed(html)
+    parser.close()
+    # A nested list item keeps its indent; any other line loses the space collapsed whitespace left.
+    kept = [line.rstrip() if _LIST_LINE.match(line) else line.strip() for line in parser.lines]
+    return "\n".join(line for line in kept if not _EMPTY_LINE.match(line))
 
 
 def _mapping(value: object) -> Mapping[str, Any]:
