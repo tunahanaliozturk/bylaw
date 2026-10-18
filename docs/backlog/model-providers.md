@@ -8,7 +8,7 @@ Teams that cannot send code to a public API need Bedrock, Vertex, Azure or a loc
 
 ## Items
 
-- [ ] **PRV-1** (M) Amazon Bedrock through the Anthropic SDK's Bedrock client. Done when: fake transport tests.
+- [x] **PRV-1** (M) Amazon Bedrock through the Anthropic SDK's Bedrock client. Done when: fake transport tests.
 - [ ] **PRV-2** (M) Google Vertex AI through the Anthropic SDK's Vertex client. Done when: fake transport tests.
 - [ ] **PRV-3** (M) Azure: Claude through Microsoft Foundry, and Azure OpenAI. Done when: fake transport tests.
 - [x] **PRV-4** (M) OpenAI-compatible base URL for local models (Ollama, vLLM), with a JSON fallback. Done when: tests.

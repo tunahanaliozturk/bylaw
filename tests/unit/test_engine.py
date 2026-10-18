@@ -271,7 +271,7 @@ def test_an_openai_error_names_the_status_and_type_but_not_the_message() -> None
     with pytest.raises(ReviewError) as error:
         reviewer.review("s", "u")
 
-    assert str(error.value) == "OpenAI API returned 401 (invalid_api_key)"
+    assert str(error.value) == "the OpenAI API returned 401 (invalid_api_key)"
 
 
 def test_an_anthropic_error_names_the_status_and_type_only() -> None:
@@ -281,7 +281,7 @@ def test_an_anthropic_error_names_the_status_and_type_only() -> None:
     with pytest.raises(ReviewError) as error:
         reviewer.review("s", "u")
 
-    assert str(error.value) == "Anthropic API returned 401 (authentication_error)"
+    assert str(error.value) == "the Anthropic API returned 401 (authentication_error)"
 
 
 def test_any_other_sdk_failure_is_a_review_error(monkeypatch: pytest.MonkeyPatch) -> None:

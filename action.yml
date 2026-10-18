@@ -11,7 +11,7 @@ inputs:
     required: false
     default: ""
   provider:
-    description: Model provider, anthropic, openai or openai-compatible (docs/providers.md).
+    description: Model provider, anthropic, openai, bedrock or openai-compatible (docs/providers.md).
     required: false
     default: anthropic
   model:
@@ -78,4 +78,11 @@ runs:
         if [ -n "$BYLAW_MODEL" ]; then args+=(--model "$BYLAW_MODEL"); fi
         if [ -n "$BYLAW_EFFORT" ]; then args+=(--effort "$BYLAW_EFFORT"); fi
         if [ -n "$BYLAW_BASE_URL" ]; then args+=(--base-url "$BYLAW_BASE_URL"); fi
-        uv run --project "$GITHUB_ACTION_PATH" --locked --no-dev bylaw "${args[@]}"
+        # A cloud provider's credential chain is an optional extra, installed only for that provider.
+        extras=()
+        case "$BYLAW_PROVIDER" in
+          bedrock) extras=(--extra bedrock) ;;
+          vertex) extras=(--extra vertex) ;;
+          foundry | azure-openai) extras=(--extra azure) ;;
+        esac
+        uv run --project "$GITHUB_ACTION_PATH" --locked --no-dev "${extras[@]}" bylaw "${args[@]}"
