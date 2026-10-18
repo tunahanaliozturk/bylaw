@@ -4,7 +4,7 @@ import os
 from collections.abc import Mapping, Sequence
 from pathlib import PurePosixPath
 
-from bylaw.config import load_config
+from bylaw.config import Config, load_config
 from bylaw.decisions import collect_decisions, is_adr
 from bylaw.editorconfig import EditorConfigResolver
 from bylaw.editorconfig_checks import check
@@ -72,10 +72,14 @@ def _no_patch_note(file: ChangedFile) -> str | None:
     return f"{file.path}: binary, empty or permission-only change, nothing to review."
 
 
-def build_context(source: RepoSource, env: Mapping[str, str] | None = None) -> ReviewContext:
-    """`env` holds the tracker tokens; the process environment when not given (ADR 0014)."""
+def build_context(
+    source: RepoSource, env: Mapping[str, str] | None = None, config: Config | None = None
+) -> ReviewContext:
+    """`env` holds the tracker tokens; the process environment when not given (ADR 0014). `config` is the
+    base branch's `.bylaw.toml`, read here when not given."""
     info = source.info()
-    config = load_config(source.read_base(".bylaw.toml"))
+    if config is None:
+        config = load_config(source.read_base(".bylaw.toml"))
     patterns = generated_patterns(source.read_base(".gitattributes"))
     all_files = source.changed_files()
     files = tuple(f for f in all_files if not is_skipped(f.path, patterns))
