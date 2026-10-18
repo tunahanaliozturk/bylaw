@@ -18,6 +18,10 @@ _WILDCARD = re.compile(r"[*?\[]")
 
 # Each ADR is one GitHub call; the newest are read first.
 MAX_ADR_FILES = 40
+# The decisions' share of the brief, in characters: about 650 tokens each and 4,000 in all.
+DECISION_CHARS = 2_000
+DECISIONS_CHARS = 12_000
+_LISTED = 10
 
 
 def status_of(markdown: str) -> str | None:
@@ -52,14 +56,45 @@ def collect_decisions(
     if len(paths) > MAX_ADR_FILES:
         notes.append(
             f"Only the newest {MAX_ADR_FILES} of {len(paths)} ADR files were read for decisions; "
-            f"{', '.join(paths[MAX_ADR_FILES:][:10])} and any older ones were not."
+            f"{', '.join(paths[MAX_ADR_FILES:][:_LISTED])} and any older ones were not."
         )
         paths = paths[:MAX_ADR_FILES]
     decisions: list[Decision] = []
-    for path in paths:
-        if (text := source.read_base(path)) is not None and (decision := _decision(path, text)) is not None:
-            decisions.append(decision)
+    used = 0
+    for index, path in enumerate(paths):
+        if (text := source.read_base(path)) is None or (decision := _decision(path, text)) is None:
+            continue
+        decision = _cut(decision)
+        if used + len(decision.text) > DECISIONS_CHARS:
+            # Newest first until the budget is full: an older decision is the likelier one to be stale.
+            older = paths[index:]
+            more = f", and {len(older) - _LISTED} more" if len(older) > _LISTED else ""
+            notes.append(
+                "The decisions are capped to keep the brief small; these older ADR files were left out: "
+                f"{', '.join(older[:_LISTED])}{more}."
+            )
+            break
+        if decision.cut:
+            notes.append(f"{path}: only the start of its decision is shown, to keep the brief small.")
+        used += len(decision.text)
+        decisions.append(decision)
     return tuple(decisions), tuple(notes)
+
+
+def _cut(decision: Decision) -> Decision:
+    if len(decision.text) <= DECISION_CHARS:
+        return decision
+    kept: list[str] = []
+    size = 0
+    for line in decision.text.splitlines():
+        if size + len(line) + 1 > DECISION_CHARS:
+            # A paragraph is often one long line: show its start rather than nothing.
+            if room := DECISION_CHARS - size:
+                kept.append(line[:room])
+            break
+        kept.append(line)
+        size += len(line) + 1
+    return decision.model_copy(update={"text": "\n".join(kept), "cut": True})
 
 
 def _decision(path: str, markdown: str) -> Decision | None:

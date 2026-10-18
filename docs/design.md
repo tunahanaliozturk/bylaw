@@ -103,6 +103,18 @@ directory and says the nearest wins, and the validator drops a citation of anoth
    repository has no rule of its own. Evidence reads `bylaw:conventions/python#naming` and severity is
    capped at `suggestion`.
 
+## Decisions
+
+Accepted ADRs are a rule source of their own ([ADR 0016](adr/0016-adr-conformance.md)). bylaw lists the files
+matching `adr_globs` (default `docs/adr/**`, `docs/decisions/**`) on the base branch, reads the newest 40,
+and keeps those whose status says accepted: a `Status:` line or front matter key above the first section,
+or a `## Status` section. A status that also says superseded, deprecated or rejected wins over
+accepted, and proposed or draft ADRs are left out. The brief's `decisions` block holds each one's title,
+status and decision section (`## Decision`, or MADR's `## Decision Outcome`), numbered with the file's own
+lines, newest first: at most 2,000 characters each and 12,000 in all, with a note for what was cut or left
+out. A finding that contradicts one is a `rule` finding citing `docs/adr/<file>.md:<line>`, and the
+validator keeps the citation only for a line that was shown. An ADR is never also a spec.
+
 ## Requirement sources
 
 GitHub issues and Markdown files in the repository ([ADR 0003](adr/0003-requirement-sources.md)), and

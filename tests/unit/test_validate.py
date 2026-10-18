@@ -5,6 +5,7 @@ from bylaw.model import (
     Criterion,
     CriterionResult,
     CriterionStatus,
+    Decision,
     FileRules,
     Finding,
     LinterRules,
@@ -427,3 +428,36 @@ def test_only_the_nearest_ruff_configuration_counts_even_when_bylaw_could_not_re
 
     assert _cites(context, "packages/api/db.py", "ruff:S608") == ()
     assert _cites(context, "packages/api/db.py", "ruff:S101") != ()
+
+
+DECIDED = CONTEXT.model_copy(
+    update={
+        "decisions": (
+            Decision(
+                path="docs/adr/0002-sqlite.md",
+                title="Use SQLite",
+                status="Accepted",
+                start=11,
+                text="## Decision\n\nWe store everything in SQLite.",
+            ),
+        )
+    }
+)
+
+
+def test_a_rule_finding_may_cite_a_decision_line_shown_in_the_brief() -> None:
+    finding = _finding(category=Category.RULE, evidence="docs/adr/0002-sqlite.md:13")
+
+    result = validate(DECIDED, ReviewResult(findings=(finding,)))
+
+    assert result.dropped == ()
+
+
+def test_a_citation_of_an_adr_line_the_brief_did_not_show_is_dropped() -> None:
+    # Line 5 is the status section, 14 is past the decision, 0001 was never shown.
+    for evidence in ("docs/adr/0002-sqlite.md:5", "docs/adr/0002-sqlite.md:14", "docs/adr/0001-json.md:3"):
+        finding = _finding(category=Category.RULE, evidence=evidence)
+
+        result = validate(DECIDED, ReviewResult(findings=(finding,)))
+
+        assert result.result.findings == (), evidence
