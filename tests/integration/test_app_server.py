@@ -471,3 +471,84 @@ def test_a_repository_cannot_send_the_installation_s_jira_token_to_a_host_it_pic
         assert server.elsewhere is not None
         assert not server.elsewhere.called
     assert "names a Jira site other than the one the app's operator set" in github.comments[0]["body"]
+
+
+KEYED = {"BYLAW_INSTALLATION_7_ANTHROPIC_API_KEY": "key-for-7"}
+
+
+def _model_calls(github: FakeGitHub, *bodies: bytes) -> tuple[list[str | None], str]:
+    """The keys the model review was built with, and the summary, after these deliveries."""
+    keys: list[str | None] = []
+    for server in _serve(github, _settings(KEYED)):
+        for body in bodies:
+            server.deliver(body)
+            server.settle()
+        keys = server.reviewer.keys
+    return keys, github.comments[0]["body"]
+
+
+def test_a_fork_pull_request_gets_only_the_deterministic_checks_and_a_note_saying_why(
+    github: FakeGitHub,
+) -> None:
+    github.head_repo = "stranger/app"
+
+    keys, summary = _model_calls(github, _event())
+
+    assert keys == []
+    assert "this pull request comes from a fork" in summary
+    assert 'model_review = "all"' in summary
+    assert "Trailing whitespace" in summary
+
+
+def test_a_deleted_fork_counts_as_a_fork(github: FakeGitHub) -> None:
+    github.head_repo = None
+
+    keys, _ = _model_calls(github, _event())
+
+    assert keys == []
+
+
+def test_a_same_repository_pull_request_by_an_untrusted_author_gets_no_model_review(
+    github: FakeGitHub,
+) -> None:
+    github.author_association = "CONTRIBUTOR"
+
+    keys, summary = _model_calls(github, _event())
+
+    assert keys == []
+    assert "not an owner, member or collaborator" in summary
+
+
+def test_a_member_s_same_repository_pull_request_gets_the_model_review(github: FakeGitHub) -> None:
+    keys, _ = _model_calls(github, _event())
+
+    assert keys == ["key-for-7"]
+
+
+def test_the_base_branch_can_open_the_model_review_to_every_pull_request(github: FakeGitHub) -> None:
+    github.head_repo = "stranger/app"
+    github.base[".bylaw.toml"] = '[app]\nmodel_review = "all"\n'
+
+    keys, _ = _model_calls(github, _event())
+
+    assert keys == ["key-for-7"]
+
+
+def test_a_maintainer_s_label_gives_a_fork_pull_request_the_model_review(github: FakeGitHub) -> None:
+    github.head_repo = "stranger/app"
+    github.org_defaults = '[app]\nmodel_review_label = "bylaw: review"\n'
+    labelled = json.loads(_event("labeled"))
+    labelled["label"] = {"name": "bylaw: review"}
+
+    for server in _serve(github, _settings(KEYED)):
+        server.deliver(_event())
+        server.settle()
+        assert server.reviewer.keys == []
+        assert "add the `bylaw: review` label" in github.comments[0]["body"]
+
+        github.labels.append("bylaw: review")
+        answer = server.deliver(json.dumps(labelled).encode())
+        server.settle()
+
+        assert answer.json() == {"outcome": "queued"}
+        assert server.reviewer.keys == ["key-for-7"]

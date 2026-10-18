@@ -3,10 +3,10 @@
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 
-from bylaw.config import Config, load_config
+from bylaw.config import Budget, Config, load_config
 from bylaw.context import build_context
 from bylaw.engine import Reviewer
-from bylaw.github import GitHubClient, GitHubSource
+from bylaw.github import TRUSTED_ASSOCIATIONS, GitHubClient, GitHubSource, PullRequest
 from bylaw.incremental import ModelRun, keep_valid, run_model_review, trusted_memory
 from bylaw.model import Finding, ReviewContext, ReviewMemory, ReviewResult
 from bylaw.plan import remaining
@@ -47,9 +47,14 @@ def review_pull_request(  # noqa: PLR0913 - two callers, every argument is a dis
     """
     source = GitHubSource(client, repo, number)
     config = load_config(source.read_base(".bylaw.toml"), defaults)
+    skipped = None
+    if shared_secrets:
+        config = with_app_budget(config)
+        if make is not None and (skipped := model_gate(source.pull_request(), config)):
+            make = None
     context = build_context(source, env, config, operator_sites=shared_secrets)
     memory = trusted_memory(client.summary_comment(repo, number))
-    context, run = with_model_review(context, make, say, config, memory)
+    context, run = with_model_review(context, make, say, config, memory, skipped=skipped)
     checked = check(context, run.result, say)
     if not post:
         return PullReview(checked, checked.result.findings, context.head_sha)
@@ -67,21 +72,67 @@ def review_pull_request(  # noqa: PLR0913 - two callers, every argument is a dis
     return PullReview(checked, remaining(plan), context.head_sha)
 
 
-def with_model_review(
+def with_model_review(  # noqa: PLR0913 - every argument is a distinct input
     context: ReviewContext,
     make: MakeReviewer,
     say: Say,
     config: Config | None = None,
     memory: ReviewMemory | None = None,
+    *,
+    skipped: str | None = None,
 ) -> tuple[ReviewContext, ModelRun]:
     """The context with notes about the model run, the model's result and what to remember for next time."""
     settings = config or Config()
     run = run_model_review(
-        context, make, memory, incremental=settings.incremental, budget=settings.budget.pr_tokens
+        context,
+        make,
+        memory,
+        incremental=settings.incremental,
+        budget=settings.budget.pr_tokens,
+        skipped=skipped,
     )
     for note in run.notes:
         say(note)
     return context.model_copy(update={"notes": (*context.notes, *run.notes)}), run
+
+
+# Model tokens one pull request may use across its runs in the GitHub App when `[budget] pr_tokens` is not
+# set: the installation's key pays for every repository, so no pull request gets an open cheque. About
+# a hundred small reviews, or one or two of the largest; a repository raises it in `.bylaw.toml`.
+APP_PR_TOKENS = 500_000
+
+
+def with_app_budget(config: Config) -> Config:
+    if config.budget.pr_tokens is not None:
+        return config
+    return config.model_copy(update={"budget": Budget(pr_tokens=APP_PR_TOKENS)})
+
+
+def model_gate(pull: PullRequest, config: Config) -> str | None:
+    """Why the installation's key may not review this pull request, None when it may (ADR 0017).
+
+    As in ADR 0006, code from outside the repository's trusted people does not spend the key unless a
+    maintainer says so: by default only a branch of this repository by an owner, member or collaborator.
+    """
+    label = config.app.model_review_label
+    if config.app.model_review == "all" or (label and label in {each.name for each in pull.labels}):
+        return None
+    if not pull.from_fork and pull.author_association in TRUSTED_ASSOCIATIONS:
+        return None
+    why = (
+        "comes from a fork"
+        if pull.from_fork
+        else "is by an author who is not an owner, member or collaborator"
+    )
+    unlock = (
+        f"A maintainer can add the `{label}` label to review it with the model, or set"
+        if label
+        else "To review such pull requests with the model, set `[app] model_review_label` for a label, or"
+    )
+    return (
+        f"The model review did not run: this pull request {why}, and the GitHub App reviews those with "
+        f'bylaw\'s own checks only. {unlock} `[app] model_review = "all"` in .bylaw.toml.'
+    )
 
 
 def check(context: ReviewContext, result: ReviewResult, say: Say) -> Validated:

@@ -42,12 +42,19 @@ class _Pull(_Model):
     head: _Head
 
 
+class _Label(_Model):
+    name: str = Field(min_length=1, max_length=100)
+
+
 class _Event(_Model):
     action: str
     number: int = Field(gt=0)
     installation: _Installation
     repository: _Repository
     pull_request: _Pull
+    # On `labeled`: the label just added. Adding `[app] model_review_label` reviews again with the model,
+    # so every added label queues a review; the review itself reads which labels the pull request has.
+    label: _Label | None = None
 
 
 def verify_signature(secret: bytes, body: bytes, signature: str | None) -> bool:
@@ -72,11 +79,13 @@ def review_job(event: str, body: bytes) -> Job | None:
         parsed = _Event.model_validate_json(body)
     except ValidationError:
         raise ValueError("not a pull_request event bylaw can read") from None
-    if parsed.action not in REVIEW_ACTIONS:
+    label = parsed.label.name if parsed.action == "labeled" and parsed.label else None
+    if parsed.action not in REVIEW_ACTIONS and label is None:
         return None
     return Job(
         installation_id=parsed.installation.id,
         repo=parsed.repository.full_name,
         number=parsed.number,
         head_sha=parsed.pull_request.head.sha,
+        label=label,
     )

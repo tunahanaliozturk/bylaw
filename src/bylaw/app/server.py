@@ -60,6 +60,7 @@ class Settings:
     graphql_url: str | None = None
     workers: int = 2
     max_pending: int = 100
+    max_pending_per_installation: int = 20
     max_body: int = MAX_BODY
 
     @classmethod
@@ -84,6 +85,7 @@ class Settings:
             graphql_url=environ.get("GITHUB_GRAPHQL_URL") or None,
             workers=_count(environ, "BYLAW_APP_WORKERS", 2),
             max_pending=_count(environ, "BYLAW_APP_MAX_PENDING", 100),
+            max_pending_per_installation=_count(environ, "BYLAW_APP_MAX_PENDING_PER_INSTALLATION", 20),
             max_body=_count(environ, "BYLAW_APP_MAX_BODY", MAX_BODY),
         )
 
@@ -115,7 +117,12 @@ def create_app(settings: Settings, reviewer: ReviewerFactory = make_reviewer) ->
     def run(job: Job) -> str:
         return review(settings, job, login[0], reviewer)
 
-    queue = ReviewQueue(run, workers=settings.workers, max_pending=settings.max_pending)
+    queue = ReviewQueue(
+        run,
+        workers=settings.workers,
+        max_pending=settings.max_pending,
+        max_pending_per_installation=settings.max_pending_per_installation,
+    )
 
     @asynccontextmanager
     async def lifespan(_: Starlette) -> AsyncIterator[None]:
