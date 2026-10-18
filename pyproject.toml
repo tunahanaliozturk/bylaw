@@ -34,8 +34,23 @@ Changelog = "https://github.com/tunahanaliozturk/bylaw/blob/main/CHANGELOG.md"
 [project.scripts]
 bylaw = "bylaw.cli:main"
 
+[project.optional-dependencies]
+# Each cloud provider's own credential chain: AWS SigV4 signing, Google Application Default Credentials,
+# and Microsoft Entra ID. Installed only by those who use that provider (docs/providers.md).
+bedrock = ["anthropic[bedrock]>=1.14.0"]
+vertex = ["anthropic[vertex]>=1.14.0"]
+azure = ["azure-identity>=1.26.0"]
+
 [dependency-groups]
-dev = ["pytest>=9.1.1", "pytest-cov>=7.1.0", "respx>=0.23.1", "ruff>=0.17.0", "mypy>=2.4.0"]
+# The extras are in the development environment so their tests run and the licence audit sees them.
+dev = [
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+    "respx>=0.23.1",
+    "ruff>=0.17.0",
+    "mypy>=2.4.0",
+    "bylaw[azure,bedrock,vertex]",
+]
 
 [build-system]
 requires = ["hatchling>=1.32.4"]
@@ -65,3 +80,6 @@ plugins = ["pydantic.mypy"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra --strict-markers"
+
+[tool.uv.sources]
+bylaw = { workspace = true }
