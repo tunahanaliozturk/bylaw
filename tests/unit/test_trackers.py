@@ -116,6 +116,10 @@ def test_the_jira_url_loses_its_trailing_slash() -> None:
 JIRA = "https://acme.atlassian.net"
 JIRA_ENV = {"JIRA_EMAIL": "dev@acme.test", "JIRA_API_TOKEN": "jira-secret-token"}
 JIRA_CONFIG = f'[jira]\nurl = "{JIRA}"\nprojects = ["PROJ"]\ncriteria_field = "customfield_10042"\n'
+HIDDEN = (
+    "Could not read {key} from {tracker}, or it is outside the allow list; "
+    "it is left out of the requirement check."
+)
 
 
 def _text(text: str) -> dict[str, object]:
@@ -401,10 +405,7 @@ def test_a_work_item_in_a_project_outside_the_allow_list_is_left_out() -> None:
     requirements, notes = read_work_items(["AB#345"], load_config(AZURE_CONFIG), AZURE_ENV)
 
     assert requirements == ()
-    assert notes == (
-        "AB#345 is in an Azure DevOps project that is not listed under [azure_boards] projects; "
-        "it is left out.",
-    )
+    assert notes == (HIDDEN.format(key="AB#345", tracker="Azure Boards"),)
 
 
 @respx.mock
@@ -481,9 +482,7 @@ def test_a_linear_issue_moved_to_a_team_outside_the_allow_list_is_left_out() -> 
     requirements, notes = read_work_items(["ENG-7"], load_config(LINEAR_CONFIG), LINEAR_ENV)
 
     assert requirements == ()
-    assert notes == (
-        "ENG-7 has moved to a Linear team that is not listed under [linear] teams; it is left out.",
-    )
+    assert notes == (HIDDEN.format(key="ENG-7", tracker="Linear"),)
 
 
 @respx.mock
@@ -494,10 +493,7 @@ def test_a_linear_error_answer_is_a_note_without_the_api_message() -> None:
     requirements, notes = read_work_items(["ENG-7"], load_config(LINEAR_CONFIG), LINEAR_ENV)
 
     assert requirements == ()
-    assert notes == (
-        "Could not read ENG-7 from Linear (the API answered with an error); "
-        "it is left out of the requirement check.",
-    )
+    assert notes == (HIDDEN.format(key="ENG-7", tracker="Linear"),)
     assert not _notes_leak(notes, LINEAR_ENV)
 
 
@@ -657,3 +653,44 @@ def test_no_config_error_echoes_the_value_it_rejects() -> None:
         load_config('max_comments = "SECRET123"\n')
 
     assert "SECRET123" not in str(caught.value)
+
+
+@respx.mock
+def test_a_missing_jira_issue_and_one_outside_the_allow_list_get_the_same_note() -> None:
+    route = respx.get(f"{JIRA}/rest/api/3/issue/PROJ-12")
+    config = load_config(JIRA_CONFIG)
+
+    route.mock(return_value=httpx.Response(404, json={"errorMessages": ["Issue does not exist"]}))
+    _, missing = read_work_items(["PROJ-12"], config, JIRA_ENV)
+    route.mock(return_value=httpx.Response(200, json=_jira_issue("SECRET-4")))
+    _, moved = read_work_items(["PROJ-12"], config, JIRA_ENV)
+
+    assert missing == moved == (HIDDEN.format(key="PROJ-12", tracker="Jira"),)
+
+
+@respx.mock
+def test_a_missing_work_item_and_one_in_an_unlisted_project_get_the_same_note() -> None:
+    route = respx.get(f"{AZURE}/345")
+    config = load_config(AZURE_CONFIG)
+
+    route.mock(return_value=httpx.Response(404))
+    _, missing = read_work_items(["AB#345"], config, AZURE_ENV)
+    route.mock(return_value=httpx.Response(200, json=_work_item("Secret")))
+    _, unlisted = read_work_items(["AB#345"], config, AZURE_ENV)
+
+    assert missing == unlisted == (HIDDEN.format(key="AB#345", tracker="Azure Boards"),)
+
+
+@respx.mock
+def test_a_missing_linear_issue_and_one_in_an_unlisted_team_get_the_same_note() -> None:
+    route = respx.post(LINEAR)
+    config = load_config(LINEAR_CONFIG)
+
+    route.mock(
+        return_value=httpx.Response(200, json={"data": None, "errors": [{"message": "Entity not found"}]})
+    )
+    _, missing = read_work_items(["ENG-7"], config, LINEAR_ENV)
+    route.mock(return_value=httpx.Response(200, json=_linear_issue(team="SEC")))
+    _, moved = read_work_items(["ENG-7"], config, LINEAR_ENV)
+
+    assert missing == moved == (HIDDEN.format(key="ENG-7", tracker="Linear"),)
