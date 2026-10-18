@@ -120,6 +120,51 @@ def test_a_root_contributing_guide_under_github_stays_a_rule_for_the_whole_repos
     assert "Rules for" not in render_input(context, nonce="feedc0de")[0]
 
 
+def _rule_finding(file: str, evidence: str) -> Finding:
+    return Finding(
+        file=file,
+        line_start=1,
+        line_end=1,
+        category=Category.RULE,
+        severity=Severity.MEDIUM,
+        message="m",
+        evidence=evidence,
+    )
+
+
+def test_a_package_ruff_config_that_extends_the_root_one_inherits_its_rules() -> None:
+    source = FakeSource(
+        base={
+            "pyproject.toml": "[tool.ruff.lint]\nselect = ['E', 'S']\n",
+            "packages/api/ruff.toml": 'extend = "../../pyproject.toml"\nline-length = 100\n',
+        },
+        files=(_file("packages/api/db.py", "x = 1"),),
+    )
+    context = build_context(source)
+
+    kept = validate(context, ReviewResult(findings=(_rule_finding("packages/api/db.py", "ruff:S608"),)))
+    dropped = validate(context, ReviewResult(findings=(_rule_finding("packages/api/db.py", "ruff:B006"),)))
+
+    assert kept.dropped == ()
+    assert len(dropped.dropped) == 1
+
+
+def test_a_dotnet_category_severity_keeps_an_id_it_may_turn_on() -> None:
+    source = FakeSource(
+        base={
+            ".editorconfig": (
+                "root = true\n[*.cs]\ndotnet_analyzer_diagnostic.category-Security.severity = error\n"
+            )
+        },
+        files=(_file("Orders.cs", "var x = 1;"),),
+    )
+    context = build_context(source)
+
+    result = validate(context, ReviewResult(findings=(_rule_finding("Orders.cs", "dotnet:CA2100"),)))
+
+    assert result.dropped == ()
+
+
 def test_a_change_to_a_package_rule_file_is_noted_as_reviewed_against_the_base() -> None:
     source = FakeSource(
         base={"packages/api/AGENTS.md": "Return errors as values."},

@@ -69,6 +69,8 @@ class LinterRules(_Frozen):
     per_file: tuple[FileRules, ...] = ()
     # What the configuration says that bylaw cannot turn into ids, such as an `extends`.
     notes: tuple[str, ...] = ()
+    # False when it inherits or sets something bylaw did not read, so its silence on an id proves nothing.
+    complete: bool = True
 
 
 class RuleSource(_Frozen):

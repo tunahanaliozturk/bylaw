@@ -144,12 +144,17 @@ class _Checker:
         ]
         if not covering:
             return f"evidence {evidence} cites no {tool} configuration bylaw read"
-        # Nearest first. The first configuration that says anything about the id decides; for Ruff, which
-        # reads only the nearest one, that is always the nearest.
+        # Nearest first, and the first configuration that says anything about the id decides. Ruff reads only
+        # the nearest one, so for Ruff no other counts.
         covering.sort(key=lambda entry: entry[1].count("/") + 1 if entry[1] else 0, reverse=True)
+        if tool == "ruff":
+            covering = covering[:1]
         for path, directory, rules in covering:
             relative = file.removeprefix(f"{directory}/") if directory else file
             decision = linters.enables(rules, rule_id, relative)
             if decision is not None:
                 return None if decision else f"evidence {evidence} is not enabled for this file by {path}"
+        # Nobody turned it off. Silence proves it is off only when bylaw read everything they turn on.
+        if any(not rules.complete for _, _, rules in covering):
+            return None
         return f"evidence {evidence} is not enabled for this file by {covering[0][0]}"

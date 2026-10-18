@@ -115,7 +115,9 @@ def collect_rules(
             read.append(rule)
             continue
         try:
-            read.append(rule.model_copy(update={"linter": linters.parse(rule.path, rule.text)}))
+            read.append(
+                rule.model_copy(update={"linter": linters.parse(rule.path, rule.text, base.read_base)})
+            )
         except ValueError as error:
             read.append(rule)
             problems.append(f"{rule.path}: {error}; a finding cannot cite its rule ids.")

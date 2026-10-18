@@ -286,7 +286,13 @@ def test_a_finding_that_cites_another_packages_rule_is_dropped() -> None:
 
 
 def _linted(*rules: RuleSource) -> ReviewContext:
-    files = ("app.py", "packages/api/db.py", "packages/api/tests/test_db.py", "packages/web/app.ts")
+    files = (
+        "app.py",
+        "packages/api/db.py",
+        "packages/api/tests/test_db.py",
+        "packages/web/app.ts",
+        "Orders.cs",
+    )
     return CONTEXT.model_copy(
         update={
             "files": tuple(
@@ -377,3 +383,47 @@ def test_a_rule_id_cited_on_a_file_of_another_language_is_dropped() -> None:
     assert dropped == (
         "packages/web/app.ts:3 security: evidence ruff:E711 cites no ruff configuration bylaw read",
     )
+
+
+def _linter(path: str, rules: LinterRules, directory: str = "") -> RuleSource:
+    return RuleSource(path=path, kind=RuleKind.LINTER, text="", directory=directory, linter=rules)
+
+
+def test_an_id_an_incomplete_configuration_is_silent_on_is_kept() -> None:
+    eslint = LinterRules(tool="eslint", select=("no-console",), ignore=("no-alert",), complete=False)
+    context = _linted(_linter(".eslintrc.json", eslint))
+
+    assert _cites(context, "packages/web/app.ts", "eslint:eqeqeq") == ()
+    assert _cites(context, "packages/web/app.ts", "eslint:no-alert") != ()
+
+
+def test_an_explicit_off_beats_an_incomplete_configuration_in_the_same_directory() -> None:
+    editorconfig = RuleSource(
+        path=".editorconfig",
+        kind=RuleKind.EDITORCONFIG,
+        text="",
+        linter=LinterRules(tool="dotnet", per_file=(FileRules(pattern="*.cs", ignore=("CA2100",)),)),
+    )
+    props = _linter("Directory.Build.props", LinterRules(tool="dotnet", complete=False))
+    context = _linted(props, editorconfig)
+
+    assert _cites(context, "Orders.cs", "dotnet:CA2100") != ()
+    assert _cites(context, "Orders.cs", "dotnet:CA1000") == ()
+
+
+def test_an_id_every_complete_configuration_is_silent_on_is_dropped() -> None:
+    eslint = LinterRules(tool="eslint", select=("no-console",))
+
+    assert _cites(_linted(_linter(".eslintrc.json", eslint)), "packages/web/app.ts", "eslint:eqeqeq") != ()
+
+
+def test_only_the_nearest_ruff_configuration_counts_even_when_bylaw_could_not_read_all_of_it() -> None:
+    nested = _linter(
+        "packages/api/ruff.toml",
+        LinterRules(tool="ruff", ignore=("S101",), complete=False),
+        directory="packages/api",
+    )
+    context = _linted(ROOT_RUFF, nested)
+
+    assert _cites(context, "packages/api/db.py", "ruff:S608") == ()
+    assert _cites(context, "packages/api/db.py", "ruff:S101") != ()
