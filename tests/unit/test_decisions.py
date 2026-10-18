@@ -134,3 +134,42 @@ def test_older_decisions_beyond_the_total_budget_are_left_out_and_named() -> Non
     left_out = sorted(set(base) - set(shown))
     assert left_out and max(left_out) < min(shown)
     assert any("docs/adr/0001-d.md" in note and "left out" in note for note in notes)
+
+
+@pytest.mark.parametrize(
+    "status",
+    [
+        "Status: Superseded by [ADR 0005](0005-x.md)",
+        "Status: Accepted, superseded by 0012",
+        "Status: Deprecated",
+        "Status: Rejected",
+        "Status: Proposed",
+        "---\nstatus: proposed\n---",
+        "## Status\n\nAccepted\n\nSuperseded by [5. Use Postgres](0005-use-postgres.md)",
+    ],
+    ids=[
+        "superseded",
+        "accepted-then-superseded",
+        "deprecated",
+        "rejected",
+        "proposed",
+        "madr-proposed",
+        "adr-tools",
+    ],
+)
+def test_superseded_deprecated_rejected_and_proposed_adrs_are_left_out(status: str) -> None:
+    markdown = f"# 3. Old way\n\n{status}\n\n## Decision\n\nDo it the old way.\n"
+    source = FakeSource(base={"docs/adr/0003-old.md": markdown})
+
+    decisions, _ = collect_decisions(source, GLOBS)
+
+    assert decisions == ()
+
+
+def test_an_adr_that_supersedes_another_is_still_in_force() -> None:
+    markdown = "# 5. New way\n\nStatus: Accepted. Supersedes 0003.\n\n## Decision\n\nDo it the new way.\n"
+    source = FakeSource(base={"docs/adr/0005-new.md": markdown})
+
+    (decision,), _ = collect_decisions(source, GLOBS)
+
+    assert decision.status == "Accepted. Supersedes 0003."
