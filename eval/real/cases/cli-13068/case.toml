@@ -1,0 +1,64 @@
+kind = "bug"
+labellers = ["first pass (model)"]
+
+[[findings]]
+file = "internal/ghcmd/cmd.go"
+lines = [298, 298]
+categories = ["bug"]
+note = "The new recovery hint dropped the hostname, so users on a non-default host were told to run plain gh auth login."
+
+[[allowed]]
+file = "internal/ghcmd/cmd.go"
+lines = [29, 29]
+
+[[allowed]]
+file = "internal/ghcmd/cmd.go"
+lines = [219, 223]
+
+[[allowed]]
+file = "internal/ghcmd/cmd.go"
+lines = [287, 300]
+
+[[allowed]]
+file = "internal/ghcmd/cmd_test.go"
+lines = [8, 8]
+
+[[allowed]]
+file = "internal/ghcmd/cmd_test.go"
+lines = [11, 11]
+
+[[allowed]]
+file = "internal/ghcmd/cmd_test.go"
+lines = [14, 14]
+
+[[allowed]]
+file = "internal/ghcmd/cmd_test.go"
+lines = [16, 16]
+
+[[allowed]]
+file = "internal/ghcmd/cmd_test.go"
+lines = [518, 588]
+
+[[allowed]]
+file = "pkg/cmd/auth/shared/writeable.go"
+lines = [9, 14]
+
+[[allowed]]
+file = "pkg/cmd/auth/status/status.go"
+lines = [99, 101]
+
+[[allowed]]
+file = "pkg/cmd/auth/status/status_test.go"
+lines = [187, 187]
+
+[[allowed]]
+file = "pkg/cmd/auth/status/status_test.go"
+lines = [232, 232]
+
+[[allowed]]
+file = "pkg/cmd/auth/status/status_test.go"
+lines = [450, 450]
+
+[[allowed]]
+file = "pkg/cmd/auth/status/status_test.go"
+lines = [538, 538]

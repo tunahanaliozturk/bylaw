@@ -1,0 +1,20 @@
+kind = "bug"
+labellers = ["first pass (model)"]
+
+[[findings]]
+file = "lib/validation.js"
+lines = [141, 141]
+categories = ["bug"]
+note = "The validator result was copied only when ret.value !== undefined, so a validator that legitimately coerced a value to undefined was ignored."
+
+[[allowed]]
+file = "docs/Reference/Validation-and-Serialization.md"
+lines = [180, 184]
+
+[[allowed]]
+file = "lib/validation.js"
+lines = [141, 141]
+
+[[allowed]]
+file = "test/fix-6411.test.js"
+lines = [1, 58]

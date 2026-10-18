@@ -1,0 +1,44 @@
+{
+  "repo": "kludex/starlette",
+  "number": 2767,
+  "url": "https://github.com/Kludex/starlette/pull/2767",
+  "licence": "BSD-3-Clause",
+  "base_sha": "bcdf0ad017168408060b6faab156636ced4c94f7",
+  "head_sha": "2d479b63f69c5362d9e013ccfc90214904b95b07",
+  "title": "Replace RuntimeError with WebSocketDisconnected",
+  "body": "<!-- Thanks for contributing to Starlette! 💚\r\nGiven this is a project maintained by volunteers, please read this template to not waste your time, or ours! 😁 -->\r\n\r\n# Summary\r\nChange the exception raised if we attempt to use a disconnected WebSocket from `RuntimeError` to `WebSocketDisconnected`.\r\nDiscussed in https://github.com/encode/starlette/discussions/2762\r\nIssue https://github.com/encode/starlette/issues/2766\r\n\r\n# Checklist\r\n\r\n- [x] I understand that this PR may be closed in case there was no previous discussion. (This doesn't apply to typos!)\r\n- [x] I've added a test for each change that was introduced, and I tried as much as possible to make a single atomic change.\r\n- [ ] I've updated the documentation accordingly.\r\n\r\nI haven't changed the documentation, if there is a need for it I will gladly change it.\r\n",
+  "commit_messages": [
+    "Replace RuntimeError with WebSocketDisconnected",
+    "Merge branch 'encode:master' into replace-runtimerror-with-websocketdisconnected",
+    "Replace RuntimeError with WebSocketDisconnected in receive_bytes, receive_text and receive_json"
+  ],
+  "closing": [
+    {
+      "owner": "kludex",
+      "repo": "starlette",
+      "number": 2766
+    }
+  ],
+  "issues": [
+    {
+      "owner": "kludex",
+      "repo": "starlette",
+      "number": 2766,
+      "title": "Replace `RuntimeError` with `WebSocketDisconnected` once the socket has been disconnected",
+      "body": "### Discussed in https://github.com/encode/starlette/discussions/2762",
+      "comments": [],
+      "comments_unreadable": false
+    }
+  ],
+  "remove": [],
+  "left_out": [],
+  "evidence": {
+    "url": "https://github.com/Kludex/starlette/pull/2767#discussion_r2005267162",
+    "path": "tests/test_websockets.py",
+    "lines": [
+      651,
+      651
+    ],
+    "body": "This line is never reached."
+  }
+}

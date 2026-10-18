@@ -1,0 +1,42 @@
+{
+  "repo": "honojs/hono",
+  "number": 4834,
+  "url": "https://github.com/honojs/hono/pull/4834",
+  "licence": "MIT",
+  "base_sha": "e1ae0eb0f5a2dc1001895523016db02141972695",
+  "head_sha": "7920b4f1ab8ad5f4227fab882ed0d66acd061d05",
+  "title": "feat(css): add classNameSlug option to createCssContext",
+  "body": "## Description\n\nAdds an optional `classNameSlug` function to `createCssContext` that lets users customize generated CSS class names instead of the default `css-1234567890` format.\n\nCloses #4577\n\n**Before:** Always generates `css-1234567890`\n**After:** Pass `classNameSlug: (hash, label, css) => string` to get custom names\n\n```ts\nconst { css, Style } = createCssContext({\n  id: 'my-styles',\n  classNameSlug: (hash, label) => label.trim() ? `h-${label.trim()}` : hash,\n})\n\nconst hero = css`/* hero-section */ background: blue;`\n// .h-hero-section { background: blue; }\n```\n\n## Changes\n\n- `src/helper/css/common.ts` — exported `ClassNameSlug` type, added optional `classNameSlug` param to `cssCommon()`\n- `src/helper/css/index.ts` — added `classNameSlug` option to `createCssContext()`, exported `ClassNameSlug` type\n- `src/helper/css/index.test.tsx` — 4 new tests for custom slug, label extraction, fallback, and default behavior\n\n## Verification\n\n- All existing tests pass\n- TypeScript: 0 errors\n- ESLint: 0 warnings\n- Prettier: all files formatted\n\n## API\n\n```ts\ntype ClassNameSlug = (hash: string, label: string, css: string) => string\n\ncreateCssContext({\n  id: string,\n  classNameSlug?: ClassNameSlug,\n})\n```\n\nThe function receives:\n- `hash` — the default `css-1234567890` string\n- `label` — extracted from `/* comment */` at start of template (may be empty)\n- `css` — the minified CSS string",
+  "commit_messages": [
+    "feat(css): add classNameSlug option to createCssContext\n\nAdd an optional classNameSlug function to createCssContext that lets\nusers customize generated CSS class names instead of the default\nhash-based 'css-1234567890' format.\n\nThe function receives (hash, label, styleString) and returns the desired\nclass name string. This enables readable, debug-friendly class names\nlike 'h-hero-section' while preserving hash-based uniqueness.\n\nAddresses review feedback:\n- Move ClassNameSlug type near CssVariableType exports\n- Rename third parameter from css to styleString\n- Propagate classNameSlug to keyframesCommon and viewTransitionCommon\n- Add classNameSlug support to DOM-side createCssContext\n- Add TSDoc documentation\n\nCloses #4577"
+  ],
+  "closing": [
+    {
+      "owner": "honojs",
+      "repo": "hono",
+      "number": 4577
+    }
+  ],
+  "issues": [
+    {
+      "owner": "honojs",
+      "repo": "hono",
+      "number": 4577,
+      "title": "Customization of generated CSS classname",
+      "body": "### What is the feature you are proposing?\n\nCurrently, when using `css` template literal helper, the generated CSS class looks cryptic, such as `css-2458908649`. \n\nMy proposal is an option to customize it because of readability and debugging (especially for development phase).\n\nFor example, [Linaria](https://linaria.dev/) zero-runtime CSS in JS offers `classNameSlug` in its [configuration](https://github.com/callstack/linaria/blob/master/docs/CONFIGURATION.md).\n\nIt can even be a function:\n```javascript\nmodule.exports = {\n  classNameSlug: (hash, title, args) => sha1(`${args.name}-${title}`)\n};\n```\nFor me, option to get some kind of `css` template literal \"title\" in the class name would be the best one. Be it the variable name, or component name.",
+      "comments": [],
+      "comments_unreadable": false
+    }
+  ],
+  "remove": [],
+  "left_out": [],
+  "evidence": {
+    "url": "https://github.com/honojs/hono/pull/4834#discussion_r3013009536",
+    "path": "src/helper/css/common.ts",
+    "lines": [
+      168,
+      168
+    ],
+    "body": "Shouldn't you escape the class name? For instance, if someout put `bad name{color:red}` the HTML attribubte will be `class=\"bad name{color:red}\"`. If so, the CSS name will be broken(?)."
+  }
+}

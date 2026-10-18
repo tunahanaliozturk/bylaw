@@ -1,0 +1,42 @@
+{
+  "repo": "h3js/h3",
+  "number": 1202,
+  "url": "https://github.com/h3js/h3/pull/1202",
+  "licence": "MIT",
+  "base_sha": "e530e717098862697003c0343a1d6adc17cc36af",
+  "head_sha": "81efc1843d6e9c719c2c0bcca0030ab34418fb2e",
+  "title": "types: export websocket related types",
+  "body": "`h3` directly relies on `crossws` for it's WS handling, but doesn't make the `crossws` types available to consumers of `h3`. This in turn makes it quite hard to properly type functions that rely on the returned values in the WS handlers, as it forces the consumer of `h3` to also add `crossws` as a devDependency and ensure that the version of `crossws` exactly matches the version in use by `h3` to ensure there's no type conflicts. This is a pretty poor DX. By re-exporting the types used for the `crossws` logic that's relied on by `h3` this problem is resolved.\r\n\r\nI've identified `Hooks`, `Peer`, `AdapterInternal`, and `Message` as the ones you immediately run into when using `defineWebSocketHandler`, but there might be others. I didn't want to go as far as to `export *` as that'll add a bunch of unused types and other noise to `h3`s global scope as well. \r\n\r\nFixes #716\r\n\r\n",
+  "commit_messages": [
+    "Re-export used crossws types\n\nFixes #716"
+  ],
+  "closing": [
+    {
+      "owner": "h3js",
+      "repo": "h3",
+      "number": 716
+    }
+  ],
+  "issues": [
+    {
+      "owner": "h3js",
+      "repo": "h3",
+      "number": 716,
+      "title": "Re-export websocket types",
+      "body": "### Describe the feature\r\n\r\nAs a developer using websockets, I want to come up with generic helper functions working with websocket peers (such as for #715). However, `h3` doesn't re-export the type of peer, so I have to use introspection types:\r\n\r\n```ts\r\ntype Peer = Parameters<NonNullable<Parameters<typeof defineWebSocketHandler>[0][\"open\"]>>[0]\r\n```\r\n\r\nNot only this is cumbersome, but also it loses \"genericness\" of the original type.\r\n\r\nI propose to re-export `Peer` directly from `h3` (and some other involved types, e.g. `Message`, possibly others).\r\n\r\n### Additional information\r\n\r\n- [x] Would you be willing to help implement this feature?",
+      "comments": [],
+      "comments_unreadable": false
+    }
+  ],
+  "remove": [],
+  "left_out": [],
+  "evidence": {
+    "url": "https://github.com/h3js/h3/pull/1202#discussion_r2329492009",
+    "path": "src/utils/ws.ts",
+    "lines": [
+      6,
+      6
+    ],
+    "body": "We need to alias-prefix this types with `WebSocket` from h3"
+  }
+}

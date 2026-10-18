@@ -1,0 +1,24 @@
+kind = "bug"
+labellers = ["first pass (model)"]
+
+[[findings]]
+file = "command.go"
+lines = [1061, 1061]
+categories = ["bug"]
+note = "The new errPrefix field was printed directly, so commands that never set it printed an empty prefix instead of the default \"Error:\"."
+
+[[allowed]]
+file = "command.go"
+lines = [184, 186]
+
+[[allowed]]
+file = "command.go"
+lines = [352, 356]
+
+[[allowed]]
+file = "command.go"
+lines = [1061, 1061]
+
+[[allowed]]
+file = "command.go"
+lines = [1090, 1090]

@@ -1,0 +1,21 @@
+kind = "rule"
+labellers = ["first pass (model)"]
+
+[[findings]]
+file = "packages/vite/src/node/optimizer/resolve.ts"
+lines = [136, 136]
+categories = ["rule"]
+evidence = "eslint.config.js:72"
+note = "The code compared exports[key] === null where the project's lint rule wants == null so undefined is caught too."
+
+[[allowed]]
+file = ".gitignore"
+lines = [15, 17]
+
+[[allowed]]
+file = "packages/vite/src/node/__tests__/optimizer/expandGlobIds.spec.ts"
+lines = [1, 33]
+
+[[allowed]]
+file = "packages/vite/src/node/optimizer/resolve.ts"
+lines = [134, 136]

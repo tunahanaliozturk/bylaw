@@ -1,0 +1,42 @@
+{
+  "repo": "h3js/h3",
+  "number": 1026,
+  "url": "https://github.com/h3js/h3/pull/1026",
+  "licence": "MIT",
+  "base_sha": "087d0639cc12a555a87d56fc0ef3cca1fcf282cf",
+  "head_sha": "ceaf028da8d8eda29c9c0e15559e02756220bd54",
+  "title": "fix(proxy): handle `Headers` when merging",
+  "body": "<!--\r\nPLEASE DO THIS BEFORE SUBMITTING A PR\r\n\r\n1) Make sure there is an issue covering the problem or idea first. If not, please create one. Reference it in the PR via \"resolves #12312312\" \r\n2) Please keep your changes minimal and split them if you need to.\r\n3) Ensure there is a minimal reproduction attached for bug fixes.\r\n\r\nThis will greatly help speed up the review process.\r\n\r\nThanks for your contribution ❤️\r\n-->\r\n\r\nresolves #865",
+  "commit_messages": [
+    "fix: handle `Headers` when merging proxy headers"
+  ],
+  "closing": [
+    {
+      "owner": "h3js",
+      "repo": "h3",
+      "number": 865
+    }
+  ],
+  "issues": [
+    {
+      "owner": "h3js",
+      "repo": "h3",
+      "number": 865,
+      "title": "mergeHeaders unexpected behaviour / type issue",
+      "body": "### Environment\n\n`Nuxt 3.12.2 with Nitro 2.9.6`\r\ndevelopment mode\n\n### Reproduction\n\n```ts\r\nconst headers = new Headers()\r\nif (session.token)\r\n    headers.set(\"Authorization\", `Bearer ${session.token}`)\r\nelse\r\n    console.warn(`[PROXY] No token set`)\r\nif (session.domain)\r\n    headers.set(\"X-Domain\", session.domain)\r\nelse\r\n    console.warn(`[PROXY] No domain set`)\r\n\r\n// note: no 'Authorization' header in the event headers\r\nconst mergedHeaders = mergeHeaders(event.headers, headers)\r\n\r\nconsole.log(mergedHeaders.get(\"Authorization\"))\r\n// log: undefined\r\n```\n\n### Describe the bug\n\nThe `mergeHeaders` utility won't merge multiple instances of Headers. This is a result of the underlying logic using Object.entries to get a list of key-value pairs which returns an empty array on a Headers instance.\r\n\r\nSince `Headers` satisfies the `HeadersInit` type, this should either work, or the types should be changed appropriately.\r\nOnce it's clear how we should continue, I will open a PR.\n\n### Additional context\n\nI found this issue when trying to use the proxyRequest / sendProxy utility, basically all of the other utilities depending on mergeHeaders suffer from the type / logic issue and it's not that trivial to find, because you think something is wrong in your code.\n\n### Logs\n\n_No response_",
+      "comments": [],
+      "comments_unreadable": false
+    }
+  ],
+  "remove": [],
+  "left_out": [],
+  "evidence": {
+    "url": "https://github.com/h3js/h3/pull/1026#discussion_r2054309474",
+    "path": "src/utils/internal/proxy.ts",
+    "lines": [
+      60,
+      60
+    ],
+    "body": "We can directly check `.entries` being a function for wider support. (HeadersInit can also be an array and arrays have `.entries()` as well)"
+  }
+}

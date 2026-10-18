@@ -1,0 +1,64 @@
+kind = "bug"
+labellers = ["first pass (model)"]
+
+[[findings]]
+file = "tests/test_websockets.py"
+lines = [651, 651]
+categories = ["bug"]
+note = "The test sent a message on a line that was never reached, so it did not test what it claimed."
+
+[[allowed]]
+file = "starlette/websockets.py"
+lines = [25, 32]
+
+[[allowed]]
+file = "starlette/websockets.py"
+lines = [64, 64]
+
+[[allowed]]
+file = "starlette/websockets.py"
+lines = [105, 105]
+
+[[allowed]]
+file = "starlette/websockets.py"
+lines = [125, 125]
+
+[[allowed]]
+file = "starlette/websockets.py"
+lines = [132, 132]
+
+[[allowed]]
+file = "starlette/websockets.py"
+lines = [141, 141]
+
+[[allowed]]
+file = "tests/test_websockets.py"
+lines = [13, 13]
+
+[[allowed]]
+file = "tests/test_websockets.py"
+lines = [452, 452]
+
+[[allowed]]
+file = "tests/test_websockets.py"
+lines = [466, 466]
+
+[[allowed]]
+file = "tests/test_websockets.py"
+lines = [542, 542]
+
+[[allowed]]
+file = "tests/test_websockets.py"
+lines = [553, 553]
+
+[[allowed]]
+file = "tests/test_websockets.py"
+lines = [564, 564]
+
+[[allowed]]
+file = "tests/test_websockets.py"
+lines = [580, 615]
+
+[[allowed]]
+file = "tests/test_websockets.py"
+lines = [641, 653]

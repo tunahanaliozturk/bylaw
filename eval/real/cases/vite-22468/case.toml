@@ -1,0 +1,44 @@
+kind = "bug"
+labellers = ["first pass (model)"]
+
+[[findings]]
+file = "packages/plugin-legacy/src/index.ts"
+lines = [475, 475]
+categories = ["bug"]
+note = "plugin-legacy changed its minify behaviour without checking the Vite version, so an old Vite with the new plugin (or the reverse) would break."
+
+[[allowed]]
+file = "packages/plugin-legacy/src/index.ts"
+lines = [149, 166]
+
+[[allowed]]
+file = "packages/plugin-legacy/src/index.ts"
+lines = [475, 475]
+
+[[allowed]]
+file = "packages/plugin-legacy/src/index.ts"
+lines = [870, 871]
+
+[[allowed]]
+file = "packages/plugin-legacy/src/index.ts"
+lines = [887, 887]
+
+[[allowed]]
+file = "packages/plugin-legacy/src/index.ts"
+lines = [896, 896]
+
+[[allowed]]
+file = "packages/vite/src/node/plugins/terser.ts"
+lines = [80, 81]
+
+[[allowed]]
+file = "packages/vite/src/node/plugins/terser.ts"
+lines = [88, 92]
+
+[[allowed]]
+file = "playground/legacy/__tests__/legacy.spec.ts"
+lines = [110, 122]
+
+[[allowed]]
+file = "playground/legacy/__tests__/legacy.spec.ts"
+lines = [132, 139]

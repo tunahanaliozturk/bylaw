@@ -1,0 +1,112 @@
+kind = "rule"
+labellers = ["first pass (model)"]
+
+[[findings]]
+file = "src/jsx/intrinsic-element/common.ts"
+lines = [18, 18]
+categories = ["bug", "rule"]
+note = "shouldDeDupeByKey kept a props parameter it never used, which the project's lint rules flag."
+
+[[allowed]]
+file = "src/jsx/dom/intrinsic-element/components.test.tsx"
+lines = [316, 577]
+
+[[allowed]]
+file = "src/jsx/dom/intrinsic-element/components.ts"
+lines = [4, 10]
+
+[[allowed]]
+file = "src/jsx/dom/intrinsic-element/components.ts"
+lines = [81, 83]
+
+[[allowed]]
+file = "src/jsx/dom/intrinsic-element/components.ts"
+lines = [85, 85]
+
+[[allowed]]
+file = "src/jsx/dom/intrinsic-element/components.ts"
+lines = [88, 91]
+
+[[allowed]]
+file = "src/jsx/dom/intrinsic-element/components.ts"
+lines = [111, 113]
+
+[[allowed]]
+file = "src/jsx/dom/intrinsic-element/components.ts"
+lines = [129, 151]
+
+[[allowed]]
+file = "src/jsx/dom/intrinsic-element/components.ts"
+lines = [165, 168]
+
+[[allowed]]
+file = "src/jsx/dom/intrinsic-element/components.ts"
+lines = [187, 187]
+
+[[allowed]]
+file = "src/jsx/dom/intrinsic-element/components.ts"
+lines = [204, 206]
+
+[[allowed]]
+file = "src/jsx/dom/intrinsic-element/components.ts"
+lines = [225, 225]
+
+[[allowed]]
+file = "src/jsx/dom/intrinsic-element/components.ts"
+lines = [311, 311]
+
+[[allowed]]
+file = "src/jsx/intrinsic-element/common.ts"
+lines = [1, 2]
+
+[[allowed]]
+file = "src/jsx/intrinsic-element/common.ts"
+lines = [14, 23]
+
+[[allowed]]
+file = "src/jsx/intrinsic-element/components.test.tsx"
+lines = [118, 304]
+
+[[allowed]]
+file = "src/jsx/intrinsic-element/components.ts"
+lines = [10, 15]
+
+[[allowed]]
+file = "src/jsx/intrinsic-element/components.ts"
+lines = [38, 39]
+
+[[allowed]]
+file = "src/jsx/intrinsic-element/components.ts"
+lines = [41, 46]
+
+[[allowed]]
+file = "src/jsx/intrinsic-element/components.ts"
+lines = [58, 58]
+
+[[allowed]]
+file = "src/jsx/intrinsic-element/components.ts"
+lines = [66, 66]
+
+[[allowed]]
+file = "src/jsx/intrinsic-element/components.ts"
+lines = [69, 73]
+
+[[allowed]]
+file = "src/jsx/intrinsic-element/components.ts"
+lines = [75, 75]
+
+[[allowed]]
+file = "src/jsx/intrinsic-element/components.ts"
+lines = [78, 78]
+
+[[allowed]]
+file = "src/jsx/intrinsic-element/components.ts"
+lines = [80, 80]
+
+[[allowed]]
+file = "src/jsx/intrinsic-element/components.ts"
+lines = [82, 83]
+
+[[allowed]]
+file = "src/jsx/intrinsic-element/components.ts"
+lines = [169, 169]

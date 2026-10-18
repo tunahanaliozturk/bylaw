@@ -1,0 +1,28 @@
+kind = "bug"
+labellers = ["first pass (model)"]
+
+[[findings]]
+file = "middleware/hostauthorization/hostauthorization.go"
+lines = [80, 80]
+categories = ["bug"]
+note = "AllowedHostsFunc ran before the static rules, which contradicts the docs and the CORS pattern it claims to mirror and calls a possibly expensive function on every request."
+
+[[allowed]]
+file = ".github/README.md"
+lines = [742, 742]
+
+[[allowed]]
+file = "docs/middleware/hostauthorization.md"
+lines = [1, 203]
+
+[[allowed]]
+file = "middleware/hostauthorization/config.go"
+lines = [1, 63]
+
+[[allowed]]
+file = "middleware/hostauthorization/hostauthorization.go"
+lines = [1, 128]
+
+[[allowed]]
+file = "middleware/hostauthorization/hostauthorization_test.go"
+lines = [1, 831]

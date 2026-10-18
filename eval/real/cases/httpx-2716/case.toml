@@ -1,0 +1,44 @@
+kind = "rule"
+labellers = ["first pass (model)"]
+
+[[findings]]
+file = "httpx/_transports/default.py"
+lines = [31, 31]
+categories = ["bug", "rule"]
+note = "The transport imported SOCKET_OPTION from httpcore.backends.base, an undocumented private module of a dependency."
+
+[[allowed]]
+file = "CHANGELOG.md"
+lines = [9, 12]
+
+[[allowed]]
+file = "httpx/_transports/default.py"
+lines = [31, 31]
+
+[[allowed]]
+file = "httpx/_transports/default.py"
+lines = [126, 126]
+
+[[allowed]]
+file = "httpx/_transports/default.py"
+lines = [141, 141]
+
+[[allowed]]
+file = "httpx/_transports/default.py"
+lines = [159, 159]
+
+[[allowed]]
+file = "httpx/_transports/default.py"
+lines = [264, 264]
+
+[[allowed]]
+file = "httpx/_transports/default.py"
+lines = [279, 279]
+
+[[allowed]]
+file = "httpx/_transports/default.py"
+lines = [297, 297]
+
+[[allowed]]
+file = "pyproject.toml"
+lines = [32, 32]

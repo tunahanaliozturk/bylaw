@@ -1,0 +1,42 @@
+{
+  "repo": "prometheus/client_golang",
+  "number": 1318,
+  "url": "https://github.com/prometheus/client_golang/pull/1318",
+  "licence": "Apache-2.0",
+  "base_sha": "7f2db5f1ed43d8a4312bfd85280a17dfef13358b",
+  "head_sha": "f488fe2be1fe2706a62b9cc62d72ed8921899bab",
+  "title": "Fix data-race in metric without `code` and `method` but with `WithLabelFromCtx`",
+  "body": "\r\nThis PR fixes a data race that exists when the metric used in any `promhttp` middleware doesn't collect the `code` and `method` but uses `WithLabelFromCtx` to collect values from context.\r\n\r\nThe problem happens because when no `code` and `method` tags are collected, the `labels` function returns a pre-initialized map `emptyLabels` for every request.\r\n\r\nWhen one or multiple `WithLabelFromCtx` options are configured, the returned map from the `labels` function call is used to collect the metrics from context which creates a multi-write data race.\r\n\r\nFixes #1317",
+  "commit_messages": [
+    "Fix data-race in metric without `code` and `method` but with `WithLabelFromCtx`\n\nThis commit fixes a data race that exists when the metric used in any\n`promhttp` middleware doesn't collect the `code` and `method` but uses\n`WithLabelFromCtx` to collect values from context.\n\nThe problem happens because when no `code` and `method` tags are\ncollected, the `labels` function returns a pre-initialized map\n`emptyLabels` for every request.\n\nWhen one or multipe `WithLabelFromCtx` options are configured, the\nreturned map from the `labels` function call is used to collect the\nmetrics from context which creates a multi-write data race.\n\nSigned-off-by: Tiago Silva <tiago.silva@goteleport.com>"
+  ],
+  "closing": [
+    {
+      "owner": "prometheus",
+      "repo": "client_golang",
+      "number": 1317
+    }
+  ],
+  "issues": [
+    {
+      "owner": "prometheus",
+      "repo": "client_golang",
+      "number": 1317,
+      "title": "Data race when using `promhttp` handlers without `method`or `code` but with `WithLabelFromCtx`",
+      "body": "When using any `promhttp` handler or roundtripper instrumentation middleware, we have a data race if the metric doesn't record `code` nor `method` but uses `WithLabelFromCtx`.\r\n\r\nIt exists because when we don't record `code` or `method`, the `labels` function returns a pre-created map called `emptyLabels`.\r\n\r\nhttps://github.com/prometheus/client_golang/blob/3583c1e1d085b75cab406c78b015562d45552b39/prometheus/promhttp/instrument_server.go#L392-L399\r\n\r\nThis map is later returned to collect the metrics from the context. \r\nhttps://github.com/prometheus/client_golang/blob/3583c1e1d085b75cab406c78b015562d45552b39/prometheus/promhttp/instrument_server.go#L100-L102\r\n\r\nThis affects all promhttp versions",
+      "comments": [],
+      "comments_unreadable": false
+    }
+  ],
+  "remove": [],
+  "left_out": [],
+  "evidence": {
+    "url": "https://github.com/prometheus/client_golang/pull/1318#discussion_r1279059393",
+    "path": "prometheus/promhttp/instrument_server.go",
+    "lines": [
+      403,
+      406
+    ],
+    "body": "This feels wrong. If the emptyLabels are no longer empty, this is highly misleading. We should fix the code and not rely on that global var or make sure no one writes to it."
+  }
+}

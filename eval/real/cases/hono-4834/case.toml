@@ -1,0 +1,108 @@
+kind = "security"
+labellers = ["first pass (model)"]
+
+[[findings]]
+file = "src/helper/css/common.ts"
+lines = [168, 168]
+categories = ["security", "bug"]
+note = "The value returned by the user's classNameSlug callback went into the class attribute and CSS selector unescaped, so a slug with spaces or braces could break or inject CSS."
+
+[[allowed]]
+file = "src/helper/css/common.ts"
+lines = [93, 102]
+
+[[allowed]]
+file = "src/helper/css/common.ts"
+lines = [167, 168]
+
+[[allowed]]
+file = "src/helper/css/common.ts"
+lines = [175, 178]
+
+[[allowed]]
+file = "src/helper/css/common.ts"
+lines = [213, 214]
+
+[[allowed]]
+file = "src/helper/css/common.ts"
+lines = [217, 218]
+
+[[allowed]]
+file = "src/helper/css/common.ts"
+lines = [221, 221]
+
+[[allowed]]
+file = "src/helper/css/common.ts"
+lines = [229, 233]
+
+[[allowed]]
+file = "src/helper/css/common.ts"
+lines = [241, 242]
+
+[[allowed]]
+file = "src/helper/css/common.ts"
+lines = [249, 249]
+
+[[allowed]]
+file = "src/helper/css/common.ts"
+lines = [254, 254]
+
+[[allowed]]
+file = "src/helper/css/index.test.tsx"
+lines = [209, 334]
+
+[[allowed]]
+file = "src/helper/css/index.ts"
+lines = [10, 10]
+
+[[allowed]]
+file = "src/helper/css/index.ts"
+lines = [24, 24]
+
+[[allowed]]
+file = "src/helper/css/index.ts"
+lines = [61, 63]
+
+[[allowed]]
+file = "src/helper/css/index.ts"
+lines = [65, 71]
+
+[[allowed]]
+file = "src/helper/css/index.ts"
+lines = [152, 152]
+
+[[allowed]]
+file = "src/helper/css/index.ts"
+lines = [162, 163]
+
+[[allowed]]
+file = "src/helper/css/index.ts"
+lines = [170, 170]
+
+[[allowed]]
+file = "src/jsx/dom/css.test.tsx"
+lines = [89, 116]
+
+[[allowed]]
+file = "src/jsx/dom/css.ts"
+lines = [7, 7]
+
+[[allowed]]
+file = "src/jsx/dom/css.ts"
+lines = [170, 172]
+
+[[allowed]]
+file = "src/jsx/dom/css.ts"
+lines = [174, 180]
+
+[[allowed]]
+file = "src/jsx/dom/css.ts"
+lines = [189, 189]
+
+[[allowed]]
+file = "src/jsx/dom/css.ts"
+lines = [199, 200]
+
+[[allowed]]
+file = "src/jsx/dom/css.ts"
+lines = [207, 207]
