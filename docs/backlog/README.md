@@ -16,7 +16,7 @@ One file per roadmap feature. Each item has an id, a size and what "done" means,
 | [Nested instructions in monorepos](nested-instructions.md) | Q2 | v0.3 | 4 | 4 |
 | [ADR conformance](adr-conformance.md) | Q2 | v0.4 | 4 | 0 |
 | [Jira, Linear and Azure DevOps as requirement sources](tracker-sources.md) | Q2 | v0.4 | 6 | 6 |
-| [Evaluation set v2: real pull requests](eval-v2.md) | Q2 | v0.4 | 4 | 2 |
+| [Evaluation set v2: real pull requests](eval-v2.md) | Q2 | v0.4 | 4 | 3 |
 | [GitHub App](github-app.md) | Q3 | v0.5 | 6 | 0 |
 | [GitLab merge requests](gitlab.md) | Q3 | v0.6 | 4 | 0 |
 | [More model providers](model-providers.md) | Q3 | v0.6 | 6 | 0 |
