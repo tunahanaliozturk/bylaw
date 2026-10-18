@@ -14,7 +14,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 - A moved file that GitHub sends without a blob sha, and whose old path is missing from the base, now gets the binary file note instead of counting as an unchanged move.
 - A GraphQL error while reading the older replies of a long review thread no longer ends the run. The thread is read without them and the summary says so. A rate limit still stops the run.
 - Validation keeps two different problems of the same category on the same lines, such as a shell injection and a path traversal on one line. Only a finding with the same message as another is dropped as a duplicate.
-- Monorepos: a package's own `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md` and linter configuration now apply to the files changed under it, next to the root rules. For each changed file and each of those names, the nearest one above it on the base branch is read; directories without changed files are not read (ADR 0013).
+- Monorepos: a package's own `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md` and linter configuration now apply to the files changed under it, next to the root rules. For each changed file and each of those names, the nearest one above it on the base branch is read; directories without changed files are not read. The brief groups the rules by directory, names the changed files each group covers, and tells the reviewer that the nearest directory wins (ADR 0013).
 
 ## 0.1.1 - 2026-10-16
 
