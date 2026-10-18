@@ -11,11 +11,15 @@ inputs:
     required: false
     default: ""
   provider:
-    description: Model provider, anthropic or openai.
+    description: Model provider, anthropic, openai or openai-compatible (docs/providers.md).
     required: false
     default: anthropic
   model:
-    description: Model name. Defaults to claude-opus-5-5 for anthropic; required for openai.
+    description: Model name. Defaults to claude-opus-5-5 for anthropic; required for openai and openai-compatible.
+    required: false
+    default: ""
+  base-url:
+    description: Server URL for the openai-compatible provider, such as a vLLM server the runner can reach (https://vllm.internal/v1).
     required: false
     default: ""
   effort:
@@ -62,6 +66,7 @@ runs:
         BYLAW_PROVIDER: ${{ inputs.provider }}
         BYLAW_MODEL: ${{ inputs.model }}
         BYLAW_EFFORT: ${{ inputs.effort }}
+        BYLAW_BASE_URL: ${{ inputs.base-url }}
         BYLAW_FAIL_ON: ${{ inputs.fail-on }}
         JIRA_EMAIL: ${{ inputs.jira-email }}
         JIRA_API_TOKEN: ${{ inputs.jira-api-token }}
@@ -72,4 +77,5 @@ runs:
         args=(review --pr "$BYLAW_PR" --post --provider "$BYLAW_PROVIDER" --fail-on "$BYLAW_FAIL_ON")
         if [ -n "$BYLAW_MODEL" ]; then args+=(--model "$BYLAW_MODEL"); fi
         if [ -n "$BYLAW_EFFORT" ]; then args+=(--effort "$BYLAW_EFFORT"); fi
+        if [ -n "$BYLAW_BASE_URL" ]; then args+=(--base-url "$BYLAW_BASE_URL"); fi
         uv run --project "$GITHUB_ACTION_PATH" --locked --no-dev bylaw "${args[@]}"
