@@ -8,7 +8,7 @@ The planted set has certain labels but little realism (ADR 0010). Add real pull 
 
 ## Items
 
-- [ ] **EV2-1** (S) Selection rules: merged pull requests with a linked issue and a review comment that led to a fix. Done when: written rules.
+- [x] **EV2-1** (S) Selection rules: merged pull requests with a linked issue and a review comment that led to a fix. Done when: written rules ([real-set.md](../eval/real-set.md)).
 - [ ] **EV2-2** (M) Snapshot tool that freezes base, head and issue text into a case, so runs never fetch live data. Done when: tool and tests.
 - [ ] **EV2-3** (L) Label 20 to 30 pull requests with two labellers; record disagreements. Done when: cases committed.
 - [ ] **EV2-4** (S) Report the planted and real sets separately. Done when: report sections.
