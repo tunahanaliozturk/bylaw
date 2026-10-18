@@ -87,6 +87,11 @@ def test_an_unknown_base_is_a_source_error(repo: Path) -> None:
         LocalGitSource(repo, "nope")
 
 
+def test_a_base_that_starts_with_a_dash_is_not_passed_to_git_as_an_option(repo: Path) -> None:
+    with pytest.raises(SourceError, match="not a ref"):
+        LocalGitSource(repo, "--output=leak.txt")
+
+
 def test_the_cli_prints_utf8_json_for_a_local_branch(
     repo: Path, capsysbinary: pytest.CaptureFixture[bytes]
 ) -> None:

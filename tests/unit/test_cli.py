@@ -1,4 +1,5 @@
 import json
+import sys
 from importlib.metadata import version
 from pathlib import Path
 
@@ -188,3 +189,25 @@ def test_a_context_with_settings_out_of_range_is_a_clear_error(
 
     assert code == 2
     assert capsys.readouterr().err.startswith("bylaw: ")
+
+
+def test_bylaw_mcp_without_the_mcp_extra_says_how_to_install_it(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    for name in [n for n in sys.modules if n.partition(".")[0] in {"mcp", "mcp_types"}]:
+        monkeypatch.setitem(sys.modules, name, None)
+    monkeypatch.delitem(sys.modules, "bylaw.mcp_server", raising=False)
+
+    code = main(["mcp"])
+
+    assert code == 2
+    assert "bylaw[mcp]" in capsys.readouterr().err
+
+
+def test_bylaw_mcp_with_a_root_that_does_not_exist_is_a_clear_error(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    code = main(["mcp", "--root", str(tmp_path / "missing")])
+
+    assert code == 2
+    assert "not a directory" in capsys.readouterr().err
