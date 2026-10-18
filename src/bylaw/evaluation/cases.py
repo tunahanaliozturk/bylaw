@@ -173,7 +173,8 @@ def build_case_context(root: Path, case: Case, work: Path) -> ReviewContext:
         shutil.copytree(base, repo, dirs_exist_ok=True, copy_function=shutil.copy)
     _git(repo, "init", "-q", "-b", "main")
     _git(repo, "add", "-A")
-    _git(repo, "commit", "-q", "-m", "base")
+    # Empty commits allowed: a real pull request may add every file it touches to a base with no rules.
+    _git(repo, "commit", "-q", "--allow-empty", "-m", "base")
     _git(repo, "checkout", "-q", "-b", "change")
     head = root / "cases" / case.id / "head"
     if head.is_dir():
@@ -182,7 +183,7 @@ def build_case_context(root: Path, case: Case, work: Path) -> ReviewContext:
     for path in case.remove:
         (repo / path).unlink()
     _git(repo, "add", "-A")
-    _git(repo, "commit", "-q", "-m", case.message)
+    _git(repo, "commit", "-q", "--allow-empty", "-m", case.message)
     source = LocalGitSource(repo, "main") if case.pull_request is None else _Replay(repo, case.pull_request)
     return build_context(source).model_copy(update={"title": case.title})
 

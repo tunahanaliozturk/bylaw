@@ -107,3 +107,16 @@ def test_a_cost_limit_needs_the_prices(
 
     assert code == 2
     assert "--max-cost needs --input-price and --output-price" in capsys.readouterr().err
+
+
+def test_a_snapshot_without_a_token_says_how_to_get_one(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    monkeypatch.delenv("GH_TOKEN", raising=False)
+
+    code = main(["eval", "snapshot", "--repo", "octo/app", "--pr", "7", "--id", "x", "--set", str(tmp_path)])
+
+    assert code == 2
+    assert "gh auth token" in capsys.readouterr().err
+    assert not (tmp_path / "cases").exists()
