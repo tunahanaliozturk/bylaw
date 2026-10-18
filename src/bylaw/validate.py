@@ -4,7 +4,16 @@ import re
 from dataclasses import dataclass
 
 from bylaw import linters
-from bylaw.model import Category, CriterionResult, Finding, Location, ReviewContext, ReviewResult, ScopeCreep
+from bylaw.model import (
+    Category,
+    CriterionResult,
+    Finding,
+    Location,
+    ReviewContext,
+    ReviewResult,
+    ScopeCreep,
+    text_lines,
+)
 from bylaw.rules import governs
 
 _NEEDS_EVIDENCE = frozenset({Category.RULE, Category.REQUIREMENT})
@@ -75,7 +84,7 @@ class _Checker:
         }
         self._rules = {r.path: r for r in context.rules}
         self._decisions = {
-            d.path: range(d.start, d.start + len(d.text.splitlines())) for d in context.decisions
+            d.path: range(d.start, d.start + len(text_lines(d.text))) for d in context.decisions
         }
         self.criteria = frozenset(f"{r.source}/{c.key}" for r in context.requirements for c in r.criteria)
         self._prose = frozenset(r.source for r in context.requirements if r.inferable)
@@ -132,7 +141,7 @@ class _Checker:
             not separator
             or not line.isdigit()
             or rule is None
-            or not 1 <= int(line) <= len(rule.text.splitlines())
+            or not 1 <= int(line) <= len(text_lines(rule.text))
         ):
             return f"evidence {evidence} cites nothing bylaw collected"
         if rule.directory and not file.startswith(f"{rule.directory}/"):

@@ -5,7 +5,7 @@ from importlib.resources import files
 
 from bylaw.diff import numbered_patch
 from bylaw.linters import describe
-from bylaw.model import ChangedFile, Decision, Finding, Requirement, ReviewContext, RuleSource
+from bylaw.model import ChangedFile, Decision, Finding, Requirement, ReviewContext, RuleSource, text_lines
 
 # ponytail: the budget is in tokens (`input_token_budget`), estimated at 3 characters per token. Code
 # tokenizes more densely than prose, so this overestimates prose and stays safe for code; counting through
@@ -108,7 +108,7 @@ def _rules(context: ReviewContext) -> str:
 
 
 def _rule(rule: RuleSource) -> str:
-    lines = "\n".join(f"{n:>4}| {line}" for n, line in enumerate(rule.text.splitlines(), start=1))
+    lines = "\n".join(f"{n:>4}| {line}" for n, line in enumerate(text_lines(rule.text), start=1))
     ids = f"\n{describe(rule.linter)}" if rule.linter is not None else ""
     return f"{rule.path} ({rule.kind}):\n{lines}{ids}"
 
@@ -116,7 +116,7 @@ def _rule(rule: RuleSource) -> str:
 def _decision(decision: Decision) -> str:
     # The file's own line numbers, so a citation points at the ADR as it is on the base branch.
     lines = "\n".join(
-        f"{n:>4}| {line}" for n, line in enumerate(decision.text.splitlines(), start=decision.start)
+        f"{n:>4}| {line}" for n, line in enumerate(text_lines(decision.text), start=decision.start)
     )
     cut = "\n(cut here: the rest of this decision is not shown)" if decision.cut else ""
     return f"{decision.path}: {decision.title}\nStatus: {decision.status}\n{lines}{cut}"

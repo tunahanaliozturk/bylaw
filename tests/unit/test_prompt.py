@@ -304,3 +304,16 @@ def test_the_system_prompt_explains_how_to_hold_a_change_to_a_decision() -> None
     assert "`decisions`" in prompt
     assert "contradicts" in prompt
     assert "docs/adr/0007-money.md:14" in prompt
+
+
+def test_rule_and_decision_lines_are_numbered_as_github_numbers_them() -> None:
+    # str.splitlines() also breaks at U+2028 and form feeds; GitHub and editors break only at newlines.
+    rule = RuleSource(path="CONTRIBUTING.md", kind=RuleKind.PROSE, text="One\u2028still one.\r\nTwo.\n")
+    (decision,) = DECIDED.decisions
+    odd = decision.model_copy(update={"text": "## Decision\nA\x0cB.\nC."})
+    context = DECIDED.model_copy(update={"rules": (rule,), "decisions": (odd,)})
+
+    text, _ = render_input(context, nonce="feedc0de")
+
+    assert "   1| One\u2028still one.\n   2| Two.\n" in text
+    assert "  12| A\x0cB.\n  13| C." in text

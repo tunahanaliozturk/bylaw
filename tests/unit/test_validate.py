@@ -461,3 +461,21 @@ def test_a_citation_of_an_adr_line_the_brief_did_not_show_is_dropped() -> None:
         result = validate(DECIDED, ReviewResult(findings=(finding,)))
 
         assert result.result.findings == (), evidence
+
+
+def test_rule_and_decision_lines_count_only_newlines_as_line_breaks() -> None:
+    rule = RuleSource(path="CONTRIBUTING.md", kind=RuleKind.PROSE, text="One\u2028still one.\nTwo.\n")
+    (decision,) = DECIDED.decisions
+    odd = decision.model_copy(update={"text": "## Decision\nA\x0cB."})
+    context = DECIDED.model_copy(update={"rules": (rule,), "decisions": (odd,)})
+    kept = (
+        _finding(start=n, end=n, category=Category.RULE, evidence=e)
+        for n, e in ((3, "CONTRIBUTING.md:2"), (4, "docs/adr/0002-sqlite.md:12"))
+    )
+    gone = (
+        _finding(start=n, end=n, category=Category.RULE, evidence=e)
+        for n, e in ((3, "CONTRIBUTING.md:3"), (4, "docs/adr/0002-sqlite.md:13"))
+    )
+
+    assert validate(context, ReviewResult(findings=tuple(kept))).dropped == ()
+    assert len(validate(context, ReviewResult(findings=tuple(gone))).dropped) == 2
