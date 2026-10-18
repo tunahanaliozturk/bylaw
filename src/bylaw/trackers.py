@@ -71,6 +71,15 @@ class _UnreadableError(Exception):
     """A work item could not be used. The message is a note safe to publish: no token, no tracker text."""
 
 
+def _hidden(key: str, tracker: Tracker) -> _UnreadableError:
+    # One phrase for "does not exist" and "exists outside the allow list", so a note does not tell a pull
+    # request author which keys exist in projects they were not given.
+    return _UnreadableError(
+        f"Could not read {key} from {_NAMES[tracker]}, or it is outside the allow list; "
+        "it is left out of the requirement check."
+    )
+
+
 Reader = Callable[[httpx.Client, str], WorkItem]
 ClientFactory = Callable[[list[str]], httpx.Client]
 
@@ -192,6 +201,8 @@ def _fetch(http: httpx.Client, key: str, tracker: Tracker, request: httpx.Reques
         raise _UnreadableError(f"{where} (the request could not be built); {after}") from None
     if response.is_redirect:
         raise _UnreadableError(f"{where} (a redirect, which bylaw does not follow with credentials); {after}")
+    if response.status_code == httpx.codes.NOT_FOUND:
+        raise _hidden(key, tracker)
     if response.status_code != httpx.codes.OK:
         raise _UnreadableError(f"{where} (HTTP {response.status_code}); {after}")
     try:
@@ -215,9 +226,7 @@ def _read_jira(http: httpx.Client, jira: Jira, key: str) -> WorkItem:
     # project is checked on the answer as well as on the reference.
     found = data.get("key")
     if not isinstance(found, str) or found.partition("-")[0] not in jira.projects:
-        raise _UnreadableError(
-            f"{key} has moved to a Jira project that is not listed under [jira] projects; it is left out."
-        )
+        raise _hidden(key, "jira")
     values = _mapping(data.get("fields"))
     criteria = _rich_text(values.get(jira.criteria_field)) if jira.criteria_field else ""
     title = values.get("summary")
@@ -242,10 +251,7 @@ def _read_azure_boards(http: httpx.Client, boards: AzureBoards, key: str) -> Wor
     # AB#123 names no project, so the allow list is checked on the answer; project names ignore case.
     allowed = {name.casefold() for name in boards.projects}
     if not isinstance(project, str) or project.casefold() not in allowed:
-        raise _UnreadableError(
-            f"{key} is in an Azure DevOps project that is not listed under [azure_boards] projects; "
-            "it is left out."
-        )
+        raise _hidden(key, "azure_boards")
     title = values.get("System.Title")
     return WorkItem(
         title=title if isinstance(title, str) and title else key,
@@ -269,15 +275,10 @@ def _read_linear(http: httpx.Client, linear: Linear, key: str) -> WorkItem:
     issue = _mapping(_mapping(data.get("data")).get("issue"))
     # GraphQL reports errors with status 200. Their text is not passed on: it is the API's, not bylaw's.
     if data.get("errors") or not issue:
-        raise _UnreadableError(
-            f"Could not read {key} from Linear (the API answered with an error); "
-            "it is left out of the requirement check."
-        )
+        raise _hidden(key, "linear")
     # An issue moved to another team answers to its old identifier too, so the team is checked on the answer.
     if _mapping(issue.get("team")).get("key") not in linear.teams:
-        raise _UnreadableError(
-            f"{key} has moved to a Linear team that is not listed under [linear] teams; it is left out."
-        )
+        raise _hidden(key, "linear")
     title = issue.get("title")
     # The description is Markdown already.
     return WorkItem(
