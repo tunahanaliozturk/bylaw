@@ -187,6 +187,10 @@ cannot drift apart.
   Install: `codex plugin marketplace add tunahanaliozturk/bylaw`, then `/plugins`. The skill alone also
   works from `~/.agents/skills/`. The host model reviews in both hosts; bylaw supplies the context, the
   output schema (`bylaw schema`), the validation and the comments ([docs/hosts.md](hosts.md)).
+- **GitLab CI.** `docs/recipes/gitlab-ci.yml` runs `uvx bylaw@<version> review --gitlab-mr` on merge
+  request pipelines with a project access token. The same core reads the merge request and posts
+  positioned discussions and one summary note; trust is by project role, Developer and above
+  ([ADR 0020](adr/0020-gitlab.md)).
 - **PyPI** release through trusted publishing; no stored token.
 - **GitHub App, self-hosted.** `bylaw-app` in the optional `app` extra, shipped as a container image. It
   verifies each webhook delivery, queues it by repository, pull request and head commit, and runs the

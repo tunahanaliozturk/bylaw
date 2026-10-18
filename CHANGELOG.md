@@ -10,6 +10,14 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 - A local `--base` that starts with `-` is refused instead of reaching git as an option.
 - `bylaw mcp` also refuses a folder in a root whose `.git` file or worktree keeps the repository outside it: the work tree, the git directory and the common git directory must all be inside the root. git never reads bylaw's standard input, which under `bylaw mcp` is the MCP channel.
 - Tracker tokens go only to a pinned site when an agent picks the repository: in `bylaw mcp`, and in `bylaw context --pr` with a `--repo` other than `GITHUB_REPOSITORY`, which is how the Claude Code and Codex skill runs it. Set `JIRA_URL` and `AZURE_DEVOPS_ORGANIZATION` next to the tokens; without them, Jira and Azure Boards work items are left out with a note. The Action reviewing its own repository is unchanged. The note no longer says "the app's operator", because it now also appears outside the GitHub App (ADR 0019).
+- GitLab merge requests: `bylaw review --gitlab-mr <iid> --project <id or path>` reads the diff, commits and description through the REST API, and the rules, `.bylaw.toml` and ADRs from the target branch commit, with a project access token in `GITLAB_TOKEN` (ADR 0020).
+- With `--post`, each inline finding is a discussion on its added line, over its whole range when it spans several lines, and one summary note carries the hidden state and is edited in place. A re-run resolves the discussions of fixed findings and reopens those that come back, as on GitHub. A suggestion on a multi-line finding covers every line of it.
+- On GitLab, trust follows the project role: notes by Developers, Maintainers and Owners can carry `bylaw: ignore` and the summary, and the review memory is read only from a summary written by the token's own account.
+- Lines in a GitLab comment that start with `/` get a zero-width space in front, so text from a model or a merge request cannot run a quick action such as `/merge` as bylaw's account.
+- GitLab closing patterns: `Closes #12`, `Fixes group/sub/lib#3`, `Implements lib#4`, lists such as `Fix #1, #2 and #3` and issue links on the same instance, plus what GitLab's own `closes_issues` reports. Other projects still need `issue_repos` (ADR 0007). Confidential issues, internal notes and system notes are never quoted.
+- Numbered task lists (`1. [ ] ...`) count as acceptance criteria, and GitLab's inapplicable tasks (`- [~] ...`) do not.
+- `docs/recipes/gitlab-ci.yml` runs bylaw on merge request pipelines with `uvx`; a fork's pipeline, which has no token, gets a note and a clean exit.
+- The note for a diff too large to show no longer names GitHub.
 
 ## 0.5.0 - 2026-10-19
 
