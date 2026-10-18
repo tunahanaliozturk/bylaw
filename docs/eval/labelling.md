@@ -8,7 +8,7 @@ A case lives in `eval/real/cases/<id>/`:
 
 - `snapshot.json`: the pull request as the reviewer saw it. `url` and `head_sha` take you to the reviewed commit on GitHub, `evidence` is the review comment the case was picked for, and `issues` holds the linked issue text bylaw reads.
 - `base/` and `head/`: the files the change touches, at the merge base and at the reviewed commit, plus the rule and spec files bylaw reads.
-- `LICENSE` (or the project's own licence file name) and, for Apache projects, `NOTICE`: keep them.
+- `LICENSE` (or the project's own licence file name) and any `NOTICE` file, as they stood at the base commit: keep them.
 - `case.toml`: the labels. The format is the planted one ([README.md](README.md#labels)) plus two keys described below.
 
 To see the diff bylaw reviews, build the case and print its context:

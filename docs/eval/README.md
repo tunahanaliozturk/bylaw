@@ -74,7 +74,7 @@ Committed results live in `eval/results/<name>/`: the per-case runs and `report.
 
 ## Real pull requests
 
-The planted set's labels are certain but its changes are small and tidy. The second set, in `eval/real/`, holds real pull requests from permissively licensed projects, picked by the rules in [real-set.md](real-set.md) and frozen so a run never reads GitHub ([ADR 0015](../adr/0015-real-pull-request-set.md)). It holds 25 cases from 14 projects in Python, TypeScript, JavaScript and Go, about 2.3 MB in all. It is its own set root, so the commands are the same with `--set eval/real`:
+The planted set's labels are certain but its changes are small and tidy. The second set, in `eval/real/`, holds real pull requests from permissively licensed projects, picked by the rules in [real-set.md](real-set.md) and frozen so a run never reads GitHub ([ADR 0015](../adr/0015-real-pull-request-set.md)). It holds 25 cases from 15 projects in Python, TypeScript, JavaScript and Go, about 2.3 MB in all. It is its own set root, so the commands are the same with `--set eval/real`:
 
 ```
 bylaw eval run --set eval/real --no-model --out runs/real-checks
