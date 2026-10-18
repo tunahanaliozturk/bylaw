@@ -55,6 +55,8 @@ class RuleSource(_Frozen):
     path: str
     kind: RuleKind
     text: str
+    # The directory whose files the rule applies to, "" for the whole repository (ADR 0013).
+    directory: str = ""
 
 
 class Criterion(_Frozen):

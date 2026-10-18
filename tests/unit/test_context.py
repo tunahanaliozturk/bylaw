@@ -62,6 +62,46 @@ def test_editorconfig_findings_and_rule_sources_are_included() -> None:
     assert [r.path for r in context.rules] == [".editorconfig", "CONTRIBUTING.md"]
 
 
+def test_a_change_in_a_package_brings_its_agents_md_into_the_context() -> None:
+    source = FakeSource(
+        base={
+            "AGENTS.md": "Root rules.",
+            "packages/api/AGENTS.md": "Return errors as values.",
+            "packages/worker/AGENTS.md": "Raise on errors.",
+        },
+        files=(_file("packages/api/src/handlers.py", "x = 1"),),
+    )
+
+    context = build_context(source)
+
+    assert [(r.path, r.directory) for r in context.rules] == [
+        ("AGENTS.md", ""),
+        ("packages/api/AGENTS.md", "packages/api"),
+    ]
+
+
+def test_a_change_to_a_package_rule_file_is_noted_as_reviewed_against_the_base() -> None:
+    source = FakeSource(
+        base={"packages/api/AGENTS.md": "Return errors as values."},
+        files=(_file("packages/api/AGENTS.md", "Raise instead."),),
+    )
+
+    context = build_context(source)
+
+    assert any("packages/api/AGENTS.md" in note and "base branch" in note for note in context.notes)
+
+
+def test_a_context_written_before_nested_rules_still_loads() -> None:
+    old = (
+        '{"base_sha": "b", "head_sha": "h", "title": "t", "files": [], "requirements": [], "findings": [],'
+        ' "notes": [], "rules": [{"path": "AGENTS.md", "kind": "prose", "text": "Be kind."}]}'
+    )
+
+    context = ReviewContext.model_validate_json(old)
+
+    assert context.rules[0].directory == ""
+
+
 def test_the_context_survives_a_json_round_trip() -> None:
     source = FakeSource(files=(_file("src/app.py", "x = 'Öztürk'"),))
 
