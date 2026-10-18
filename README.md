@@ -70,6 +70,8 @@ repository, and each installation has its own model key. There is no hosted byla
 from [the manifest](https://github.com/tunahanaliozturk/bylaw/blob/main/docs/app/manifest.json) and run
 the container image. Setup: [docs/app/deploy.md](https://github.com/tunahanaliozturk/bylaw/blob/main/docs/app/deploy.md).
 
+**GitLab merge requests.** Copy the job in [docs/recipes/gitlab-ci.yml](https://github.com/tunahanaliozturk/bylaw/blob/main/docs/recipes/gitlab-ci.yml) into your `.gitlab-ci.yml` and add a project access token with the Developer role as the masked variable `GITLAB_TOKEN`; `ANTHROPIC_API_KEY` is optional, as on GitHub. The job token cannot post notes, which is why it needs its own token. Merge requests get the same inline comments, summary and re-run behaviour; what differs, and why, is in [docs/hosts.md](https://github.com/tunahanaliozturk/bylaw/blob/main/docs/hosts.md#gitlab-ci) and [ADR 0020](https://github.com/tunahanaliozturk/bylaw/blob/main/docs/adr/0020-gitlab.md).
+
 **Claude Code or Codex.** The host's own model reviews, so no API key is needed:
 
 ```

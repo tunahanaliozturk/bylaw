@@ -4,6 +4,15 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## Unreleased
 
+- GitLab merge requests: `bylaw review --gitlab-mr <iid> --project <id or path>` reads the diff, commits and description through the REST API, and the rules, `.bylaw.toml` and ADRs from the target branch commit, with a project access token in `GITLAB_TOKEN` (ADR 0020).
+- With `--post`, each inline finding is a discussion on its added line, over its whole range when it spans several lines, and one summary note carries the hidden state and is edited in place. A re-run resolves the discussions of fixed findings and reopens those that come back, as on GitHub. A suggestion on a multi-line finding covers every line of it.
+- On GitLab, trust follows the project role: notes by Developers, Maintainers and Owners can carry `bylaw: ignore` and the summary, and the review memory is read only from a summary written by the token's own account.
+- Lines in a GitLab comment that start with `/` get a zero-width space in front, so text from a model or a merge request cannot run a quick action such as `/merge` as bylaw's account.
+- GitLab closing patterns: `Closes #12`, `Fixes group/sub/lib#3`, `Implements lib#4`, lists such as `Fix #1, #2 and #3` and issue links on the same instance, plus what GitLab's own `closes_issues` reports. Other projects still need `issue_repos` (ADR 0007). Confidential issues, internal notes and system notes are never quoted.
+- Numbered task lists (`1. [ ] ...`) count as acceptance criteria, and GitLab's inapplicable tasks (`- [~] ...`) do not.
+- `docs/recipes/gitlab-ci.yml` runs bylaw on merge request pipelines with `uvx`; a fork's pipeline, which has no token, gets a note and a clean exit.
+- The note for a diff too large to show no longer names GitHub.
+
 ## 0.5.0 - 2026-10-19
 
 - Review fixes to the new providers: only a credential chain's errors become a note, and only for the cloud providers, so a bug can no longer pass `fail-on` as a note. A key variable set but empty is refused. The JSON fallback drops `<think>` blocks and reads the first JSON object that decodes, names only the schema's fields in its problems, treats an empty answer as no review, skips its retry when it would pass `[budget] pr_tokens`, and marks the brief for the prompt cache. Vertex AI errors are named by status, an `AZURE_OPENAI_ENDPOINT` copied with `/openai/v1` still works, the extra checks look for boto3 and requests, and an eval run against a local server records the server in its reviewer identity. docs/providers.md now covers Foundry's metadata egress to Anthropic and Ollama's small default context length (ADR 0018).
