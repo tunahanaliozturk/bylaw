@@ -219,6 +219,21 @@ def test_an_api_error_names_the_status_and_never_the_token(client: GitLabClient)
 
 
 @respx.mock
+def test_a_next_page_link_to_another_host_is_not_followed_with_the_token(client: GitLabClient) -> None:
+    elsewhere = respx.get(url__startswith="https://elsewhere.example/")
+    respx.get(url__startswith=f"{P}/merge_requests/5/diffs").mock(
+        return_value=httpx.Response(
+            200, json=[], headers={"link": '<https://elsewhere.example/api/v4/next>; rel="next"'}
+        )
+    )
+
+    with pytest.raises(GitLabError, match="another address"):
+        _mr(client).changed_files()
+
+    assert not elsewhere.called
+
+
+@respx.mock
 def test_requests_carry_the_token_in_the_private_token_header(client: GitLabClient) -> None:
     route = respx.get(f"{P}/merge_requests/5").mock(return_value=httpx.Response(200, json=MR))
 
