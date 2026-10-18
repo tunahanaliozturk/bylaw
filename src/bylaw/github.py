@@ -2,7 +2,7 @@
 
 import base64
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import cached_property
 from http import HTTPStatus
 from typing import Self
@@ -329,6 +329,13 @@ class SummaryComment:
     body: str
     # Written by a bot account. Only then does its review memory decide what is reviewed again (ADR 0012).
     bot: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class InstallationToken:
+    token: str = field(repr=False)
+    # The repositories GitHub says the token covers, as lower-case owner/name.
+    repositories: frozenset[str]
 
 
 @dataclass(frozen=True, slots=True)
@@ -690,7 +697,7 @@ class GitHubClient:
 
     def installation_token(
         self, installation_id: int, repositories: Sequence[str], permissions: Mapping[str, str]
-    ) -> str:
+    ) -> "InstallationToken":
         """A GitHub App installation token for only these repositories and permissions. It lasts an hour.
 
         The client must hold the app's JWT.
@@ -699,10 +706,17 @@ class GitHubClient:
         body = {"repositories": list(repositories), "permissions": dict(permissions)}
         response = self._send("POST", url, json=body)
         _raise_for_status(response)
-        token = response.json().get("token")
+        body = response.json()
+        token = body.get("token") if isinstance(body, dict) else None
         if not isinstance(token, str) or not token:
             raise GitHubError(f"GitHub returned no installation token for installation {installation_id}")
-        return token
+        named = body.get("repositories")
+        full_names = frozenset(
+            r["full_name"].lower()
+            for r in (named if isinstance(named, list) else [])
+            if isinstance(r, dict) and isinstance(r.get("full_name"), str)
+        )
+        return InstallationToken(token, full_names)
 
     def app_login(self) -> str:
         """The GitHub App's own bot login, `<slug>[bot]`. The client must hold the app's JWT."""

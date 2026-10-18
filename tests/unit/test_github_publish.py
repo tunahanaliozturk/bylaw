@@ -368,13 +368,21 @@ def test_with_a_fixed_bot_login_another_bot_s_thread_comment_is_not_trusted() ->
 @respx.mock
 def test_an_installation_token_is_scoped_to_the_repositories_and_permissions_asked_for() -> None:
     route = respx.post(f"{API}/app/installations/7/access_tokens").mock(
-        return_value=httpx.Response(201, json={"token": "ghs_scoped", "expires_at": "2026-10-18T13:00:00Z"})
+        return_value=httpx.Response(
+            201,
+            json={
+                "token": "ghs_scoped",
+                "expires_at": "2026-10-18T13:00:00Z",
+                "repositories": [{"id": 1, "full_name": "Acme/App"}],
+            },
+        )
     )
 
     with GitHubClient("jwt") as client:
         token = client.installation_token(7, ["app"], {"contents": "read"})
 
-    assert token == "ghs_scoped"  # noqa: S105 - a fake token
+    assert token.token == "ghs_scoped"  # noqa: S105 - a fake token
+    assert token.repositories == frozenset({"acme/app"})
     assert route.calls.last.request.headers["Authorization"] == "Bearer jwt"
     assert json.loads(route.calls.last.request.content) == {
         "repositories": ["app"],
@@ -412,3 +420,13 @@ def test_a_file_on_the_default_branch_is_read_without_a_ref() -> None:
         assert client.file_text("acme/.github", ".bylaw.toml", None) == "max_comments = 3\n"
 
     assert "ref" not in route.calls.last.request.url.params
+
+
+@respx.mock
+def test_a_token_answer_that_names_no_repositories_names_none() -> None:
+    respx.post(f"{API}/app/installations/7/access_tokens").mock(
+        return_value=httpx.Response(201, json={"token": "ghs_any"})
+    )
+
+    with GitHubClient("jwt") as client:
+        assert client.installation_token(7, ["app"], {"contents": "read"}).repositories == frozenset()
