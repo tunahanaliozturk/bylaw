@@ -134,9 +134,15 @@ quote_trackers = false
 
 The summary then shows, for work items, only the criterion keys (`PROJ-123/AC-2`), their status and the
 code and test locations: no title, no criterion text and no reviewer note. The reviewer still reads the
-full text, so the review itself does not get worse. What this does not cover: a finding the model writes
+full text, so the review itself does not get worse. The hidden review memory at the end of the summary
+leaves out the same text, so it does not hide there either. What this does not cover: a finding the model writes
 in its own words can still paraphrase a criterion. [ADR 0014](adr/0014-tracker-requirements.md) explains
 the trade-off.
+
+Set it before the first review that names a private work item. GitHub keeps the edit history of a
+comment, and bylaw edits one summary comment in place, so switching to `false` later hides the text from
+the current summary but not from its earlier revisions. Delete the summary comment (bylaw writes a new
+one on the next run) if old revisions must go.
 
 Work item text also goes to the model provider, as issue text does ([privacy.md](privacy.md)).
 

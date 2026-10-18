@@ -240,7 +240,7 @@ def _remember(  # noqa: PLR0913 - two callers, every argument is a distinct inpu
         inputs=inputs_key(context),
         files={path: keys[path] for path in sorted(plan.carried | read)},
         findings=(*fresh.findings, *carried_findings),
-        criteria=tuple(c for c, _ in criteria),
+        criteria=_unquoted(context, tuple(c for c, _ in criteria)),
         scope_creep=(*fresh.scope_creep, *carried_creep),
         criteria_since={c.criterion: since for c, since in criteria},
         tokens=spent + used,
@@ -261,8 +261,24 @@ def _held(context: ReviewContext, memory: ReviewMemory | None, notes: list[str],
         criteria=memory.criteria,
         scope_creep=tuple(s for s in memory.scope_creep if s.file in same),
     )
-    kept = memory.model_copy(update={"tokens": memory.tokens + used, "run_tokens": used})
+    kept = memory.model_copy(
+        update={
+            "tokens": memory.tokens + used,
+            "run_tokens": used,
+            "criteria": _unquoted(context, memory.criteria),
+        }
+    )
     return ModelRun(earlier, kept, tuple(notes), unreviewed=frozenset(keys) - same)
+
+
+def _unquoted(context: ReviewContext, criteria: tuple[CriterionResult, ...]) -> tuple[CriterionResult, ...]:
+    """The memory sits in the public summary, so a work item kept out of quotes leaves its inferred
+    criterion text and the reviewer's notes out of it too (ADR 0014). Keys and status are enough to carry."""
+    private = {r.source for r in context.requirements if not r.quoted}
+    return tuple(
+        c.model_copy(update={"text": None, "note": ""}) if c.criterion.rpartition("/")[0] in private else c
+        for c in criteria
+    )
 
 
 def _over_budget(spent: int, budget: int) -> str:
