@@ -1,11 +1,14 @@
 """Providers beyond the Anthropic and OpenAI APIs, through fake transports: nothing leaves the machine."""
 
+import contextlib
 import json
+import sys
 from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Any, cast
 
 import anthropic
+import azure.identity
 import google.auth
 import google.auth.exceptions
 import httpx2
@@ -16,8 +19,8 @@ from anthropic.lib.aws import _auth as aws_auth
 from bylaw import engine_anthropic
 from bylaw.engine import ReviewError, Usage, can_review, make_reviewer
 from bylaw.engine_anthropic import AnthropicReviewer
-from bylaw.engine_openai import ChatReviewer
-from tests.unit.test_engine import REVIEW, SECRET, _message, _streamed
+from bylaw.engine_openai import ChatReviewer, OpenAIReviewer
+from tests.unit.test_engine import REVIEW, SECRET, _message, _response, _streamed
 
 Handler = Callable[[httpx2.Request], httpx2.Response]
 LOCAL = "http://localhost:11434/v1"
@@ -467,4 +470,156 @@ def test_keys_for_other_providers_never_reach_vertex(monkeypatch: pytest.MonkeyP
 
     _claude(handler, "vertex").review("s", "u")
 
+    assert SECRET not in str(sent[0].headers)
+
+
+@pytest.fixture
+def entra(monkeypatch: pytest.MonkeyPatch) -> None:
+    """DefaultAzureCredential without an Azure account: the token names the scope it was asked for."""
+    monkeypatch.setattr(azure.identity, "DefaultAzureCredential", object)
+    monkeypatch.setattr(
+        azure.identity, "get_bearer_token_provider", lambda _credential, *scopes: lambda: f"entra:{scopes[0]}"
+    )
+
+
+@pytest.fixture
+def foundry(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ANTHROPIC_FOUNDRY_RESOURCE", "my-resource")
+
+
+@pytest.mark.usefixtures("foundry")
+def test_foundry_sends_the_foundry_key_to_the_resource_with_structured_output(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ANTHROPIC_FOUNDRY_API_KEY", "foundry-key")
+    handler, sent = _claude_replies(json.dumps(REVIEW))
+
+    result = _claude(handler, "foundry").review("system text", "user text")
+
+    assert result.criteria[0].criterion == "issue#1/AC-1"
+    request = sent[0]
+    assert (request.url.host, request.url.path) == (
+        "my-resource.services.ai.azure.com",
+        "/anthropic/v1/messages",
+    )
+    assert request.headers["api-key"] == "foundry-key"
+    body = json.loads(request.content)
+    assert body["model"] == "claude-opus-5-5"
+    assert body["output_config"]["format"]["type"] == "json_schema"
+    assert "fallbacks" not in body
+
+
+@pytest.mark.usefixtures("foundry", "entra")
+def test_foundry_without_a_key_signs_in_with_entra_id() -> None:
+    handler, sent = _claude_replies(json.dumps(REVIEW))
+
+    _claude(handler, "foundry").review("s", "u")
+
+    assert sent[0].headers["authorization"] == "Bearer entra:https://ai.azure.com/.default"
+    assert "api-key" not in sent[0].headers
+
+
+@pytest.mark.usefixtures("entra")
+def test_foundry_without_a_resource_is_a_clear_review_error() -> None:
+    with pytest.raises(ReviewError, match="ANTHROPIC_FOUNDRY_RESOURCE"):
+        make_reviewer("foundry", None, None, None)
+
+
+@pytest.mark.usefixtures("foundry")
+def test_foundry_without_a_key_or_the_extra_names_both(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setitem(sys.modules, "azure.identity", None)
+
+    with pytest.raises(ReviewError, match=r"ANTHROPIC_FOUNDRY_API_KEY.*bylaw\[azure\]"):
+        make_reviewer("foundry", None, None, None)
+
+
+@pytest.fixture
+def azure_openai(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", "https://my-resource.openai.azure.com/")
+
+
+def _azure(handler: Handler, model: str | None = "review-deployment") -> OpenAIReviewer:
+    http = openai.DefaultHttpxClient(transport=httpx2.MockTransport(handler))
+    reviewer = make_reviewer("azure-openai", model, None, None, http_client=http)
+    assert isinstance(reviewer, OpenAIReviewer)
+    return reviewer
+
+
+@pytest.mark.usefixtures("azure_openai")
+def test_azure_openai_calls_the_v1_responses_endpoint_of_the_resource(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("AZURE_OPENAI_API_KEY", "azure-key")
+    handler, sent = _replies(httpx2.Response(200, json=_response(json.dumps(REVIEW))))
+
+    result = _azure(handler).review("sys", "usr")
+
+    assert result.findings[0].severity == "high"
+    assert str(sent[0].url) == "https://my-resource.openai.azure.com/openai/v1/responses"
+    assert sent[0].headers["authorization"] == "Bearer azure-key"
+    body = json.loads(sent[0].content)
+    assert body["model"] == "review-deployment"
+    assert body["text"]["format"]["type"] == "json_schema"
+    assert body["store"] is False
+
+
+@pytest.mark.usefixtures("azure_openai", "entra")
+def test_azure_openai_without_a_key_signs_in_with_entra_id() -> None:
+    handler, sent = _replies(httpx2.Response(200, json=_response(json.dumps(REVIEW))))
+
+    _azure(handler).review("s", "u")
+
+    assert sent[0].headers["authorization"] == "Bearer entra:https://ai.azure.com/.default"
+
+
+@pytest.mark.usefixtures("entra")
+def test_azure_openai_needs_a_deployment_and_an_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
+    with pytest.raises(ReviewError, match="AZURE_OPENAI_ENDPOINT"):
+        make_reviewer("azure-openai", "review-deployment", None, None)
+    monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", "https://my-resource.openai.azure.com")
+    with pytest.raises(ReviewError, match="--model"):
+        make_reviewer("azure-openai", None, None, None)
+
+
+@pytest.mark.usefixtures("azure_openai", "entra")
+def test_an_azure_openai_error_names_azure_and_the_status() -> None:
+    handler, _ = _replies(
+        httpx2.Response(404, json={"error": {"code": "DeploymentNotFound", "message": "x"}})
+    )
+
+    with pytest.raises(ReviewError) as error:
+        _azure(handler).review("s", "u")
+
+    assert str(error.value) == "Azure OpenAI returned 404 (DeploymentNotFound)"
+
+
+@pytest.mark.usefixtures("azure_openai")
+def test_an_entra_sign_in_that_fails_is_a_review_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    def unavailable() -> str:
+        raise azure.identity.CredentialUnavailableError("no Azure credential")
+
+    monkeypatch.setattr(azure.identity, "DefaultAzureCredential", object)
+    monkeypatch.setattr(azure.identity, "get_bearer_token_provider", lambda *_args: unavailable)
+    handler, sent = _replies(httpx2.Response(200, json=_response(json.dumps(REVIEW))))
+
+    with pytest.raises(ReviewError, match="Azure OpenAI"):
+        _azure(handler).review("s", "u")
+
+    assert sent == []
+
+
+@pytest.mark.usefixtures("azure_openai", "foundry", "entra")
+@pytest.mark.parametrize("provider", ["foundry", "azure-openai"])
+def test_keys_for_other_providers_never_reach_azure(monkeypatch: pytest.MonkeyPatch, provider: str) -> None:
+    for name in ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "BYLAW_API_KEY", "AWS_BEARER_TOKEN_BEDROCK"):
+        monkeypatch.setenv(name, SECRET)
+    handler, sent = _replies(
+        httpx2.Response(200, json=_response(json.dumps(REVIEW))), httpx2.Response(200, json=_message("{}"))
+    )
+    http = anthropic.DefaultHttpxClient(transport=httpx2.MockTransport(_streamed(handler)))
+
+    with contextlib.suppress(ReviewError):
+        make_reviewer(provider, "review-deployment", None, None, http_client=http).review("s", "u")
+
+    assert sent
     assert SECRET not in str(sent[0].headers)

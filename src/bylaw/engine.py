@@ -12,11 +12,13 @@ from pydantic import BaseModel, ConfigDict, ValidationError
 
 from bylaw.model import Category, CriterionStatus, ReviewResult, Severity
 
-PROVIDERS = ("anthropic", "openai", "bedrock", "vertex", "openai-compatible")
+PROVIDERS = ("anthropic", "openai", "bedrock", "vertex", "foundry", "azure-openai", "openai-compatible")
 _KEY_VARIABLES = {"anthropic": "ANTHROPIC_API_KEY", "openai": "OPENAI_API_KEY"}
 # A local server needs no key, and a cloud provider authenticates through its own credential chain (an AWS
 # profile or role, for one), which bylaw cannot see without calling it. Neither stops the model review.
-_NO_KEY_NEEDED = frozenset({"bedrock", "vertex", "openai-compatible"})
+_NO_KEY_NEEDED = frozenset({"bedrock", "vertex", "foundry", "azure-openai", "openai-compatible"})
+# The scope Microsoft documents for Entra ID tokens to Foundry and Azure OpenAI.
+_AZURE_AI_SCOPE = "https://ai.azure.com/.default"
 
 
 class ReviewError(Exception):
@@ -99,7 +101,7 @@ def can_review(provider: str) -> bool:
     return provider in _NO_KEY_NEEDED or api_key_for(provider) is not None
 
 
-def make_reviewer(  # noqa: PLR0913 - the base URL and the HTTP client are optional
+def make_reviewer(  # noqa: PLR0911, PLR0913 - a branch per provider; the base URL and client are optional
     provider: str,
     model: str | None,
     effort: str | None,
@@ -125,6 +127,10 @@ def make_reviewer(  # noqa: PLR0913 - the base URL and the HTTP client are optio
         from bylaw.engine_anthropic import vertex_reviewer  # noqa: PLC0415 - load one SDK only
 
         return vertex_reviewer(model, effort, http_client)
+    if provider == "foundry":
+        from bylaw.engine_anthropic import foundry_reviewer  # noqa: PLC0415 - load one SDK only
+
+        return foundry_reviewer(model, effort, http_client)
     import openai  # noqa: PLC0415 - load one SDK only
 
     from bylaw.engine_openai import ChatReviewer, OpenAIReviewer  # noqa: PLC0415
@@ -132,6 +138,10 @@ def make_reviewer(  # noqa: PLR0913 - the base URL and the HTTP client are optio
     if provider == "openai":
         client = openai.OpenAI(api_key=api_key, http_client=http_client, max_retries=3)
         return OpenAIReviewer(client=client, model=_named(model, provider), effort=effort)
+    if provider == "azure-openai":
+        from bylaw.engine_openai import azure_reviewer  # noqa: PLC0415
+
+        return azure_reviewer(_named(model, provider), effort, http_client)
     if provider == "openai-compatible":
         if not base_url:
             raise ReviewError("--base-url is required with the openai-compatible provider")
@@ -141,6 +151,17 @@ def make_reviewer(  # noqa: PLR0913 - the base URL and the HTTP client are optio
         )
         return ChatReviewer(client=local, model=_named(model, provider), effort=effort)
     raise ReviewError(f"unknown provider {provider!r}; use one of {', '.join(PROVIDERS)}")
+
+
+def entra_token_provider(key_variable: str) -> Callable[[], str]:
+    """Microsoft Entra ID tokens from DefaultAzureCredential: az login, a managed identity, workload identity
+    or a service principal in AZURE_CLIENT_ID, AZURE_TENANT_ID and AZURE_CLIENT_SECRET."""
+    try:
+        from azure.identity import DefaultAzureCredential, get_bearer_token_provider  # noqa: PLC0415
+    except ImportError as error:
+        extra = "install the azure extra for Microsoft Entra ID: pip install 'bylaw[azure]'"
+        raise ReviewError(f"set {key_variable}, or {extra}") from error
+    return get_bearer_token_provider(DefaultAzureCredential(), _AZURE_AI_SCOPE)
 
 
 def _named(model: str | None, provider: str) -> str:

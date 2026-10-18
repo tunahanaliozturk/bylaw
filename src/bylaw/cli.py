@@ -36,6 +36,11 @@ from bylaw.pull_review import check, review_pull_request, with_model_review
 from bylaw.source import SourceError
 from bylaw.validate import Validated, validate
 
+_MODEL_HELP = (
+    "model name, or the deployment name on azure-openai; defaults to claude-opus-5-5 for the Claude "
+    "providers (anthropic.claude-opus-5-5 on bedrock) and is required for the others"
+)
+
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -76,8 +81,8 @@ def _parser() -> argparse.ArgumentParser:
     source.add_argument("--pr", type=int, help="pull request number")
     source.add_argument("--context", help="ReviewContext JSON from `bylaw context`")
     run.add_argument("--repo", help="owner/name; defaults to GITHUB_REPOSITORY")
-    run.add_argument("--provider", choices=PROVIDERS, default="anthropic")
-    run.add_argument("--model", help="model name; defaults to claude-opus-5-5 for anthropic")
+    run.add_argument("--provider", choices=PROVIDERS, default="anthropic", help="see docs/providers.md")
+    run.add_argument("--model", help=_MODEL_HELP)
     run.add_argument("--effort", help="reasoning effort passed to the model (anthropic default: high)")
     run.add_argument("--base-url", help="server URL for openai-compatible, such as http://localhost:11434/v1")
     run.add_argument("--post", action="store_true", help="publish to the pull request (needs --pr)")
@@ -104,8 +109,8 @@ def _add_eval(evaluation: argparse.ArgumentParser) -> None:
     answer = go.add_mutually_exclusive_group(required=True)
     answer.add_argument("--answers", help="directory of <id>.json results a host model wrote")
     answer.add_argument("--no-model", action="store_true", help="bylaw's own checks only, no reviewer")
-    answer.add_argument("--provider", choices=PROVIDERS)
-    go.add_argument("--model", help="model name; defaults to claude-opus-5-5 for anthropic")
+    answer.add_argument("--provider", choices=PROVIDERS, help="see docs/providers.md")
+    go.add_argument("--model", help=_MODEL_HELP)
     go.add_argument("--effort", help="reasoning effort passed to the model")
     go.add_argument("--base-url", help="server URL for openai-compatible, such as http://localhost:11434/v1")
     go.add_argument("--max-cost", type=float, help="stop starting new cases once this many USD are spent")
