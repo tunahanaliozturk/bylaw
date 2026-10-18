@@ -324,3 +324,13 @@ def test_a_pull_request_that_names_an_allowed_jira_issue_gets_its_criteria() -> 
     assert [(r.source, [c.text for c in r.criteria]) for r in context.requirements] == [
         ("PROJ-123", ["Signs in with SSO"])
     ]
+
+
+def test_a_pull_request_from_an_untrusted_author_gets_no_work_items() -> None:
+    config = '[linear]\nteams = ["ENG"]\n'
+    source = FakeSource(base={".bylaw.toml": config}, title="ENG-7: signup", author_trusted=False)
+
+    context = build_context(source, env={"LINEAR_API_KEY": "k"})
+
+    assert context.requirements == ()
+    assert any(note.startswith("ENG-7 was not read") for note in context.notes)

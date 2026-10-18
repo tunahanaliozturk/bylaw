@@ -16,6 +16,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 - Linear issues as requirements. An identifier such as `ENG-42` from a team listed under `[linear] teams` brings in that issue's title and Markdown description, with `LINEAR_API_KEY` in the environment (the Action's `linear-api-key` input). Only keys of listed projects and teams count as references, so `UTF-8` or `SHA-256` in a description never does.
 - `quote_trackers = false` in `.bylaw.toml` keeps work item text out of the summary comment: for Jira, Azure Boards and Linear requirements it shows only the criterion keys, their status and where they are met, so a public pull request does not quote a private tracker (ADR 0014).
 - Setup for each tracker, the Action inputs and what a left-out work item's note means: [docs/trackers.md](docs/trackers.md).
+- Work items are read only for pull requests by owners, members and collaborators; for anyone else a note says they were not read. `trackers_for_all_authors = true` reads them for every author. The brief marks a work item kept out of quotes `Quotable: no` and tells the reviewer to name it by its labels only (ADR 0014).
 
 ## 0.2.0 - 2026-10-18
 

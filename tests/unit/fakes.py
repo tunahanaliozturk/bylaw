@@ -16,9 +16,12 @@ class FakeSource:
     closing: tuple[IssueRef, ...] = ()
     issues: dict[IssueRef, Issue] = field(default_factory=dict)
     file_count: int | None = None
+    author_trusted: bool | None = None
 
     def info(self) -> ChangeInfo:
-        return ChangeInfo("base0", "head0", self.title, self.body, self.commits, self.file_count)
+        return ChangeInfo(
+            "base0", "head0", self.title, self.body, self.commits, self.file_count, self.author_trusted
+        )
 
     def changed_files(self) -> tuple[ChangedFile, ...]:
         return self.files

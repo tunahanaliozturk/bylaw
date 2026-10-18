@@ -114,7 +114,10 @@ def build_context(source: RepoSource, env: Mapping[str, str] | None = None) -> R
     )
     # Work items are referenced from the same text as issues, and from the title, where keys often sit.
     work_items, work_item_notes = read_work_items(
-        [info.title, info.body, *info.commit_messages], config, os.environ if env is None else env
+        [info.title, info.body, *info.commit_messages],
+        config,
+        os.environ if env is None else env,
+        author_trusted=info.author_trusted is not False,
     )
     return ReviewContext(
         base_sha=info.base_sha,

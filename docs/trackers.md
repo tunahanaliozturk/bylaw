@@ -13,6 +13,12 @@ Each tracker is off until you turn it on, and three things have to be in place:
 3. A reference in the pull request **title, body or a commit message**: `PROJ-123` for Jira, `AB#123`
    for Azure Boards, `ENG-123` for Linear.
 
+Work items are read only for pull requests whose author is an owner, member or collaborator of the
+repository. Anyone else could name allowed keys to have their text read, so for them a note says the
+work items were not read. If outside contributors should get work item criteria too, and the tracker
+text may be read for them, add `trackers_for_all_authors = true`. A local review of a branch
+(`bylaw context --base`) has no author and always reads them.
+
 Why the allow list: tracker text is often private while the pull request may be public, and the summary
 quotes the criteria it checks. The list says which projects the maintainers agreed may be read, whatever
 else the token can reach ([ADR 0014](adr/0014-tracker-requirements.md)).
@@ -119,7 +125,9 @@ Store the tokens as repository or organisation secrets and pass them as inputs:
 ```
 
 Pass only the ones you use. A `pull_request` run from a fork gets no secrets, so its work items are left
-out with a note; the [`pull_request_target` recipe](recipes/pull-request-target.yml) covers forks.
+out with a note. Under the [`pull_request_target` recipe](recipes/pull-request-target.yml) the secrets are
+there, but a fork author is usually not a member, so work items are still not read for them unless
+`trackers_for_all_authors = true`.
 
 From a terminal, set the same variables before `bylaw context` or `bylaw review --pr`.
 
@@ -137,7 +145,10 @@ code and test locations: no title, no criterion text and no reviewer note. The r
 full text, so the review itself does not get worse. The hidden review memory at the end of the summary
 leaves out the same text, so it does not hide there either. What this does not cover: a finding the model writes
 in its own words can still paraphrase a criterion. [ADR 0014](adr/0014-tracker-requirements.md) explains
-the trade-off.
+the trade-off. In short, `quote_trackers = false` guards against accidental quoting. It is not a guard
+against a determined pull request author, whose diff can ask the model to repeat a work item, or against
+the model paraphrasing what it read; the brief tells the model not to, which is a request, not a
+guarantee. Keeping outside authors away from the text is the job of the author check above.
 
 Set it before the first review that names a private work item. GitHub keeps the edit history of a
 comment, and bylaw edits one summary comment in place, so switching to `false` later hides the text from

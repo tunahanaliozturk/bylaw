@@ -125,7 +125,10 @@ def _requirement(requirement: Requirement) -> str:
         criteria = f"- none listed. Derive up to 5 testable criteria from {source} and label them {labels}."
     elif not criteria:
         criteria = "- (none listed)"
-    return f"{requirement.source}: {requirement.title}\nCriteria:\n{criteria}\nText:\n{requirement.text}"
+    # ADR 0014: the reviewer reads a private work item in full but must not repeat it in public prose.
+    quotable = "" if requirement.quoted else "Quotable: no\n"
+    head = f"{requirement.source}: {requirement.title}\n{quotable}"
+    return f"{head}Criteria:\n{criteria}\nText:\n{requirement.text}"
 
 
 def _known(finding: Finding) -> str:
