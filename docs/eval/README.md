@@ -62,6 +62,13 @@ bylaw eval score --runs runs/opus --only py-sqli --label "claude-opus-5-5, 2026-
 
 To cap the spend, add `--max-cost <usd> --input-price <usd> --output-price <usd>`: no new case starts once the saved runs in that directory cost that much. A hard limit for the whole account still belongs in the provider's console.
 
+Every provider in [providers.md](../providers.md) runs the set the same way, with its own credentials in the environment, and each saved run records `provider:model:effort` as its reviewer. Bedrock, Vertex AI and Foundry bill at their own prices, so give those on the command line. A local model costs nothing and needs no key, so it is the cheapest way to try the set; write the model and the machine into the label, because a local result depends on both:
+
+```
+bylaw eval run --provider openai-compatible --base-url http://localhost:11434/v1 --model qwen3:4b --out runs/qwen3-4b
+bylaw eval score --runs runs/qwen3-4b --label "qwen3:4b on Ollama, <CPU or GPU>, <date>"
+```
+
 Then run the whole set into the same directory. A rerun skips cases that already have a result and retries only the failed ones, so an interrupted run never pays twice. Each saved result records the reviewer and a hash of the case: a rerun with another model into the same directory is refused, and a case whose files changed is reviewed again. `score --only` scores only the matching cases, tokens and latency included.
 
 Host models (Claude Code, Codex) review without an API key: `bylaw eval prepare --out host` writes `<id>.brief.txt` and `<id>.context.json` per case, the host writes `<id>.json` for each brief in the `bylaw schema` format, and `bylaw eval run --answers host --out runs/host` scores them like any other run.

@@ -18,3 +18,5 @@ Teams that cannot send code to a public API need Bedrock, Vertex, Azure or a loc
 ## Notes
 
 Local models often lack strict structured output; the fallback validates and retries.
+
+PRV-5 status: `bylaw eval run` takes every provider, records `provider:model:effort` as the reviewer and keeps `--max-cost` for all of them. No report is committed yet. The no-cost run with a small local model through `openai-compatible` needs a machine with Ollama (or vLLM or LM Studio); the cloud runs need accounts and are paid, so they wait for a maintainer with credentials.
