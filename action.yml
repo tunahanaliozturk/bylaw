@@ -42,6 +42,10 @@ inputs:
     description: Azure DevOps personal access token with Work Items (Read). Used only when .bylaw.toml has an [azure_boards] table. Pass it from a secret.
     required: false
     default: ""
+  linear-api-key:
+    description: Linear personal API key with read access. Used only when .bylaw.toml has a [linear] table. Pass it from a secret.
+    required: false
+    default: ""
 
 runs:
   using: composite
@@ -62,6 +66,7 @@ runs:
         JIRA_EMAIL: ${{ inputs.jira-email }}
         JIRA_API_TOKEN: ${{ inputs.jira-api-token }}
         AZURE_DEVOPS_TOKEN: ${{ inputs.azure-devops-token }}
+        LINEAR_API_KEY: ${{ inputs.linear-api-key }}
         BYLAW_PR: ${{ github.event.pull_request.number }}
       run: |
         args=(review --pr "$BYLAW_PR" --post --provider "$BYLAW_PROVIDER" --fail-on "$BYLAW_FAIL_ON")
