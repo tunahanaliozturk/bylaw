@@ -189,6 +189,29 @@ def test_golangci_v1_disable_all_keeps_only_the_enabled_linters() -> None:
     assert rules.select == ("gosec",)
 
 
+def test_nested_yaml_aliases_are_ignored_instead_of_expanded_into_text() -> None:
+    levels = ["a: &a [x, x, x, x, x, x, x, x, x, x]"]
+    for previous, name in zip("abcde", "bcdef", strict=True):
+        levels.append(f"{name}: &{name} [{', '.join([f'*{previous}'] * 10)}]")
+    text = "\n".join(
+        [*levels, "linters:", "  disable-all: true", "  enable: [gosec, *f]", "  disable: *f", ""]
+    )
+
+    rules = _parsed(".golangci.yml", text)
+
+    assert (rules.select, rules.ignore) == (("gosec",), ())
+
+
+def test_values_of_an_unexpected_type_are_skipped_rather_than_fatal() -> None:
+    eslint = _parsed(
+        ".eslintrc.yml", "rules:\n  a: [[error]]\n  b: {level: error}\noverrides: [{files: [[x]]}]\n"
+    )
+    golangci = _parsed(".golangci.yml", "version: [2]\nlinters:\n  default: [all]\n  enable: gosec\n")
+
+    assert (eslint.select, eslint.ignore, eslint.per_file) == ((), (), ())
+    assert "gosec" not in golangci.select
+
+
 def test_golangci_v2_reads_the_default_set_by_name() -> None:
     none = _parsed(".golangci.yml", 'version: "2"\nlinters:\n  default: none\n  enable: [gosec]\n')
     everything = _parsed(".golangci.yml", 'version: "2"\nlinters:\n  default: all\n  disable: [lll]\n')
