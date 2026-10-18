@@ -1,0 +1,80 @@
+{
+  "case_id": "py-req-untested",
+  "result": {
+    "findings": [
+      {
+        "file": "app/export.py",
+        "line_start": 13,
+        "line_end": 13,
+        "category": "bug",
+        "severity": "medium",
+        "message": "Rows are indexed by column name, which only works when the caller has set `connection.row_factory = sqlite3.Row`; with a default connection, `row[\"id\"]` raises `TypeError` because rows are plain tuples. The function's signature accepts any `sqlite3.Connection`, so this precondition is hidden.",
+        "suggestion": "        writer.writerow([row[0], row[1], row[2]])",
+        "evidence": null
+      },
+      {
+        "file": "app/export.py",
+        "line_start": 13,
+        "line_end": 13,
+        "category": "security",
+        "severity": "medium",
+        "message": "User-controlled email and name values are written unescaped to a file meant to be opened in a spreadsheet. A name starting with `=`, `+`, `-` or `@` is evaluated as a formula when support staff open the file (CSV/formula injection).",
+        "suggestion": null,
+        "evidence": null
+      },
+      {
+        "file": "tests/test_export.py",
+        "line_start": 12,
+        "line_end": 12,
+        "category": "requirement",
+        "severity": "medium",
+        "message": "The test creates a single user, so it cannot show that users are written in id order. The criterion requires a test that proves the ordering, for example by inserting several users out of order.",
+        "suggestion": null,
+        "evidence": "docs/specs/export.md/AC-2"
+      }
+    ],
+    "criteria": [
+      {
+        "criterion": "docs/specs/export.md/AC-1",
+        "status": "met",
+        "text": null,
+        "code": [
+          {
+            "file": "app/export.py",
+            "line": 13
+          }
+        ],
+        "tests": [
+          {
+            "file": "tests/test_export.py",
+            "line": 8
+          }
+        ],
+        "note": ""
+      },
+      {
+        "criterion": "docs/specs/export.md/AC-2",
+        "status": "partial",
+        "text": null,
+        "code": [
+          {
+            "file": "app/export.py",
+            "line": 11
+          }
+        ],
+        "tests": [],
+        "note": "The query orders by id, but no test proves the order: the only test inserts a single user."
+      }
+    ],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 3,
+  "seconds": 10.510899699991569,
+  "input_tokens": 4941,
+  "output_tokens": 1069,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "39de344e2f4f40c3f09cbb0eaa1fead2fb7c135931af438e557015d12c2c1a92",
+  "dropped_findings": 0
+}

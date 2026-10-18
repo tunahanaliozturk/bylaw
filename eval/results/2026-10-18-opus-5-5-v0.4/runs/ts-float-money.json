@@ -1,0 +1,28 @@
+{
+  "case_id": "ts-float-money",
+  "result": {
+    "findings": [
+      {
+        "file": "src/cart.ts",
+        "line_start": 28,
+        "line_end": 28,
+        "category": "rule",
+        "severity": "medium",
+        "message": "`totalWithTax` turns the cents subtotal into a floating-point amount in currency units and multiplies it by 1.18. That breaks the integer-cents rule and gives rounding errors such as 11.799999999999999, and callers that expect cents will be off by a factor of 100.",
+        "suggestion": "  return Math.round((subtotalCents(cart) * 118) / 100);",
+        "evidence": "CONTRIBUTING.md:7"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": 6.083402999967802,
+  "input_tokens": 4147,
+  "output_tokens": 507,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "286906407b21ff7bf4b0362b4431a089f705eca8e46356ae5e9a379fa0b814c0",
+  "dropped_findings": 0
+}

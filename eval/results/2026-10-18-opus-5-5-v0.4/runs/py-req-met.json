@@ -1,0 +1,79 @@
+{
+  "case_id": "py-req-met",
+  "result": {
+    "findings": [],
+    "criteria": [
+      {
+        "criterion": "docs/specs/display-name.md/AC-1",
+        "status": "met",
+        "text": null,
+        "code": [
+          {
+            "file": "app/users.py",
+            "line": 38
+          },
+          {
+            "file": "app/users.py",
+            "line": 42
+          }
+        ],
+        "tests": [
+          {
+            "file": "tests/test_users.py",
+            "line": 30
+          }
+        ],
+        "note": ""
+      },
+      {
+        "criterion": "docs/specs/display-name.md/AC-2",
+        "status": "met",
+        "text": null,
+        "code": [
+          {
+            "file": "app/users.py",
+            "line": 40
+          },
+          {
+            "file": "app/users.py",
+            "line": 41
+          }
+        ],
+        "tests": [
+          {
+            "file": "tests/test_users.py",
+            "line": 39
+          }
+        ],
+        "note": ""
+      },
+      {
+        "criterion": "docs/specs/display-name.md/AC-3",
+        "status": "met",
+        "text": null,
+        "code": [],
+        "tests": [
+          {
+            "file": "tests/test_users.py",
+            "line": 30
+          },
+          {
+            "file": "tests/test_users.py",
+            "line": 39
+          }
+        ],
+        "note": ""
+      }
+    ],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 0,
+  "seconds": 5.4852997999987565,
+  "input_tokens": 5168,
+  "output_tokens": 511,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "7a2636df3b8c628ccc3ed9cdd52fd92abbff6af98914161cc4c4e85133a4f111",
+  "dropped_findings": 0
+}

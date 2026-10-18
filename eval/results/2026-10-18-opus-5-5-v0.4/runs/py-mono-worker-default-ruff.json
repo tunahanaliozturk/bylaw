@@ -1,0 +1,28 @@
+{
+  "case_id": "py-mono-worker-default-ruff",
+  "result": {
+    "findings": [
+      {
+        "file": "packages/worker/worker/jobs.py",
+        "line_start": 21,
+        "line_end": 24,
+        "category": "bug",
+        "severity": "high",
+        "message": "`pending` uses a mutable default list. It is created once and shared by every call that omits the argument, so receipts from earlier calls build up across jobs. That leads to duplicate or wrong receipts and unbounded growth in a long-running worker.",
+        "suggestion": "def queue_receipt(order_id: int, pending: list[int] | None = None) -> list[int]:\n    \"\"\"Add an order to the receipts still to send and return them.\"\"\"\n    if pending is None:\n        pending = []\n    pending.append(order_id)\n    return pending",
+        "evidence": "ruff:B006"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": 5.7199743000091985,
+  "input_tokens": 4476,
+  "output_tokens": 511,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "d4d203a5ebe2a3174346b19c9f044042902b2605d9dc238396474a6888ad15af",
+  "dropped_findings": 0
+}

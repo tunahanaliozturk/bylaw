@@ -1,0 +1,58 @@
+{
+  "case_id": "py-path-traversal",
+  "result": {
+    "findings": [
+      {
+        "file": "app/files.py",
+        "line_start": 22,
+        "line_end": 22,
+        "category": "security",
+        "severity": "critical",
+        "message": "`read_upload` joins a client-supplied name onto `UPLOAD_DIR` without validation. Names such as `../../etc/passwd`, or an absolute path (which replaces the base entirely in pathlib), let any caller read arbitrary files on the server.",
+        "suggestion": "    path = (UPLOAD_DIR / name).resolve()\n    if not path.is_relative_to(UPLOAD_DIR.resolve()) or not path.is_file():\n        raise FileNotFoundError(name)\n    return path.read_bytes()",
+        "evidence": null
+      },
+      {
+        "file": "app/web.py",
+        "line_start": 33,
+        "line_end": 36,
+        "category": "security",
+        "severity": "high",
+        "message": "The `download` handler never identifies the requesting user or checks that the requested file belongs to them. Any client can fetch any other user's uploads by guessing or enumerating names, for example `<user_id>.png` avatars.",
+        "suggestion": null,
+        "evidence": null
+      },
+      {
+        "file": "app/web.py",
+        "line_start": 36,
+        "line_end": 36,
+        "category": "bug",
+        "severity": "medium",
+        "message": "Decoding the file as UTF-8 raises `UnicodeDecodeError` for binary uploads such as the PNG avatars stored in the same directory. A missing or empty `file` parameter raises `FileNotFoundError` or `IsADirectoryError`. All of these surface as unhandled 500s instead of returning the bytes or a 404.",
+        "suggestion": null,
+        "evidence": null
+      },
+      {
+        "file": "app/web.py",
+        "line_start": 33,
+        "line_end": 36,
+        "category": "rule",
+        "severity": "low",
+        "message": "This new download behaviour ships without any test. The contributing guide requires a test for every change in behaviour.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:15"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 4,
+  "seconds": 11.44365619996097,
+  "input_tokens": 4489,
+  "output_tokens": 1134,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "8d887b679ae0f772a926850463c35121dc8dd9a1451dea60a8957831acf7fab5",
+  "dropped_findings": 0
+}

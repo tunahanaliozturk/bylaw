@@ -1,0 +1,38 @@
+{
+  "case_id": "py-tabs",
+  "result": {
+    "findings": [
+      {
+        "file": "app/users.py",
+        "line_start": 39,
+        "line_end": 39,
+        "category": "rule",
+        "severity": "low",
+        "message": "Indented with tabs where .editorconfig asks for spaces on 2 added lines, first at line 39.",
+        "suggestion": null,
+        "evidence": ".editorconfig:8"
+      },
+      {
+        "file": "app/users.py",
+        "line_start": 38,
+        "line_end": 38,
+        "category": "rule",
+        "severity": "low",
+        "message": "The new public `count` function adds behaviour, but the change includes no test for it. The contributing rules require a test with every change in behaviour.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:15"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": 4.84100529999705,
+  "input_tokens": 4306,
+  "output_tokens": 321,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "e7c223488697564b24f7d41a4da4eb12e6ee3346ae4074f97ae3cd64bd251e89",
+  "dropped_findings": 0
+}

@@ -1,0 +1,38 @@
+{
+  "case_id": "py-ledger-adr-own-connection",
+  "result": {
+    "findings": [
+      {
+        "file": "ledger/reports.py",
+        "line_start": 3,
+        "line_end": 3,
+        "category": "rule",
+        "severity": "medium",
+        "message": "`ledger/reports.py` now imports `sqlite3` and opens its own connection to run SQL. The accepted decision says only `ledger/store.py` opens connections and runs SQL, and that a query another module needs becomes a store function.",
+        "suggestion": null,
+        "evidence": "docs/adr/0002-sqlite-through-the-store-module.md:12"
+      },
+      {
+        "file": "ledger/reports.py",
+        "line_start": 17,
+        "line_end": 20,
+        "category": "rule",
+        "severity": "medium",
+        "message": "The `largest_entries` query is written inline in the reports module, bypassing the store. It should be a new function in `ledger/store.py` (for example `store.largest_entries(limit)`) that this report calls.",
+        "suggestion": null,
+        "evidence": "docs/adr/0002-sqlite-through-the-store-module.md:13"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 2,
+  "seconds": 4.411071599985007,
+  "input_tokens": 4261,
+  "output_tokens": 337,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "d3e12b59ebf0291d07bcf484bac90b8f963f83e39d05d2eb63e15a88b8f71cdb",
+  "dropped_findings": 0
+}

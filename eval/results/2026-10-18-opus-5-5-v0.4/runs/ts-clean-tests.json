@@ -1,0 +1,17 @@
+{
+  "case_id": "ts-clean-tests",
+  "result": {
+    "findings": [],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 0,
+  "seconds": 6.932465600024443,
+  "input_tokens": 4215,
+  "output_tokens": 484,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "044c0cf8c19fa4201cfdf75879d2d5e26799773e77d25466e2c9083f0c08787c",
+  "dropped_findings": 0
+}

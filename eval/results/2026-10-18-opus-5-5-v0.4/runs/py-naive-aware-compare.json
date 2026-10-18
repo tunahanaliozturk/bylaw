@@ -1,0 +1,28 @@
+{
+  "case_id": "py-naive-aware-compare",
+  "result": {
+    "findings": [
+      {
+        "file": "app/auth.py",
+        "line_start": 31,
+        "line_end": 31,
+        "category": "bug",
+        "severity": "high",
+        "message": "`datetime.now()` returns a naive local time. The previous code compared against `datetime.now(UTC)`, so `expires_at` is timezone-aware, and Python raises `TypeError` when comparing naive and aware datetimes. Every reset-token check will crash. Even with a naive `expires_at`, local time drifts from the UTC expiry by the server's offset and across DST changes, so tokens would expire early or late.",
+        "suggestion": "    return datetime.now(UTC) < expires_at",
+        "evidence": null
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": 5.661099900025874,
+  "input_tokens": 4138,
+  "output_tokens": 425,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "554ad50bf8251a4c76e0d0c3099d802b42e4eada4ba3a04e99ce653615be88c9",
+  "dropped_findings": 0
+}

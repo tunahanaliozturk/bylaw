@@ -1,0 +1,28 @@
+{
+  "case_id": "py-mono-api-sqli-ruff",
+  "result": {
+    "findings": [
+      {
+        "file": "packages/api/api/handlers.py",
+        "line_start": 24,
+        "line_end": 24,
+        "category": "security",
+        "severity": "critical",
+        "message": "`status` is interpolated straight into the SQL string, so a caller can inject arbitrary SQL. For example, `' OR '1'='1` returns every order. A value containing a quote also raises `sqlite3.OperationalError`, which breaks the rule that handlers never raise.",
+        "suggestion": "    rows = connection.execute(\"SELECT id FROM orders WHERE status = ?\", (status,)).fetchall()",
+        "evidence": "ruff:S608"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": 4.460525400005281,
+  "input_tokens": 4517,
+  "output_tokens": 411,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "05d79034fe1a5ea110e7bedea587d0fea23259a74977e54a0f756e4c8f362227",
+  "dropped_findings": 0
+}

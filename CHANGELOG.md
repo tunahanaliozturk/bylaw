@@ -4,6 +4,8 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## Unreleased
 
+## 0.4.0 - 2026-10-18
+
 - Line numbers in the brief and in validation count only newlines, as GitHub does, so a form feed or a U+2028 in a rule file, an ADR or an `.editorconfig` no longer shifts the lines after it.
 - The evaluation set has 57 cases: two new ones in `py-ledger`, a project with a superseded, an accepted and a proposed ADR. One change opens its own database connection against the accepted decision and is labelled with that decision's line; the other does the same work through the store and is clean.
 - Superseded, deprecated, rejected and proposed ADRs are not decisions. The status is read clause by clause with links removed, and the last clause that names a status decides: `Accepted, superseded by 0012` counts as superseded, while `Accepted. Supersedes 0003`, an adr-tools link such as `Supersedes [3. Keep the deprecated logger](...)` and `Not accepted` are read as what they say. Implemented, adopted and decided count as accepted, and a status history counts its last entry. A proposal is still under discussion, so a change is not held to it (ADR 0016).

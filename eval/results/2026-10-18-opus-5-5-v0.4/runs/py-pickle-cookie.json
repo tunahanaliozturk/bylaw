@@ -1,0 +1,48 @@
+{
+  "case_id": "py-pickle-cookie",
+  "result": {
+    "findings": [
+      {
+        "file": "app/web.py",
+        "line_start": 37,
+        "line_end": 37,
+        "category": "security",
+        "severity": "critical",
+        "message": "The `prefs` cookie is fully controlled by the client, and `pickle.loads` on it lets anyone run arbitrary code on the server with a crafted payload. Never unpickle untrusted input.",
+        "suggestion": null,
+        "evidence": null
+      },
+      {
+        "file": "app/web.py",
+        "line_start": 37,
+        "line_end": 37,
+        "category": "bug",
+        "severity": "medium",
+        "message": "When the cookie is absent, the default `\"\"` decodes to `b\"\"` and `pickle.loads(b\"\")` raises `EOFError`, so every request without the cookie fails with a server error. A malformed cookie also raises, and a value that is not a dict fails on `.get`, all instead of falling back to `\"light\"`.",
+        "suggestion": null,
+        "evidence": null
+      },
+      {
+        "file": "app/web.py",
+        "line_start": 35,
+        "line_end": 35,
+        "category": "rule",
+        "severity": "low",
+        "message": "The new `preferences` handler adds behaviour without any accompanying test.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:15"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 3,
+  "seconds": 7.850044800026808,
+  "input_tokens": 4318,
+  "output_tokens": 674,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "5e0f0fa01c01c5614e978d46637e1b8949029c74f94acbf7b59a37a3c8f83180",
+  "dropped_findings": 0
+}
