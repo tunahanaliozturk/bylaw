@@ -56,3 +56,18 @@ def test_an_unparsable_organisation_file_is_named_in_the_error() -> None:
 def test_an_invalid_repository_file_is_still_named_as_the_base_branch() -> None:
     with pytest.raises(ConfigError, match=r"\.bylaw\.toml on the base branch is invalid"):
         load_config("max_comments = 500\n", defaults=ORG)
+
+
+def test_the_app_reviews_only_trusted_same_repository_pull_requests_with_the_model_by_default() -> None:
+    assert (load_config(None).app.model_review, load_config(None).app.model_review_label) == ("trusted", None)
+
+
+def test_the_app_settings_can_open_the_model_review_to_all_or_to_a_label() -> None:
+    config = load_config('[app]\nmodel_review = "all"\nmodel_review_label = "bylaw: review"\n')
+
+    assert (config.app.model_review, config.app.model_review_label) == ("all", "bylaw: review")
+
+
+def test_an_unknown_app_model_review_value_is_refused() -> None:
+    with pytest.raises(ConfigError, match="base branch is invalid"):
+        load_config('[app]\nmodel_review = "everyone"\n')

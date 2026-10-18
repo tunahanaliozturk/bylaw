@@ -66,17 +66,21 @@ def inputs_key(context: ReviewContext) -> str:
     return _hash(json.dumps([version("bylaw"), rules, requirements, decisions]))
 
 
-def run_model_review(
+def run_model_review(  # noqa: PLR0913 - every argument is a distinct input
     context: ReviewContext,
     make_reviewer: Callable[[], Reviewer] | None,
     memory: ReviewMemory | None,
     *,
     incremental: bool,
     budget: int | None,
+    skipped: str | None = None,
 ) -> ModelRun:
-    """The model's result for the whole change, with the earlier run's answers for unchanged files."""
+    """The model's result for the whole change, with the earlier run's answers for unchanged files.
+
+    `skipped` says why there is no reviewer when it is not a missing key.
+    """
     if make_reviewer is None:
-        return _held(context, memory, ["The model review did not run: no API key is set."], 0)
+        return _held(context, memory, [skipped or "The model review did not run: no API key is set."], 0)
     spent = memory.tokens if memory else 0
     if budget is not None and spent >= budget:
         return _held(context, memory, [_over_budget(spent, budget)], 0)

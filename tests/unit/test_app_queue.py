@@ -257,3 +257,37 @@ def test_a_redelivered_older_event_that_replaced_a_newer_one_still_reviews_the_n
 
     assert outcomes == [Outcome.QUEUED, Outcome.SUPERSEDED, Outcome.DUPLICATE]
     assert ran == ["9@x", "5@a"]
+
+
+def test_a_label_on_a_reviewed_head_reviews_it_again_once() -> None:
+    async def scenario() -> list[Outcome]:
+        queue = ReviewQueue(Recorder())
+        async with queue.running():
+            outcomes = [queue.offer(_job("a"))]
+            await queue.join()
+            labelled = Job(installation_id=7, repo="acme/app", number=5, head_sha="a", label="bylaw: review")
+            outcomes.append(queue.offer(labelled))
+            await queue.join()
+            outcomes += [queue.offer(labelled), queue.offer(_job("a"))]
+        return outcomes
+
+    assert asyncio.run(scenario()) == [Outcome.QUEUED, Outcome.QUEUED, Outcome.DUPLICATE, Outcome.DUPLICATE]
+
+
+def test_one_installation_cannot_fill_the_queue_for_the_others() -> None:
+    async def scenario() -> list[Outcome]:
+        recorder = Recorder()
+        recorder.release.clear()
+        queue = ReviewQueue(recorder, workers=1, max_pending=10, max_pending_per_installation=2)
+        async with queue.running():
+            queue.offer(Job(installation_id=1, repo="busy/x", number=99, head_sha="x"))
+            await _wait_started(recorder)
+            flood = [
+                queue.offer(Job(installation_id=1, repo="busy/x", number=n, head_sha="a")) for n in (1, 2, 3)
+            ]
+            other = queue.offer(Job(installation_id=2, repo="calm/y", number=1, head_sha="a"))
+            recorder.release.set()
+            await queue.join()
+        return [*flood, other]
+
+    assert asyncio.run(scenario()) == [Outcome.QUEUED, Outcome.QUEUED, Outcome.BUSY, Outcome.QUEUED]
