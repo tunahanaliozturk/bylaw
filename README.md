@@ -17,7 +17,7 @@
 
 Most AI reviewers give general advice. bylaw reviews a pull request against what your repository already wrote down:
 
-- **Your rules.** `.editorconfig`, linter configs, `CONTRIBUTING.md`, `AGENTS.md`. Every rule finding cites the line it comes from.
+- **Your rules.** `.editorconfig`, linter configs, `CONTRIBUTING.md`, `AGENTS.md`, including a package's own in a monorepo. Every rule finding cites the line it comes from, or a linter rule id your configuration enables, such as `ruff:S608`.
 - **Your requirements.** The acceptance criteria in the issues the pull request closes and the specs it links, including what maintainers added in the issue's comments. An issue written as prose gets criteria inferred from its text, marked as such. The summary says which are met, partly met or missing, and flags changes nobody asked for.
 - **Security and bugs.** Injection, secrets, unsafe deserialisation, missing authorisation, and plain bugs.
 
@@ -90,7 +90,7 @@ bylaw review --context context.json   # prints the findings as JSON; set ANTHROP
 
 1. **Context.** bylaw reads the diff, the rule files and `.bylaw.toml` from the **base** branch (so a change cannot loosen its own review), and the issues and specs the change links.
 2. **Review.** A model reviews with a fixed brief and a strict output schema. Text from the pull request, its issues and specs is treated as data, never as instructions.
-3. **Validate.** Every finding must sit on a line the change adds, and every rule citation must point at a real line. Anything else is dropped before it can be posted.
+3. **Validate.** Every finding must sit on a line the change adds, and every rule citation must point at a real line of a rule that applies to the file, or at a linter rule id the configuration turns on for it. Anything else is dropped before it can be posted.
 4. **Post.** Inline comments for findings at or above the threshold, one summary comment with the requirement checklist. State lives in that summary, so there is no server and no database.
 
 The design and its trade-offs: [docs/design.md](https://github.com/tunahanaliozturk/bylaw/blob/main/docs/design.md) and the [ADRs](https://github.com/tunahanaliozturk/bylaw/tree/main/docs/adr/).
@@ -111,11 +111,13 @@ incremental = true              # on a new push, send the model only the files w
 pr_tokens = 500000              # optional: model tokens one pull request may use across all runs
 ```
 
+Rule files need no setting. bylaw reads them from the base branch: the ones at the root and, in a monorepo, the nearest `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`, `.editorconfig` and linter configuration above each changed file, so `packages/api/` is reviewed against its own rules and the root ones. From Ruff, ESLint (`.eslintrc.json` or `.eslintrc.yml`), golangci-lint and .NET analyzer settings it also reads which rule ids are on, and findings can cite them as `ruff:S608`. ESLint configs written in JavaScript are never run; they stay text.
+
 ## Evaluation
 
-bylaw is measured on 50 labelled pull requests in Python, TypeScript, Go and C#: planted security problems, bugs, rule breaks, missed acceptance criteria, scope creep, and clean changes. Results are per model and date: [docs/eval/README.md](https://github.com/tunahanaliozturk/bylaw/blob/main/docs/eval/README.md).
+bylaw is measured on 55 labelled pull requests in Python, TypeScript, Go and C#: planted security problems, bugs, rule breaks, missed acceptance criteria, scope creep, and clean changes, five of them in a monorepo whose packages have conflicting rules. Results are per model and date: [docs/eval/README.md](https://github.com/tunahanaliozturk/bylaw/blob/main/docs/eval/README.md).
 
-Runs from 16 October 2026: the GitHub Action calling the API, and Claude Code and Codex reviewing as hosts with no API key ([API](https://github.com/tunahanaliozturk/bylaw/blob/main/eval/results/2026-10-16-opus-5-5/report.md), [Claude Code](https://github.com/tunahanaliozturk/bylaw/blob/main/eval/results/2026-10-16-claude-code-host/report.md), [Codex](https://github.com/tunahanaliozturk/bylaw/blob/main/eval/results/2026-10-16-codex-host/report.md)):
+Runs from 16 October 2026, on the 50 cases the set had then: the GitHub Action calling the API, and Claude Code and Codex reviewing as hosts with no API key ([API](https://github.com/tunahanaliozturk/bylaw/blob/main/eval/results/2026-10-16-opus-5-5/report.md), [Claude Code](https://github.com/tunahanaliozturk/bylaw/blob/main/eval/results/2026-10-16-claude-code-host/report.md), [Codex](https://github.com/tunahanaliozturk/bylaw/blob/main/eval/results/2026-10-16-codex-host/report.md)):
 
 | | Action, `claude-opus-5-5` | Claude Code host | Codex host, `gpt-6-sol` |
 | --- | --- | --- | --- |
