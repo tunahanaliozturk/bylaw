@@ -1,9 +1,10 @@
 """Freezes a public pull request into a real evaluation case, so a run never reads live data (ADR 0015)."""
 
+import re
 import shutil
 import tempfile
 from functools import cached_property
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 
 from bylaw.context import build_context, generated_patterns, is_skipped
 from bylaw.evaluation.cases import (
@@ -120,6 +121,7 @@ def snapshot_pull_request(
     client: GitHubClient, repo: str, number: int, comment_id: int | None, out: Path
 ) -> Snapshot:
     """Read a pull request at the commit a review comment was made on (or its head) and freeze it."""
+    _case_id(out)  # before any call to GitHub
     evidence: ReviewEvidence | None = None
     commit: str | None = None
     if comment_id is not None:
@@ -165,6 +167,7 @@ def freeze(  # noqa: PLR0913 - what GitHub said about the pull request, all keyw
     evidence: ReviewEvidence | None = None,
 ) -> Snapshot:
     """Write the case directory: what bylaw reads at the base and the head, the issues, the licence."""
+    _case_id(out)
     recorder = _Recorder(source)
     build_context(recorder)  # every rule, spec and issue bylaw would read is now recorded
     info = recorder.info()
@@ -224,42 +227,58 @@ def freeze(  # noqa: PLR0913 - what GitHub said about the pull request, all keyw
     for contents in written.values():
         for path in contents:
             _inside(path)
-    _clear(out)
+    # Written next to the case and moved into place only once the replay matches, so a failed freeze
+    # leaves the previous snapshot as it was.
+    out.parent.mkdir(parents=True, exist_ok=True)
+    staging = Path(tempfile.mkdtemp(prefix=f".{out.name}.", dir=out.parent))
     try:
         for part, contents in written.items():
             for path, text in contents.items():
-                target = out / part / path
+                target = staging / part / path
+                if not target.resolve().is_relative_to(staging.resolve()):
+                    raise ValueError(f"refusing to write {path!r}: it leaves the case directory")
                 target.parent.mkdir(parents=True, exist_ok=True)
                 # Bytes, not text: a CRLF file must stay CRLF, and Windows must not add any.
                 target.write_bytes(text.encode("utf-8"))
-        (out / "snapshot.json").write_bytes(pull.model_dump_json(indent=2).encode("utf-8") + b"\n")
-        _check_replay(out, pull, files)
-    except BaseException:
-        _clear(out)
-        raise
+        (staging / "snapshot.json").write_bytes(pull.model_dump_json(indent=2).encode("utf-8") + b"\n")
+        _check_replay(staging, pull, files)
+        _replace(out, staging)
+    finally:
+        shutil.rmtree(staging, ignore_errors=True)
     return pull
 
 
-def _clear(out: Path) -> None:
-    """Remove what the tool wrote before; the labels in case.toml belong to people and stay."""
-    if not out.is_dir():
-        return
-    for entry in out.iterdir():
-        if entry.name == "case.toml":
-            continue
-        if entry.is_dir():
-            shutil.rmtree(entry)
-        else:
-            entry.unlink()
-    if not any(out.iterdir()):
-        out.rmdir()
+def _replace(out: Path, staging: Path) -> None:
+    """Swap the new snapshot in; the labels in case.toml belong to people and move across."""
+    if (out / "case.toml").is_file():
+        shutil.copy(out / "case.toml", staging / "case.toml")
+    if out.exists():
+        old = staging.with_name(f"{staging.name}.old")
+        out.rename(old)
+        staging.rename(out)
+        shutil.rmtree(old)
+    else:
+        staging.rename(out)
+
+
+_CASE_ID = re.compile(r"[a-z0-9][a-z0-9._-]*")
+# Names Windows reserves in every directory, with or without an extension.
+_DEVICES = re.compile(r"(con|prn|aux|nul|com[0-9]|lpt[0-9])(\..*)?", re.IGNORECASE)
+
+
+def _case_id(out: Path) -> None:
+    # The parent check catches "." and "": Path drops them, and the set's cases directory would be wiped.
+    if out.parent.name != "cases" or not _CASE_ID.fullmatch(out.name):
+        raise ValueError(f"case id {out.name!r} must be lower-case letters, digits, '.', '_' or '-'")
 
 
 def _inside(path: str) -> None:
-    # Paths come from the pull request: one that climbs out would write outside the case directory.
-    parts = PurePosixPath(path).parts
-    if not parts or PurePosixPath(path).is_absolute() or ".." in parts or ":" in path:
-        raise ValueError(f"refusing to write {path!r}: it leaves the case directory")
+    # Paths come from the pull request, and a git tree allows names Windows reads as a way out.
+    parts = path.split("/")
+    if any(c in path for c in "\\:\0") or any(
+        p in {"", ".", ".."} or p != p.rstrip(". ") or _DEVICES.fullmatch(p) for p in parts
+    ):
+        raise ValueError(f"refusing to write {path!r}: it leaves the case directory or cannot exist")
 
 
 def _check_replay(out: Path, pull: Snapshot, files: list[ChangedFile]) -> None:
