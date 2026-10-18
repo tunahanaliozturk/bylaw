@@ -68,4 +68,4 @@ Host models (Claude Code, Codex) review without an API key: `bylaw eval prepare 
 
 Prices are given on the command line, never stored in the code, because they change. Cost is per reviewed case and approximate: cached input is priced as plain input, and failed attempts are not counted. Latency is only reported for model runs; replayed host answers and `--no-model` have none.
 
-Committed results live in `eval/results/<name>/`: the per-case runs and `report.md`. The runs of 15 and 16 October 2026 were made before the five `py-mono` cases were added, so they cover the other 50.
+Committed results live in `eval/results/<name>/`: the per-case runs and `report.md`. The runs of 15, 16 and 18 October 2026 were made before the five `py-mono` cases were added, so they cover the other 50.

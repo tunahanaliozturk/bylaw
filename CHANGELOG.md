@@ -4,6 +4,12 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## Unreleased
 
+- Monorepos: a package's own `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md` and linter configuration now apply to the files changed under it, next to the root rules. For each changed file and each of those names, the nearest one above it on the base branch is read; directories without changed files are not read. The brief groups the rules by directory, names the changed files each group covers, and tells the reviewer that the nearest directory wins (ADR 0013).
+- Validation accepts a rule line from a package's own rule files as evidence, and drops a finding that cites a rule of another package than the file it is on.
+- Linter configuration is read as rule ids, without running anything: Ruff's selected and ignored codes and per-file ignores (`ruff.toml`, `.ruff.toml`, `pyproject.toml`), ESLint rules and overrides from `.eslintrc.json` and `.eslintrc.yml`, golangci-lint's enabled linters (v1 and v2 files), and .NET `dotnet_diagnostic` severities from `.editorconfig` and `.globalconfig`, with the analysis level from `Directory.Build.props`. ESLint configs written in JavaScript stay text. A file that does not parse is noted in the summary. YAML is read with `ruamel.yaml`'s safe loader, a new dependency.
+- A finding can cite a linter rule id as evidence, written `<tool>:<id>` (`ruff:S608`, `eslint:no-console`, `golangci-lint:gosec`, `dotnet:CA2100`). The brief lists the ids each configuration enables, and validation drops a finding whose id the configuration that covers its file does not enable: for Ruff the nearest configuration alone, for the others the nearest one that mentions the id.
+- The evaluation set has 55 cases: five new ones in `py-mono`, a monorepo whose two packages have conflicting `AGENTS.md` rules and their own Ruff configurations, two of them labelled with a rule id citation.
+
 ## 0.2.0 - 2026-10-18
 
 - Incremental review: on a new push, the model sees only the files whose change differs from the last run, and the unchanged files keep their earlier findings. A criterion that was met stays met while the files it was met in are unchanged. `incremental = false` in `.bylaw.toml` turns it off (ADR 0012).
@@ -14,11 +20,6 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 - A moved file that GitHub sends without a blob sha, and whose old path is missing from the base, now gets the binary file note instead of counting as an unchanged move.
 - A GraphQL error while reading the older replies of a long review thread no longer ends the run. The thread is read without them and the summary says so. A rate limit still stops the run.
 - Validation keeps two different problems of the same category on the same lines, such as a shell injection and a path traversal on one line. Only a finding with the same message as another is dropped as a duplicate.
-- Monorepos: a package's own `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md` and linter configuration now apply to the files changed under it, next to the root rules. For each changed file and each of those names, the nearest one above it on the base branch is read; directories without changed files are not read. The brief groups the rules by directory, names the changed files each group covers, and tells the reviewer that the nearest directory wins (ADR 0013).
-- Validation accepts a rule line from a package's own rule files as evidence, and drops a finding that cites a rule of another package than the file it is on.
-- Linter configuration is read as rule ids, without running anything: Ruff's selected and ignored codes and per-file ignores (`ruff.toml`, `.ruff.toml`, `pyproject.toml`), ESLint rules and overrides from `.eslintrc.json` and `.eslintrc.yml`, golangci-lint's enabled linters (v1 and v2 files), and .NET `dotnet_diagnostic` severities from `.editorconfig` and `.globalconfig`, with the analysis level from `Directory.Build.props`. ESLint configs written in JavaScript stay text. A file that does not parse is noted in the summary. YAML is read with `ruamel.yaml`'s safe loader, a new dependency.
-- A finding can cite a linter rule id as evidence, written `<tool>:<id>` (`ruff:S608`, `eslint:no-console`, `golangci-lint:gosec`, `dotnet:CA2100`). The brief lists the ids each configuration enables, and validation drops a finding whose id the configuration that covers its file does not enable: for Ruff the nearest configuration alone, for the others the nearest one that mentions the id.
-- The evaluation set has 55 cases: five new ones in `py-mono`, a monorepo whose two packages have conflicting `AGENTS.md` rules and their own Ruff configurations, two of them labelled with a rule id citation.
 
 ## 0.1.1 - 2026-10-16
 
