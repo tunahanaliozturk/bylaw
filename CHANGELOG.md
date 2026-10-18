@@ -4,6 +4,11 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## Unreleased
 
+- bylaw runs as a self-hosted GitHub App: one install for an organisation instead of a workflow file per repository. A webhook server, `bylaw-app`, checks each delivery's `X-Hub-Signature-256` before reading it, queues the review and answers at once; a worker runs the same review as `bylaw review --pr N --post` with an installation token for that one repository, with contents read only. A head already reviewed or waiting is not reviewed again, a newer push replaces an older one still waiting, and one pull request is never reviewed twice at the same time. The queue lives in memory: after a restart, the next push or a redelivery picks up what was missed. The server's dependencies (Starlette, Uvicorn, PyJWT) are the optional `app` extra, so the CLI and the Action install no web stack (ADR 0017).
+- In the app, `.bylaw.toml` on the default branch of the organisation's `.github` repository sets defaults, and a repository's base branch `.bylaw.toml` overrides them key by key; a table such as `[jira]` counts as one key. A pull request can change neither (ADR 0004).
+- In the app, model keys and tracker tokens are per installation, from `BYLAW_INSTALLATION_<id>_<NAME>` variables or a mounted directory with one file per secret. A server-wide key is never used for an installation.
+- In the app, only the app's own bot login carries bylaw's state: a summary or a fingerprint marker from any other bot, or a summary written by a person, is ignored and never edited (ADR 0017, the alternative ADR 0008 named).
+
 ## 0.4.0 - 2026-10-18
 
 - Line numbers in the brief and in validation count only newlines, as GitHub does, so a form feed or a U+2028 in a rule file, an ADR or an `.editorconfig` no longer shifts the lines after it.
