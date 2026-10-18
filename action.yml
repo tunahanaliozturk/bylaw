@@ -11,7 +11,7 @@ inputs:
     required: false
     default: ""
   provider:
-    description: Model provider, anthropic, openai, bedrock or openai-compatible (docs/providers.md).
+    description: Model provider, anthropic, openai, bedrock, vertex or openai-compatible (docs/providers.md).
     required: false
     default: anthropic
   model:
