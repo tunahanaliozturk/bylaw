@@ -1,5 +1,6 @@
 """The committed real set: every case keeps its licence, replays offline, and its labels are reachable."""
 
+import socket
 from collections import Counter
 from pathlib import Path
 
@@ -22,8 +23,15 @@ def cases() -> tuple[Case, ...]:
 
 @pytest.fixture(scope="module")
 def contexts(cases: tuple[Case, ...], tmp_path_factory: pytest.TempPathFactory) -> dict[str, ReviewContext]:
+    def no_network(*_: object, **__: object) -> None:
+        raise AssertionError("a real case opened a network connection on replay")
+
     work = tmp_path_factory.mktemp("real")
-    return {case.id: build_case_context(ROOT, case, work) for case in cases}
+    # Every case is built offline: ADR 0015 promises a run never reads GitHub or a tracker.
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(socket.socket, "connect", no_network)
+        patch.setattr(socket, "getaddrinfo", no_network)
+        return {case.id: build_case_context(ROOT, case, work) for case in cases}
 
 
 def test_an_oracle_reviewer_scores_perfectly_on_the_real_set(
