@@ -399,3 +399,23 @@ def test_escaped_brackets_count_toward_the_memory_limit() -> None:
     review = read_state(body).review
     assert len(body) <= MAX_BODY
     assert review is not None and review.findings == ()
+
+
+def test_untrusted_prose_cannot_mention_github_users() -> None:
+    context = _work_item(Criterion(key="AC-1", text="Ask @octocat and @acme/security"), quoted=True)
+    finding = _finding().model_copy(update={"message": "Ping @maintainer about this."})
+
+    body = summary_body(context, ReviewResult(), _plan())
+    comment = inline_body(Group(finding=finding, fingerprint=FP, others=()))
+
+    assert "@octocat" not in body and "@acme/security" not in body
+    assert "@&#8203;octocat" in body
+    assert "@maintainer" not in comment
+
+
+def test_a_mention_inside_a_code_span_is_left_as_written() -> None:
+    finding = _finding().model_copy(update={"evidence": "packages/@scope/rules.md:2"})
+
+    comment = inline_body(Group(finding=finding, fingerprint=FP, others=()))
+
+    assert "Evidence: `packages/@scope/rules.md:2`" in comment

@@ -229,8 +229,10 @@ def _cell(text: str, limit: int = _MAX_CELL) -> str:
 
 
 def _text(text: str) -> str:
-    """Prose from outside bylaw: angle brackets become entities, so no HTML or comment can open."""
-    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    """Prose from outside bylaw: angle brackets become entities, so no HTML or comment can open, and a
+    zero-width space follows every `@`, so quoted text cannot mention a person or a team."""
+    escaped = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    return escaped.replace("@", "@&#8203;")
 
 
 def _code(text: str) -> str:
