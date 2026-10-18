@@ -241,3 +241,43 @@ def test_inferred_criterion_text_that_is_blank_or_too_long_is_dropped() -> None:
         "issue#7/IC-1: inferred criterion needs text",
         "issue#7/IC-2: inferred criterion text is too long",
     )
+
+
+MONOREPO = CONTEXT.model_copy(
+    update={
+        "files": tuple(
+            ChangedFile(path=path, status="modified", added_lines=(AddedLine(number=3, text="x"),))
+            for path in ("packages/api/app.py", "packages/worker/jobs.py")
+        ),
+        "rules": (
+            RuleSource(path="AGENTS.md", kind=RuleKind.PROSE, text="root\n"),
+            RuleSource(
+                path="packages/api/AGENTS.md", kind=RuleKind.PROSE, text="a\nb\n", directory="packages/api"
+            ),
+            RuleSource(
+                path="packages/worker/AGENTS.md", kind=RuleKind.PROSE, text="c\n", directory="packages/worker"
+            ),
+        ),
+    }
+)
+
+
+def test_a_finding_may_cite_a_rule_file_of_its_own_package() -> None:
+    finding = _finding("packages/api/app.py", category=Category.RULE, evidence="packages/api/AGENTS.md:2")
+    root = _finding("packages/api/app.py", category=Category.RULE, evidence="AGENTS.md:1")
+
+    kept = validate(MONOREPO, ReviewResult(findings=(finding, root.model_copy(update={"message": "r"}))))
+
+    assert kept.dropped == ()
+    assert len(kept.result.findings) == 2
+
+
+def test_a_finding_that_cites_another_packages_rule_is_dropped() -> None:
+    finding = _finding("packages/api/app.py", category=Category.RULE, evidence="packages/worker/AGENTS.md:1")
+
+    dropped = validate(MONOREPO, ReviewResult(findings=(finding,))).dropped
+
+    assert dropped == (
+        "packages/api/app.py:3 rule: evidence packages/worker/AGENTS.md:1 is a rule of packages/worker, "
+        "not of this file",
+    )
