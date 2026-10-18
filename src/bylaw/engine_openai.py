@@ -16,6 +16,7 @@ from bylaw.engine import (
     ReviewError,
     Usage,
     added,
+    credential_errors,
     entra_token_provider,
     json_instructions,
     review_with_retry,
@@ -25,12 +26,20 @@ from bylaw.model import ReviewResult
 
 class OpenAIReviewer:
     def __init__(
-        self, *, client: openai.OpenAI, model: str, effort: str | None, service: str = "the OpenAI API"
+        self,
+        *,
+        client: openai.OpenAI,
+        model: str,
+        effort: str | None,
+        service: str = "the OpenAI API",
+        cloud: bool = False,
     ) -> None:
+        """`cloud` is Azure OpenAI, whose Entra ID sign-in can fail inside the request."""
         self._client = client
         self._model = model
         self._effort = effort
         self._service = service
+        self._chain_errors = credential_errors() if cloud else ()
         self.last_usage: Usage | None = None
 
     def review(self, system: str, user: str) -> ReviewResult:
@@ -64,11 +73,9 @@ class OpenAIReviewer:
             raise ReviewError("the model returned output that is not a valid review") from error
         except (openai.OpenAIError, ValueError) as error:
             raise ReviewError(f"the OpenAI SDK rejected the request ({type(error).__name__})") from error
-        except ReviewError:
-            raise
-        except Exception as error:
+        except self._chain_errors as error:
             # An Entra ID token provider raises its own errors from inside the request when it finds no
-            # credential. The review fails with a note, not the run.
+            # credential: a note, not a failed run. Anything else is a bug and raises.
             raise ReviewError(
                 f"the request to {self._service} failed ({type(error).__name__}); check its credentials"
             ) from error
@@ -89,7 +96,7 @@ def azure_reviewer(deployment: str, effort: str | None, http_client: httpx2.Clie
     client = openai.OpenAI(
         api_key=key, base_url=f"{endpoint.rstrip('/')}/openai/v1/", http_client=http_client, max_retries=3
     )
-    return OpenAIReviewer(client=client, model=deployment, effort=effort, service="Azure OpenAI")
+    return OpenAIReviewer(client=client, model=deployment, effort=effort, service="Azure OpenAI", cloud=True)
 
 
 _SCHEMA_FORMAT: dict[str, Any] = {

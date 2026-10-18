@@ -337,7 +337,8 @@ def test_bedrock_without_a_region_is_a_clear_review_error(
 
 @pytest.mark.usefixtures("aws")
 def test_signing_for_bedrock_without_the_extra_names_the_extra(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(engine_anthropic, "find_spec", lambda name: None if name == "botocore" else name)
+    # The signer imports boto3, not only botocore.
+    monkeypatch.setattr(engine_anthropic, "find_spec", lambda name: None if name == "boto3" else name)
 
     with pytest.raises(ReviewError, match=r"bylaw\[bedrock\]"):
         make_reviewer("bedrock", None, None, None)
@@ -441,8 +442,10 @@ def test_vertex_without_a_region_or_project_is_a_clear_review_error(monkeypatch:
 
 
 @pytest.mark.usefixtures("gcp")
-def test_vertex_without_the_extra_names_the_extra(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(engine_anthropic, "find_spec", lambda _name: None)
+@pytest.mark.parametrize("missing", ["google.auth", "requests"])
+def test_vertex_without_the_extra_names_the_extra(monkeypatch: pytest.MonkeyPatch, missing: str) -> None:
+    # google-auth refreshes tokens through its requests transport, which needs requests too.
+    monkeypatch.setattr(engine_anthropic, "find_spec", lambda name: None if name == missing else name)
 
     with pytest.raises(ReviewError, match=r"bylaw\[vertex\]"):
         make_reviewer("vertex", None, None, None)
@@ -623,3 +626,38 @@ def test_keys_for_other_providers_never_reach_azure(monkeypatch: pytest.MonkeyPa
 
     assert sent
     assert SECRET not in str(sent[0].headers)
+
+
+def _broken(*_args: object, **_kwargs: object) -> None:
+    raise TypeError("an SDK upgrade changed a parameter")
+
+
+@pytest.mark.usefixtures("aws")
+@pytest.mark.parametrize("provider", ["anthropic", "bedrock"])
+def test_a_bug_in_a_claude_call_is_raised_not_turned_into_a_note(
+    monkeypatch: pytest.MonkeyPatch, provider: str
+) -> None:
+    http = anthropic.DefaultHttpxClient(transport=httpx2.MockTransport(lambda _r: httpx2.Response(500)))
+    reviewer = make_reviewer(
+        provider, None, None, SECRET if provider == "anthropic" else None, http_client=http
+    )
+    assert isinstance(reviewer, AnthropicReviewer)
+    monkeypatch.setattr(reviewer._client.beta.messages, "stream", _broken)
+
+    with pytest.raises(TypeError):
+        reviewer.review("s", "u")
+
+
+@pytest.mark.usefixtures("azure_openai")
+@pytest.mark.parametrize("provider", ["openai", "azure-openai"])
+def test_a_bug_in_an_openai_call_is_raised_not_turned_into_a_note(
+    monkeypatch: pytest.MonkeyPatch, provider: str
+) -> None:
+    monkeypatch.setenv("AZURE_OPENAI_API_KEY", "azure-key")
+    http = openai.DefaultHttpxClient(transport=httpx2.MockTransport(lambda _r: httpx2.Response(500)))
+    reviewer = make_reviewer(provider, "m", None, SECRET, http_client=http)
+    assert isinstance(reviewer, OpenAIReviewer)
+    monkeypatch.setattr(reviewer._client.responses.with_raw_response, "parse", _broken)
+
+    with pytest.raises(TypeError):
+        reviewer.review("s", "u")

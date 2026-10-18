@@ -16,6 +16,7 @@ from bylaw.engine import (
     ReviewError,
     Usage,
     added,
+    credential_errors,
     entra_token_provider,
     json_instructions,
     review_with_retry,
@@ -47,14 +48,17 @@ class AnthropicReviewer:
         effort: str | None,
         service: str = "the Anthropic API",
         structured: bool = True,
-        server_fallback: bool = True,
+        cloud: bool = False,
     ) -> None:
+        """`cloud` is Bedrock, Vertex AI or Foundry: no server-side fallback, and a credential chain that can
+        fail inside the request."""
         self._client = client
         self._model = model
         self._effort = effort or "high"
         self._service = service
         self._structured = structured
-        self._fallback = server_fallback and model in _FALLBACK_MODELS
+        self._fallback = not cloud and model in _FALLBACK_MODELS
+        self._chain_errors = credential_errors() if cloud else ()
         self.last_usage: Usage | None = None
 
     def review(self, system: str, user: str) -> ReviewResult:
@@ -112,11 +116,9 @@ class AnthropicReviewer:
             raise ReviewError(f"could not reach {self._service}") from error
         except (anthropic.AnthropicError, ValueError) as error:
             raise ReviewError(f"the Anthropic SDK rejected the request ({type(error).__name__})") from error
-        except ReviewError:
-            raise
-        except Exception as error:
-            # A cloud credential chain (botocore, google-auth) raises its own errors from inside the request
-            # when it finds no credentials or cannot refresh them. The review fails with a note, not the run.
+        except self._chain_errors as error:
+            # A cloud credential chain raises its own errors from inside the request when it finds no
+            # credentials or cannot refresh them: a note, not a failed run. Anything else is a bug and raises.
             raise ReviewError(
                 f"the request to {self._service} failed ({type(error).__name__}); check its credentials"
             ) from error
@@ -143,8 +145,8 @@ def bedrock_reviewer(
     """Claude in Amazon Bedrock, the Messages API endpoint. It has no structured outputs and no server-side
     fallback (ADR 0018). Credentials and region come from the AWS chain: a Bedrock API key in
     AWS_BEARER_TOKEN_BEDROCK, or SigV4 with AWS_ACCESS_KEY_ID, a profile, SSO or a role."""
-    # SigV4 signing needs botocore; a Bedrock API key does not.
-    if not any(os.environ.get(name) for name in _BEDROCK_KEYS) and not _installed("botocore"):
+    # SigV4 signing imports boto3 and botocore; a Bedrock API key needs neither.
+    if not any(os.environ.get(name) for name in _BEDROCK_KEYS) and not _installed("boto3", "botocore"):
         raise ReviewError(
             "signing Amazon Bedrock requests needs the bedrock extra: pip install 'bylaw[bedrock]'"
         )
@@ -159,7 +161,7 @@ def bedrock_reviewer(
         effort=effort,
         service="Amazon Bedrock",
         structured=False,
-        server_fallback=False,
+        cloud=True,
     )
 
 
@@ -169,7 +171,8 @@ def vertex_reviewer(
     """Claude on Google Cloud's Vertex AI, with structured outputs but no server-side fallback (ADR 0018).
     Credentials are Application Default Credentials; the region and project come from CLOUD_ML_REGION and
     ANTHROPIC_VERTEX_PROJECT_ID."""
-    if not _installed("google.auth"):
+    # google-auth refreshes tokens through its requests transport, so requests is needed too.
+    if not _installed("google.auth", "google.auth.transport.requests", "requests"):
         raise ReviewError(
             "Vertex AI needs the vertex extra for Google credentials: pip install 'bylaw[vertex]'"
         )
@@ -189,7 +192,7 @@ def vertex_reviewer(
         model=model or DEFAULT_MODEL,
         effort=effort,
         service="Vertex AI",
-        server_fallback=False,
+        cloud=True,
     )
 
 
@@ -212,14 +215,14 @@ def foundry_reviewer(
         model=model or DEFAULT_MODEL,
         effort=effort,
         service="Microsoft Foundry",
-        server_fallback=False,
+        cloud=True,
     )
 
 
-def _installed(module: str) -> bool:
+def _installed(*modules: str) -> bool:
     try:
-        return find_spec(module) is not None
-    except ModuleNotFoundError:  # the parent package is missing too
+        return all(find_spec(module) is not None for module in modules)
+    except ModuleNotFoundError:  # a parent package is missing too
         return False
 
 

@@ -164,6 +164,33 @@ def entra_token_provider(key_variable: str) -> Callable[[], str]:
     return get_bearer_token_provider(DefaultAzureCredential(), _AZURE_AI_SCOPE)
 
 
+def credential_errors() -> tuple[type[Exception], ...]:
+    """What a cloud credential chain raises when it finds nothing or cannot refresh a token: botocore,
+    google-auth and azure-identity errors, the SDKs' own credential RuntimeErrors, and an ImportError for a
+    missing piece of an extra. Each library is optional, so each is looked up only if it is installed."""
+    errors: list[type[Exception]] = [RuntimeError, ImportError]
+    try:
+        from botocore.exceptions import BotoCoreError  # type: ignore[import-untyped]  # noqa: PLC0415
+
+        errors.append(BotoCoreError)
+    except ImportError:
+        pass
+    try:
+        from google.auth.exceptions import GoogleAuthError  # noqa: PLC0415
+
+        errors.append(GoogleAuthError)
+    except ImportError:
+        pass
+    try:
+        # CredentialUnavailableError is a ClientAuthenticationError.
+        from azure.core.exceptions import ClientAuthenticationError  # noqa: PLC0415
+
+        errors.append(ClientAuthenticationError)
+    except ImportError:
+        pass
+    return tuple(errors)
+
+
 def _named(model: str | None, provider: str) -> str:
     if not model:
         raise ReviewError(
