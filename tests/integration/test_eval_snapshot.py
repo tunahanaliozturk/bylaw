@@ -242,6 +242,15 @@ def test_a_path_that_leaves_the_case_directory_or_cannot_exist_on_windows_is_ref
     assert [p for p in tmp_path.rglob("*") if "evil" in p.name.lower()] == []
 
 
+def test_a_snapshot_whose_added_text_differs_from_githubs_is_refused(tmp_path: Path) -> None:
+    # The same line numbers, but GitHub's diff added other text than the frozen file holds.
+    claimed = ChangedFile(path="a.py", status="added", added_lines=(AddedLine(number=1, text="y"),))
+    source = FakeSource(files=(claimed,), head={"a.py": "x\n"})
+
+    with pytest.raises(ValueError, match=r"does not reproduce .*a\.py"):
+        freeze(source, tmp_path / "cases/c", url="u", number=1, licence=MIT)
+
+
 def test_a_file_without_a_patch_is_refused_unless_it_only_moved(tmp_path: Path) -> None:
     # GitHub sends no patch and 0 changes for a modified binary file.
     image = ChangedFile(path="logo.png", status="modified", patch_omitted=True, changes=0)
