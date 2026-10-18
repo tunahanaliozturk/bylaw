@@ -200,7 +200,7 @@ def freeze(  # noqa: PLR0913 - what GitHub said about the pull request, all keyw
         head_sha=info.head_sha,
         title=info.title,
         body=info.body,
-        commit_messages=info.commit_messages,
+        commit_messages=tuple(_scrub(m) for m in info.commit_messages),
         closing=tuple(
             IssueKey(owner=r.owner, repo=r.repo, number=r.number) for r in recorder.closing_issue_refs()
         ),
@@ -264,6 +264,16 @@ def _check_changes(recorder: _Recorder, files: list[ChangedFile]) -> list[str]:
         if file.status != "removed" and recorder.read_head(file.path) is None:
             raise ValueError(f"{file.path} is missing at the reviewed commit")
     return remove
+
+
+_TRAILER = re.compile(r"^[A-Za-z][\w-]*-by:.*(?:\n|$)", re.MULTILINE)
+_EMAIL = re.compile(r"<?[\w.+-]+@[\w-]+(?:\.[\w-]+)+>?")
+
+
+def _scrub(message: str) -> str:
+    """Drop Signed-off-by style trailers and email addresses: personal data bylaw never reads."""
+    text = _EMAIL.sub("<email removed>", _TRAILER.sub("", message))
+    return re.sub(r"\n{3,}", "\n\n", text).strip()
 
 
 _SPDX = re.compile(r"SPDX-License-Identifier:\s*([^\s*/]+)")

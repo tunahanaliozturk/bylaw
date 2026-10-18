@@ -264,6 +264,20 @@ def test_a_touched_file_over_the_size_cap_is_refused(tmp_path: Path) -> None:
         freeze(_added("big.py", big), tmp_path / "cases/c", url="u", number=1, licence=MIT)
 
 
+def test_commit_messages_lose_their_trailers_and_email_addresses(tmp_path: Path) -> None:
+    source = _added("a.py")
+    source.commits = (
+        "Fix the cap\n\nAsked by ada@example.com.\n\n"
+        "Signed-off-by: Ada Lovelace <ada@example.com>\n"
+        "Co-authored-by: Bob <12+bob@users.noreply.github.com>",
+    )
+
+    pull = freeze(source, tmp_path / "cases/c", url="u", number=1, licence=MIT)
+
+    assert pull.commit_messages == ("Fix the cap\n\nAsked by <email removed>.",)
+    assert "example.com" not in (tmp_path / "cases/c/snapshot.json").read_text("utf-8")
+
+
 @pytest.mark.parametrize("case_id", [".", "..", "Upper", "-dash", "a b", ""])
 def test_a_case_id_that_is_not_a_plain_name_is_refused(tmp_path: Path, case_id: str) -> None:
     (tmp_path / "cases/keep").mkdir(parents=True)
