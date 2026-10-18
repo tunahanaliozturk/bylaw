@@ -78,6 +78,13 @@ def _parser() -> argparse.ArgumentParser:
         help="exit 1 when a finding at or above this severity remains",
     )
     _add_eval(commands.add_parser("eval", help="review the labelled evaluation set and score the result"))
+    serve = commands.add_parser("mcp", help="serve the review tools to any MCP client over standard I/O")
+    serve.add_argument(
+        "--root",
+        action="append",
+        help="a directory whose repositories local reviews may read; repeat for more (default: the "
+        "working directory)",
+    )
     return parser
 
 
@@ -135,6 +142,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             _write(f"{system_prompt()}\n---\n{text}", args.output)
         elif args.command == "eval":
             return _snapshot(args) if args.eval_command == "snapshot" else _eval(args)
+        elif args.command == "mcp":
+            return _mcp(args)
         else:
             _post(args)
     except (SourceError, GitHubError, ConfigError, OSError, ValueError, ReviewError) as error:
@@ -202,6 +211,19 @@ def _snapshot(args: argparse.Namespace) -> int:
     with GitHubClient(token, api_url, os.environ.get("GITHUB_GRAPHQL_URL")) as client:
         pull = snapshot_pull_request(client, args.repo, args.pr, args.comment, root / "cases" / args.id)
     _say(f"froze {pull.url} at {pull.head_sha[:12]} into {root / 'cases' / args.id}; label it in case.toml")
+    return 0
+
+
+def _mcp(args: argparse.Namespace) -> int:
+    try:
+        from bylaw.mcp_server import make_server  # noqa: PLC0415 - the mcp extra is optional
+    except ModuleNotFoundError as error:
+        if (error.name or "").partition(".")[0] not in {"mcp", "mcp_types"}:
+            raise
+        _say('bylaw mcp needs the mcp extra: uvx --from "bylaw[mcp]" bylaw mcp')
+        return 2
+    roots = [Path(root) for root in args.root] if args.root else [Path.cwd()]
+    make_server(roots).run("stdio")
     return 0
 
 

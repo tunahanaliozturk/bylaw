@@ -41,6 +41,9 @@ app = [
     "starlette>=1.8.0",
     "uvicorn>=0.54.0",
 ]
+mcp = [
+    "mcp>=2.3.0",
+]
 
 [dependency-groups]
 dev = [
@@ -50,6 +53,7 @@ dev = [
     "ruff>=0.17.0",
     "mypy>=2.4.0",
     "bylaw[app]",
+    "bylaw[mcp]",
 ]
 
 [build-system]

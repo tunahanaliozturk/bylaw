@@ -3,6 +3,8 @@
 import argparse
 import json
 import re
+import subprocess
+import sys
 import tomllib
 from pathlib import Path
 from typing import cast
@@ -168,3 +170,14 @@ def test_the_skill_runs_the_released_version_it_was_shipped_with() -> None:
 
     assert f"uvx bylaw@{_project_version()}" in text
     assert "--from" not in text
+
+
+def test_the_mcp_sdk_is_an_optional_extra_that_the_cli_never_imports() -> None:
+    project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
+    probe = "import sys, bylaw.cli; print(sorted(n for n in sys.modules if n.partition('.')[0] == 'mcp'))"
+
+    done = subprocess.run([sys.executable, "-c", probe], capture_output=True, text=True, check=True)
+
+    assert not [d for d in project["dependencies"] if d.startswith("mcp")]
+    assert [d for d in project["optional-dependencies"]["mcp"] if d.startswith("mcp>=")]
+    assert done.stdout.strip() == "[]"

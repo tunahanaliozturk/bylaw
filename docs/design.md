@@ -37,7 +37,7 @@ bylaw/
   cli.py       bylaw context | bylaw review | bylaw validate | bylaw post | bylaw prompts
 ```
 
-Two modes share the core:
+Three modes share the core:
 
 - **Action and CLI.** Pull request event, then `context`, then `engine` calls the LLM with the user's own
   key, then `validate`, then `publish`.
@@ -46,6 +46,9 @@ Two modes share the core:
   `bylaw prompt` write the context and the brief to files, the host model reviews against `bylaw
   schema`, and `bylaw validate` checks the result. `bylaw post --dry-run` shows the review; `bylaw
   post --pr` publishes it. No extra API key.
+- **Any MCP client.** `bylaw mcp`, from the optional `bylaw[mcp]` extra, offers the same flow as tools over
+  stdio: `context`, `brief`, `schema`, `validate` and `preview`, read-only, with local reviews limited to
+  allowed root directories ([ADR 0019](adr/0019-mcp-server.md)).
 
 The same `context` command also works on a local branch with no pull request (`bylaw context --base
 main`), so a developer can check their work against the rules and the spec before opening the PR.
@@ -238,4 +241,5 @@ terminal output), an architecture diagram, a logo and a social preview card. The
 - A static analysis engine of our own: linter configuration is a rule source, linters are not re-run.
 - Confluence and Notion as requirement sources. Jira, Azure Boards and Linear arrived in v0.4
   ([ADR 0014](adr/0014-tracker-requirements.md)).
-- An MCP server; it can wrap the CLI later.
+- An MCP server over the network. `bylaw mcp` arrived in v0.6 as a local stdio server
+  ([ADR 0019](adr/0019-mcp-server.md)).
