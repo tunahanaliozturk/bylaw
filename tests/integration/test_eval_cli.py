@@ -156,8 +156,10 @@ def test_a_local_model_run_needs_no_key_and_names_the_provider_and_model(
 
     assert code == 0
     assert seen == [("openai-compatible", "qwen3:4b", None, None, "http://localhost:11434/v1")]
-    assert "with openai-compatible:qwen3:4b:default effort" in capsys.readouterr().err
-    assert '"reviewer": "openai-compatible:qwen3:4b:default effort"' in (runs / "one.json").read_text("utf-8")
+    # Two local servers can serve different weights under one model name, so the server is part of it.
+    identity = "openai-compatible:qwen3:4b:default effort@http://localhost:11434/v1"
+    assert f"with {identity}" in capsys.readouterr().err
+    assert f'"reviewer": "{identity}"' in (runs / "one.json").read_text("utf-8")
 
 
 def test_a_model_run_without_an_openai_key_names_its_variable(

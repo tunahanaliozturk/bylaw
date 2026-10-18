@@ -863,3 +863,41 @@ def test_with_structured_output_the_brief_is_not_cached_because_it_is_read_once(
     _claude(handler, "vertex").review("s", "the brief")
 
     assert json.loads(sent[0].content)["messages"][0]["content"] == "the brief"
+
+
+@pytest.mark.usefixtures("gcp")
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"error": {"code": 403, "message": f"denied {SECRET}", "status": "PERMISSION_DENIED"}},
+        [{"error": {"code": 403, "message": f"denied {SECRET}", "status": "PERMISSION_DENIED"}}],
+    ],
+    ids=["object", "list"],
+)
+def test_a_google_error_is_named_by_its_status(body: object) -> None:
+    handler, _ = _replies(httpx2.Response(403, json=body))
+
+    with pytest.raises(ReviewError) as error:
+        _claude(handler, "vertex").review("s", "u")
+
+    assert str(error.value) == "Vertex AI returned 403 (PERMISSION_DENIED)"
+
+
+@pytest.mark.usefixtures("entra")
+@pytest.mark.parametrize(
+    "endpoint",
+    [
+        "https://my-resource.openai.azure.com",
+        "https://my-resource.openai.azure.com/openai/v1/",
+        "https://my-resource.openai.azure.com/openai",
+    ],
+)
+def test_an_azure_endpoint_copied_with_its_api_path_still_reaches_the_v1_api(
+    monkeypatch: pytest.MonkeyPatch, endpoint: str
+) -> None:
+    monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", endpoint)
+    handler, sent = _replies(httpx2.Response(200, json=_response(json.dumps(REVIEW))))
+
+    _azure(handler).review("s", "u")
+
+    assert str(sent[0].url) == "https://my-resource.openai.azure.com/openai/v1/responses"

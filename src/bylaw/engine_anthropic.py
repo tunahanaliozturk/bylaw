@@ -246,6 +246,11 @@ def _installed(*modules: str) -> bool:
 
 
 def _error_type(body: object) -> str:
+    # Google wraps its error in a list and names it by `status`; the Claude API names it by `type`.
+    if isinstance(body, list) and body:
+        body = body[0]
     error = body.get("error") if isinstance(body, dict) else None
-    kind = error.get("type") if isinstance(error, dict) else None
+    if not isinstance(error, dict):
+        return "unknown error"
+    kind = error.get("type") or error.get("status")
     return kind if isinstance(kind, str) else "unknown error"
