@@ -17,7 +17,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 - Quoted prose in comments cannot mention people: a zero-width space follows every `@` in text from issues, work items, specs and the model. Code spans are left as written.
 - `bylaw eval snapshot` freezes a public pull request into a real evaluation case: the base and head of the files it touches at the commit a review comment was made on, the rule and spec files bylaw reads, the linked issue and the project's licence. Runs on a snapshot use local git only and never read GitHub (ADR 0015).
 - `bylaw eval score` reports real pull requests in their own sections, apart from the planted numbers. Real cases that two people have not labelled yet are reported as provisional.
-- The real set: 25 pull requests from 14 permissively licensed projects, frozen in `eval/real/` with first-pass labels that two people still need to replace.
+- The real set: 25 pull requests from 15 permissively licensed projects, frozen in `eval/real/` with first-pass labels that two people still need to replace.
 
 ## 0.3.0 - 2026-10-18
 
