@@ -57,10 +57,66 @@ def test_ruff_without_a_select_enables_its_default_rules() -> None:
     assert rules.select == ("E4", "E7", "E9", "F", "S")
 
 
-def test_a_ruff_config_that_extends_another_says_the_other_is_not_read() -> None:
-    rules = _parsed("ruff.toml", 'extend = "../ruff.toml"\n[lint]\nselect = ["S"]\n')
+def test_a_ruff_extend_is_followed_on_the_base_branch() -> None:
+    base = {
+        "pyproject.toml": (
+            '[tool.ruff.lint]\nselect = ["E", "S"]\nignore = ["E501"]\n'
+            '[tool.ruff.lint.per-file-ignores]\n"packages/api/tests/**" = ["S101"]\n'
+            '"conftest.py" = ["F401"]\n"docs/**" = ["E"]\n'
+        ),
+    }
+    text = 'extend = "../../pyproject.toml"\n[lint]\nextend-select = ["B"]\n'
 
-    assert rules.notes == ("extends ../ruff.toml, which bylaw does not read",)
+    rules = parse("packages/api/ruff.toml", text, base.get)
+
+    assert rules is not None
+    assert (rules.select, rules.ignore, rules.complete) == (("E", "S", "B"), ("E501",), True)
+    # Patterns of the extended file are relative to its own directory; ones that cannot reach this
+    # package are left out.
+    assert rules.per_file == (
+        FileRules(pattern="tests/**", ignore=("S101",)),
+        FileRules(pattern="conftest.py", ignore=("F401",)),
+    )
+    assert rules.notes == ("extends pyproject.toml, read from the base branch",)
+    assert enables(rules, "S608", "app/db.py") is True
+
+
+def test_a_child_select_replaces_what_the_extended_ruff_config_selected() -> None:
+    base = {"ruff.toml": '[lint]\nselect = ["E"]\nignore = ["E501"]\n'}
+
+    rules = parse("pkg/ruff.toml", 'extend = "../ruff.toml"\n[lint]\nselect = ["S"]\n', base.get)
+
+    assert rules is not None
+    assert (rules.select, rules.ignore) == (("S",), ())
+
+
+def test_a_ruff_extend_that_cannot_be_read_leaves_the_config_incomplete() -> None:
+    empty: dict[str, str] = {}
+    rules = parse("pkg/ruff.toml", 'extend = "../missing.toml"\n[lint]\nignore = ["S101"]\n', empty.get)
+
+    assert rules is not None
+    assert rules.complete is False
+    assert rules.notes == ("extends ../missing.toml, which bylaw could not read",)
+    assert enables(rules, "S608", "app.py") is None
+    assert enables(rules, "S101", "app.py") is False
+
+
+def test_a_ruff_extend_outside_the_repository_or_in_a_loop_is_not_followed() -> None:
+    asked: list[str] = []
+    base = {"ruff.toml": 'extend = "a/ruff.toml"\n', "a/ruff.toml": 'extend = "../ruff.toml"\n'}
+
+    def read(path: str) -> str | None:
+        asked.append(path)
+        return base.get(path)
+
+    outside = parse("a/ruff.toml", 'extend = "../../etc/ruff.toml"\n', read)
+    loop = parse("a/ruff.toml", base["a/ruff.toml"], read)
+
+    assert outside is not None
+    assert outside.complete is False
+    assert loop is not None
+    assert loop.complete is False
+    assert asked == ["ruff.toml"]
 
 
 def test_a_broken_ruff_config_is_reported_rather_than_guessed() -> None:
@@ -210,6 +266,48 @@ def test_values_of_an_unexpected_type_are_skipped_rather_than_fatal() -> None:
 
     assert (eslint.select, eslint.ignore, eslint.per_file) == ((), (), ())
     assert "gosec" not in golangci.select
+
+
+def test_configurations_with_settings_bylaw_does_not_read_are_marked_incomplete() -> None:
+    eslint = _parsed(".eslintrc.json", '{"extends": "airbnb", "rules": {"no-console": "error"}}')
+    override = _parsed(".eslintrc.json", '{"overrides": [{"files": "*.ts", "extends": ["x"]}]}')
+    presets = _parsed(".golangci.yml", "linters:\n  presets: [bugs]\n  enable: [gosec]\n")
+    fast = _parsed(".golangci.yml", 'version: "2"\nlinters:\n  default: fast\n')
+    plain = _parsed(".eslintrc.json", '{"rules": {"no-console": "error"}}')
+
+    assert [r.complete for r in (eslint, override, presets, fast, plain)] == [
+        False,
+        False,
+        False,
+        False,
+        True,
+    ]
+    assert presets.notes == ("presets bugs, whose linters are not listed",)
+    assert fast.notes == ("default set fast, whose linters are not listed",)
+    assert enables(eslint, "eqeqeq", "a.ts") is None
+
+
+def test_dotnet_category_and_global_severities_are_notes_that_leave_the_config_incomplete() -> None:
+    editorconfig = _parsed(
+        ".editorconfig", "[*.cs]\ndotnet_analyzer_diagnostic.category-Security.severity = error\n"
+    )
+    globalconfig = _parsed(
+        ".globalconfig", "is_global = true\ndotnet_analyzer_diagnostic.severity = warning\n"
+    )
+    props = _parsed("Directory.Build.props", "<AnalysisLevel>latest-all</AnalysisLevel>")
+
+    assert (editorconfig.complete, editorconfig.per_file) == (False, ())
+    assert editorconfig.notes == ("for *.cs: category-security error; ids these turn on are not listed",)
+    assert globalconfig.notes == ("all analyzers warning; ids these turn on are not listed",)
+    assert (globalconfig.complete, props.complete) == (False, False)
+
+
+def test_the_brief_says_when_an_unlisted_id_may_still_be_on() -> None:
+    rules = LinterRules(tool="eslint", select=("no-console",), complete=False, notes=("extends airbnb, x",))
+
+    assert describe(rules).endswith(
+        "- bylaw did not read all that this configuration turns on, so an id not listed may still be on"
+    )
 
 
 def test_golangci_v2_reads_the_default_set_by_name() -> None:

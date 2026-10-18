@@ -25,7 +25,11 @@ from GitHub is an API call, and bylaw never runs repository code, because the pu
 the linter files of the file's language, the nearest directory above it on the base branch that holds that
 file supplies it. The root rules are read as before. Directories without changed files are never read, and
 a farther file of the same name that is nearest to no changed file is left out. A `pyproject.toml` without
-`[tool.ruff]` does not count, so the search goes further up, as Ruff's own does.
+`[tool.ruff]` does not count, so the search goes further up, as Ruff's own does. Ruff's three files count
+as one name, as Ruff reads one configuration: the nearest directory with any of them supplies the first of
+`.ruff.toml`, `ruff.toml` and `pyproject.toml`, and the others stay out of the brief. `.github/CONTRIBUTING.md`
+and `docs/CONTRIBUTING.md` stay rules for the whole repository even when a change sits under `.github/` or
+`docs/`.
 
 **How they are found.** Sources gain `list_base(directory)`. GitHub answers it from the recursive base tree,
 read once per review and already used for moved files; when GitHub truncates that tree, one contents
@@ -43,23 +47,39 @@ file glob, plus notes for what cannot become ids:
 
 - Ruff, from `ruff.toml`, `.ruff.toml` and `pyproject.toml`: `select`, `extend-select`, `ignore` and the
   per-file ignores, in the `lint` table or at the top level. Selectors are prefixes and the most specific
-  one wins, as in Ruff; with no `select`, Ruff's default set. An `extend` is noted, not followed.
-- ESLint, from `.eslintrc.json` (comments allowed) and `.eslintrc.yml`/`.yaml`: `rules` and `overrides`.
-  An `extends` is noted, not followed. `eslint.config.js` and the other JavaScript files stay text.
+  one wins, as in Ruff; with no `select`, Ruff's default set. An `extend` is followed on the base branch,
+  up to five links, only to paths inside the repository and never twice to the same file; a `select`
+  starts over, `extend-select` and `ignore` add. A per-file pattern of the extended file is rewritten
+  relative to the package, or left out when it cannot reach it. A leading `!` in a per-file pattern means
+  every file it does not match.
+- ESLint, from `.eslintrc.json` (comments allowed) and `.eslintrc.yml`/`.yaml`: `rules` and `overrides`,
+  severities in any case. An `extends` is noted, not followed. `eslint.config.js` and the other JavaScript
+  files stay text.
 - golangci-lint, from `.golangci.yml`/`.yaml`: version 1 `enable`, `disable`, `enable-all`, `disable-all`
-  over the default set, and version 2 `linters.default`.
+  over the default set, and version 2 `linters.default`. Version 1 `presets` and the version 2 `fast` set
+  are noted.
 - .NET: `dotnet_diagnostic.<id>.severity` in `.editorconfig` sections and in `.globalconfig`, with
-  `error`, `warning` and `suggestion` on and `none` and `silent` off. `AnalysisLevel` and `AnalysisMode`
-  from `Directory.Build.props` become a note.
+  `error`, `warning` and `suggestion` on and `none` and `silent` off. Severities for every analyzer or a
+  whole category (`dotnet_analyzer_diagnostic.severity`, `...category-<name>.severity`), and
+  `AnalysisLevel` and `AnalysisMode` from `Directory.Build.props`, become notes.
+
+Ruff and ESLint file patterns match as those tools read them, with `**/` standing for zero or more
+directories; .NET sections keep `.editorconfig` matching.
+
+**Complete or not.** A configuration is complete when bylaw read everything it turns on. One with an
+`extends`, a Ruff `extend` that cannot be read, a golangci-lint preset or `fast` set, or a .NET category,
+global or analysis level setting is not, and the brief says so under it.
 
 A file that does not parse stays text and the summary says its ids cannot be cited. YAML goes through
 `ruamel.yaml`'s safe loader, which builds only plain data.
 
 **Citing an id.** Evidence may read `<tool>:<id>` (`ruff:S608`, `eslint:no-console`,
 `golangci-lint:gosec`, `dotnet:CA2100`). The brief lists the ids under each configuration. Validation takes
-the configurations of that tool whose directory holds the finding's file, nearest first, and the first one
-that says anything about the id decides. Ruff reads only its nearest configuration, so for Ruff that one
-always decides. An id no covering configuration turns on is dropped with the finding.
+the configurations of that tool that speak for the file's language (a `ruff.toml` says nothing about a
+`.ts` file) and whose directory holds the file, nearest first, and the first one that turns the id on or
+off decides. Ruff reads only its nearest configuration, so for Ruff no other counts. When none of them
+mentions the id, the finding is dropped only if every one of them is complete; otherwise the id may be on
+through what bylaw did not read, and the finding is kept.
 
 ## Consequences
 
@@ -67,19 +87,21 @@ always decides. An id no covering configuration turns on is dropped with the fin
   with two packages whose rules conflict measures whether the reviewer follows the nearest one.
 - One more GitHub call per review that touches a subdirectory, for the base tree; up to 40 on a repository
   so large that GitHub truncates it.
-- Only ids written in the configuration can be cited. Rules that arrive through an ESLint `extends`, the
-  golangci-lint `fast` set or the .NET analysis level are not known, so a finding that cites one is
-  dropped even though the linter would report it. The notes in the brief say so, and the configuration
-  line can still be cited.
-- Not modelled: ESLint's `root: true`, Ruff's `extend` chain, golangci-lint's exclusion rules (regular
-  expressions over paths), and the small differences between each tool's glob dialect and the
-  `.editorconfig` globs used for all of them.
+- Validation drops a cited id only on evidence: the governing configuration turns it off, or bylaw read
+  all of that configuration and it does not turn the id on. Under an ESLint `extends` or a .NET analysis
+  level an unknown id is kept, so a reviewer can cite a rule bylaw cannot confirm. That is the price of
+  never dropping a citation the linter itself would back.
+- Not modelled: ESLint's `root: true`, golangci-lint's exclusion rules (regular expressions over paths),
+  how Ruff combines a parent's `ignore` with a child's `extend-select` of the same code, and smaller
+  differences between each tool's glob dialect and the one bylaw uses.
 - Validation cannot see that a root rule and a package rule conflict, so a finding that cites the root
   rule against a package that says the opposite is kept. Telling the reviewer that the nearest directory
   wins is what handles that case.
-- The incremental review key (ADR 0012) still hashes each rule's path and text. Directories and ids are
-  derived from those, so saved memories stay valid, and an edit to a package rule file forces a full
-  review like an edit to a root one.
+- The incremental review key (ADR 0012) hashes each rule's path and text, and the bylaw version. The
+  version alone means a memory written by 0.2.0 does not match after the upgrade, so each open pull
+  request gets one full review on its first run with this release. Directories and ids are derived from
+  path and text, so after that the key behaves as before, and an edit to a package rule file forces a full
+  review like an edit to a root one. A file read only through a Ruff `extend` is not part of the key.
 - A new dependency, `ruamel.yaml` (MIT, pure Python).
 
 ## Alternatives
@@ -95,7 +117,9 @@ always decides. An id no covering configuration turns on is dropped with the fin
   `eslint --print-config`). Lost because it runs repository code: ESLint configs and plugins are
   JavaScript. It would win in a local mode on a trusted checkout.
 - **A catalogue of every tool's rule ids and presets.** Lost because it is large and stale after every
-  linter release. It would win if dropped `extends` citations turn out to be common.
+  linter release. It would win if citations kept under an `extends` turn out to be wrong often.
+- **Dropping every id a configuration does not list.** Tried first and lost: a package whose `ruff.toml`
+  only extends the root one, or an ESLint config built on a shared preset, lost every correct citation.
 - **Accepting any well-formed id.** Lost because the point is to stop a reviewer citing rules the team
   does not enforce.
 - **PyYAML.** Lost because it has no wheel for Python 3.15, which CI runs, and building it needs a C
