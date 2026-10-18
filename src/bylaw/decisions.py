@@ -188,9 +188,13 @@ def collect_decisions(
         paths = paths[:MAX_ADR_FILES]
     texts = source.read_base_many(paths)
     decisions: list[Decision] = []
+    unreadable: list[str] = []
     used = 0
     for index, path in enumerate(paths):
         if (text := texts.get(path)) is None or (decision := _decision(path, text)) is None:
+            continue
+        if isinstance(decision, str):
+            unreadable.append(f"{path} ({decision})")
             continue
         decision = _cut(decision)
         if used + len(decision.text) > DECISIONS_CHARS:
@@ -206,6 +210,9 @@ def collect_decisions(
             notes.append(f"{path}: only the start of its decision is shown, to keep the brief small.")
         used += len(decision.text)
         decisions.append(decision)
+    if unreadable:
+        # Retired and proposed ADRs are left out on purpose; these may be decisions bylaw failed to see.
+        notes.append(f"These ADRs were left out because bylaw could not read them: {', '.join(unreadable)}.")
     return tuple(decisions), tuple(notes)
 
 
@@ -225,17 +232,23 @@ def _cut(decision: Decision) -> Decision:
     return decision.model_copy(update={"text": "\n".join(kept), "cut": True})
 
 
-def _decision(path: str, markdown: str) -> Decision | None:
+def _decision(path: str, markdown: str) -> Decision | str | None:
+    """The decision, None for an ADR that is not in force, or why bylaw could not read it."""
     status = status_of(markdown)
-    found = effective(status) if status is not None else None
-    if found is None or found[0] != "in force":
+    if status is None:
+        return "no status"
+    found = effective(status)
+    if found is None:
+        first = text_lines(status)[0][:_STATUS_CHARS]
+        return f'status "{first}" not recognised'
+    if found[0] != "in force":
         return None
     document = _parse(markdown)
     start = next(
         (i for i in sorted(document.headings) if _name(document.headings[i][1]) in _DECISION_NAMES), None
     )
     if start is None:
-        return None
+        return "no Decision section"
     body = [document.lines[i] for i in document.section(start)]
     while body and not body[-1].strip():
         body.pop()

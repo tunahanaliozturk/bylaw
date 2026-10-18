@@ -58,14 +58,21 @@ def spec_paths(
         and f.path.endswith(".md")
         and any(PurePosixPath(f.path).full_match(g) for g in globs)
     ]
-    for match in _BLOB_URL.finditer(body):
-        if repo is not None and match["repo"].lower() == repo.lower():
-            candidates.append(unquote(match["path"]))
+    paths = [p for p in (_normalise(path) for path in candidates) if p is not None]
+    paths.extend(linked_paths(body, repo))
+    return tuple(dict.fromkeys(path for path in paths if not is_adr(path, adr_globs)))
+
+
+def linked_paths(body: str, repo: str | None) -> tuple[str, ...]:
+    """Markdown files in this repository that the pull request body links to, relative or by blob URL."""
+    candidates = [
+        unquote(match["path"])
+        for match in _BLOB_URL.finditer(body)
+        if repo is not None and match["repo"].lower() == repo.lower()
+    ]
     candidates.extend(m["target"] for m in _MD_LINK.finditer(body) if "://" not in m["target"])
     normalised = (_normalise(path) for path in candidates)
-    return tuple(
-        dict.fromkeys(path for path in normalised if path is not None and not is_adr(path, adr_globs))
-    )
+    return tuple(dict.fromkeys(path for path in normalised if path is not None))
 
 
 def extract_criteria(markdown: str) -> tuple[Criterion, ...]:

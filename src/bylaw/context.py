@@ -9,7 +9,7 @@ from bylaw.decisions import collect_decisions, is_adr
 from bylaw.editorconfig import EditorConfigResolver
 from bylaw.editorconfig_checks import check
 from bylaw.model import ChangedFile, Finding, ReviewContext
-from bylaw.requirements import collect_requirements
+from bylaw.requirements import collect_requirements, linked_paths
 from bylaw.rules import collect_rules, is_rule_file
 from bylaw.source import RepoSource
 from bylaw.trackers import read_work_items
@@ -101,7 +101,17 @@ def build_context(source: RepoSource, env: Mapping[str, str] | None = None) -> R
         findings.extend(check(file, resolver.properties(file.path)))
     notes.extend(resolver.problems)
 
-    changed_rules = sorted(f.path for f in files if is_rule_file(f.path) or is_adr(f.path, config.adr_globs))
+    added_adrs = sorted(f.path for f in files if f.status == "added" and is_adr(f.path, config.adr_globs))
+    changed_rules = sorted(
+        f.path
+        for f in files
+        if is_rule_file(f.path) or (is_adr(f.path, config.adr_globs) and f.path not in added_adrs)
+    )
+    if added_adrs:
+        notes.append(
+            f"This change adds {', '.join(added_adrs)}. An ADR is a decision once it is on the base branch, "
+            "so the change is not checked against it yet."
+        )
     if changed_rules:
         notes.append(
             f"This change edits {', '.join(changed_rules)}; it is reviewed against the base branch "
@@ -115,6 +125,13 @@ def build_context(source: RepoSource, env: Mapping[str, str] | None = None) -> R
     )
     decisions, decision_notes = collect_decisions(source, config.adr_globs, [f.path for f in files])
     notes.extend(decision_notes)
+    decided = {decision.path for decision in decisions}
+    for path in linked_paths(info.body, source.repo):
+        if is_adr(path, config.adr_globs) and path not in decided and path not in added_adrs:
+            notes.append(
+                f"{path} is linked as an ADR, but it is not an accepted decision on the base branch for this "
+                "change, or it was left out as noted, so the change is not checked against it."
+            )
     # Work items are referenced from the same text as issues, and from the title, where keys often sit.
     work_items, work_item_notes = read_work_items(
         [info.title, info.body, *info.commit_messages],
