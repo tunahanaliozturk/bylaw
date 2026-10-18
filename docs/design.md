@@ -92,9 +92,10 @@ Read from the base branch, never from the pull request head
 3. **Prose rules.** `CONTRIBUTING.md`, `AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`,
    `STYLEGUIDE.md`, line-numbered.
 
-In a monorepo, a package's own `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`, linter configuration and
-`.editorconfig` apply to the files under it, next to the root rules. For each changed file and each name,
-the nearest one above it is read; directories without changed files are not. The brief groups the rules by
+In a monorepo, a package's own `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md` and linter configuration apply
+to the files under it, next to the root rules. For each changed file and each name, the nearest one above
+it is read; directories without changed files are not. `.editorconfig` files cascade as the specification
+says, so every one on the way up counts. The brief groups the rules by
 directory and says the nearest wins, and the validator drops a citation of another package's rule
 ([ADR 0013](adr/0013-nested-rules-and-linter-ids.md)).
 4. **Built-in language conventions.** Short packs (PEP 8, Effective Go, .NET naming) used only where the

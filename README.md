@@ -111,7 +111,7 @@ incremental = true              # on a new push, send the model only the files w
 pr_tokens = 500000              # optional: model tokens one pull request may use across all runs
 ```
 
-Rule files need no setting. bylaw reads them from the base branch: the ones at the root and, in a monorepo, the nearest `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`, `.editorconfig` and linter configuration above each changed file, so `packages/api/` is reviewed against its own rules and the root ones. From Ruff, ESLint (`.eslintrc.json` or `.eslintrc.yml`), golangci-lint and .NET analyzer settings it also reads which rule ids are on, and findings can cite them as `ruff:S608`. ESLint configs written in JavaScript are never run; they stay text.
+Rule files need no setting. bylaw reads them from the base branch: the ones at the root and, in a monorepo, the nearest `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md` and linter configuration above each changed file, plus every `.editorconfig` on the way up as EditorConfig itself does, so `packages/api/` is reviewed against its own rules and the root ones. From Ruff, ESLint (`.eslintrc.json` or `.eslintrc.yml`), golangci-lint and .NET analyzer settings it also reads which rule ids are on, and findings can cite them as `ruff:S608`. ESLint configs written in JavaScript are never run; they stay text.
 
 ## Evaluation
 

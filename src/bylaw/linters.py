@@ -111,13 +111,13 @@ def _ruff(table: Mapping[str, object]) -> LinterRules:
 
     def codes(key: str) -> tuple[str, ...]:
         # The `lint` table replaced the top-level keys; Ruff still reads both, and so does bylaw.
-        return tuple(str(code).upper() for code in _list(lint.get(key, table.get(key))))
+        return tuple(code.upper() for code in _strings(lint.get(key, table.get(key))))
 
     select = codes("select") if "select" in lint or "select" in table else _RUFF_DEFAULT
     select = (*select, *codes("extend-select"))
     ignore = (*codes("ignore"), *codes("extend-ignore"))
     per_file = tuple(
-        FileRules(pattern=pattern, ignore=tuple(str(code).upper() for code in _list(selected)))
+        FileRules(pattern=pattern, ignore=tuple(code.upper() for code in _strings(selected)))
         for key in ("per-file-ignores", "extend-per-file-ignores")
         for pattern, selected in _table(lint.get(key, table.get(key))).items()
     )
@@ -142,10 +142,10 @@ def _eslint(data: object) -> LinterRules:
         entry = _table(override)
         on, off = _eslint_rules(entry.get("rules"))
         files = entry.get("files")
-        for pattern in [files] if isinstance(files, str) else _list(files):
-            per_file.append(FileRules(pattern=str(pattern), select=on, ignore=off))
+        for pattern in [files] if isinstance(files, str) else _strings(files):
+            per_file.append(FileRules(pattern=pattern, select=on, ignore=off))
     extends = config.get("extends")
-    names = [extends] if isinstance(extends, str) else [str(e) for e in _list(extends)]
+    names = [extends] if isinstance(extends, str) else _strings(extends)
     notes = (f"extends {', '.join(names)}, whose rules are not listed",) if names else ()
     return LinterRules(tool="eslint", select=select, ignore=ignore, per_file=tuple(per_file), notes=notes)
 
@@ -155,9 +155,9 @@ def _eslint_rules(rules: object) -> tuple[tuple[str, ...], tuple[str, ...]]:
     off: list[str] = []
     for rule, setting in _table(rules).items():
         level = setting[0] if isinstance(setting, list) and setting else setting
-        if level in {"error", "warn", 1, 2}:
+        if level in ("error", "warn", 1, 2):
             on.append(rule)
-        elif level in {"off", 0}:  # 0 == False, so a YAML `false` counts too
+        elif level in ("off", 0):  # 0 == False, so a YAML `false` counts too
             off.append(rule)
     return tuple(on), tuple(off)
 
@@ -174,11 +174,13 @@ def _eslint_json(text: str) -> LinterRules:
 def _golangci(text: str) -> LinterRules:
     config = _table(_yaml(text))
     linters = _table(config.get("linters"))
-    enable = [str(name).lower() for name in _list(linters.get("enable"))]
-    disable = tuple(str(name).lower() for name in _list(linters.get("disable")))
-    if str(config.get("version", "")) == "2":
+    enable = [name.lower() for name in _strings(linters.get("enable"))]
+    disable = tuple(name.lower() for name in _strings(linters.get("disable")))
+    # Tuples, not sets: a YAML value may be a list, which a set lookup cannot hash.
+    if config.get("version") in ("2", 2):
+        default = linters.get("default")
         base = {"all": ("*",), "none": (), "fast": ()}.get(
-            str(linters.get("default", "")), _GOLANGCI_STANDARD
+            default if isinstance(default, str) else "", _GOLANGCI_STANDARD
         )
     elif linters.get("enable-all") is True:
         base = ("*",)
@@ -243,11 +245,16 @@ def _yaml(text: str) -> object:
 
 
 def _table(value: object) -> dict[str, object]:
-    return {str(k): v for k, v in value.items()} if isinstance(value, Mapping) else {}
+    return {k: v for k, v in value.items() if isinstance(k, str)} if isinstance(value, Mapping) else {}
 
 
 def _list(value: object) -> list[object]:
     return list(value) if isinstance(value, list | tuple) else []
+
+
+def _strings(value: object) -> list[str]:
+    # Only plain strings: str() of a nested YAML alias would expand it into text of any size.
+    return [item for item in _list(value) if isinstance(item, str)]
 
 
 _READERS: dict[str, Callable[[str], LinterRules | None]] = {
