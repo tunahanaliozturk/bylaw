@@ -231,3 +231,56 @@ def test_lines_are_numbered_as_github_numbers_them() -> None:
 
     assert decision.start == 5
     assert decision.text == "## Decision\n\nUse a\u2028b and c\x0cd.\nSecond rule."
+
+
+def _adr(status: str) -> str:
+    return f"# 7. Retry\n\n{status}\n\n## Decision\n\nRetry twice.\n"
+
+
+@pytest.mark.parametrize(
+    "status",
+    [
+        "## Status\n\nAccepted\n\nSupersedes [3. Keep the deprecated logger](0003-deprecated-logger.md)",
+        "## Status\n\nAccepted\n\nAmends [4. Retry rejected payments](0004-retry-rejected-payments.md)",
+        "## Status\n\nAccepted. The old approach is now obsolete.",
+        "Status: Accepted, see [the rejected options](#options)",
+    ],
+    ids=["adr-tools-supersedes", "adr-tools-amends", "prose", "link-text"],
+)
+def test_links_and_prose_in_a_status_do_not_retire_an_accepted_adr(status: str) -> None:
+    source = FakeSource(base={"docs/adr/0007-retry.md": _adr(status)})
+
+    (decision,), _ = collect_decisions(source, GLOBS)
+
+    assert decision.status.startswith("Accepted")
+
+
+@pytest.mark.parametrize("status", ["Status: Not accepted", "Status: not yet approved", "Status: Declined"])
+def test_a_negated_or_declined_status_is_not_in_force(status: str) -> None:
+    assert collect_decisions(FakeSource(base={"docs/adr/0007-retry.md": _adr(status)}), GLOBS)[0] == ()
+
+
+@pytest.mark.parametrize(
+    "status",
+    [
+        "Status: Implemented",
+        "Status: Adopted",
+        "## Status\n\nDecided",
+        "| Field | Value |\n| --- | --- |\n| Status | Accepted |",
+    ],
+    ids=["implemented", "adopted", "decided", "table"],
+)
+def test_implemented_adopted_decided_and_table_statuses_are_in_force(status: str) -> None:
+    (decision,), _ = collect_decisions(FakeSource(base={"docs/adr/0007-retry.md": _adr(status)}), GLOBS)
+
+    assert decision.path == "docs/adr/0007-retry.md"
+
+
+def test_a_status_history_counts_its_last_entry_and_the_brief_shows_it() -> None:
+    accepted_last = _adr("## Status\n\n- 2023-01-01 proposed\n- 2023-02-01 accepted")
+    retired_last = _adr("## Status\n\n- 2023-01-01 accepted\n- 2024-05-01 superseded by [ADR 9](0009-x.md)")
+    source = FakeSource(base={"docs/adr/0007-retry.md": accepted_last, "docs/adr/0008-old.md": retired_last})
+
+    (decision,), _ = collect_decisions(source, GLOBS)
+
+    assert (decision.path, decision.status) == ("docs/adr/0007-retry.md", "2023-02-01 accepted")
