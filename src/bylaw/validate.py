@@ -7,6 +7,7 @@ from bylaw import linters
 from bylaw.model import (
     Category,
     CriterionResult,
+    Decision,
     Finding,
     Location,
     ReviewContext,
@@ -83,9 +84,7 @@ class _Checker:
             f.path: frozenset(a.number for a in f.added_lines) for f in context.files if f.status != "removed"
         }
         self._rules = {r.path: r for r in context.rules}
-        self._decisions = {
-            d.path: range(d.start, d.start + len(text_lines(d.text))) for d in context.decisions
-        }
+        self._decisions = {d.path: d for d in context.decisions}
         self.criteria = frozenset(f"{r.source}/{c.key}" for r in context.requirements for c in r.criteria)
         self._prose = frozenset(r.source for r in context.requirements if r.inferable)
 
@@ -131,11 +130,8 @@ class _Checker:
         if separator and tool in linters.TOOLS and rule_id and not rule_id.isdigit():
             return self._rule_id_problem(evidence, tool, linters.normalise(tool, rule_id), file)
         path, separator, line = evidence.rpartition(":")
-        if path in self._decisions:
-            # Only a line the reviewer was shown: the rest of an ADR, its context or rejected options, is
-            # not what was decided (ADR 0016).
-            shown = line.isdigit() and int(line) in self._decisions[path]
-            return None if shown else f"evidence {evidence} is not a line of the decision shown"
+        if (decision := self._decisions.get(path)) is not None:
+            return _decision_problem(decision, evidence, line, file)
         rule = self._rules.get(path)
         if (
             not separator
@@ -175,3 +171,14 @@ class _Checker:
         if any(not rules.complete for _, _, rules in covering):
             return None
         return f"evidence {evidence} is not enabled for this file by {covering[0][0]}"
+
+
+def _decision_problem(decision: Decision, evidence: str, line: str, file: str) -> str | None:
+    """Only a line the reviewer was shown counts: the rest of an ADR, its context or the options it turned
+    down, is not what was decided. A package's ADR binds only its own files (ADR 0016)."""
+    shown = range(decision.start, decision.start + len(text_lines(decision.text)))
+    if not line.isdigit() or int(line) not in shown:
+        return f"evidence {evidence} is not a line of the decision shown"
+    if decision.directory and not file.startswith(f"{decision.directory}/"):
+        return f"evidence {evidence} is a decision of {decision.directory}, not of this file"
+    return None

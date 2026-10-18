@@ -306,6 +306,18 @@ def test_the_system_prompt_explains_how_to_hold_a_change_to_a_decision() -> None
     assert "docs/adr/0007-money.md:14" in prompt
 
 
+def test_a_package_decision_says_which_files_it_applies_to() -> None:
+    (decision,) = DECIDED.decisions
+    scoped = decision.model_copy(
+        update={"path": "packages/api/docs/adr/0002-sqlite.md", "directory": "packages/api"}
+    )
+
+    text, _ = render_input(DECIDED.model_copy(update={"decisions": (scoped,)}), nonce="feedc0de")
+
+    assert "Status: Accepted\nApplies to files under packages/api/ only.\n  11| ## Decision" in text
+    assert "applies only to the files under it" in system_prompt()
+
+
 def test_rule_and_decision_lines_are_numbered_as_github_numbers_them() -> None:
     # str.splitlines() also breaks at U+2028 and form feeds; GitHub and editors break only at newlines.
     rule = RuleSource(path="CONTRIBUTING.md", kind=RuleKind.PROSE, text="One\u2028still one.\r\nTwo.\n")

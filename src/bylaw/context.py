@@ -113,7 +113,7 @@ def build_context(source: RepoSource, env: Mapping[str, str] | None = None) -> R
     requirements, requirement_notes = collect_requirements(
         source, info, files, config.spec_globs, config.issue_repos, adr_globs=config.adr_globs
     )
-    decisions, decision_notes = collect_decisions(source, config.adr_globs)
+    decisions, decision_notes = collect_decisions(source, config.adr_globs, [f.path for f in files])
     notes.extend(decision_notes)
     # Work items are referenced from the same text as issues, and from the title, where keys often sit.
     work_items, work_item_notes = read_work_items(

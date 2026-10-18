@@ -61,6 +61,12 @@ def test_a_base_directory_lists_only_the_files_directly_in_it(repo: Path) -> Non
     assert source.list_base("") == {".editorconfig", "CONTRIBUTING.md"}
     assert source.list_base("packages") == frozenset()
     assert source.list_base("missing") == frozenset()
+    assert source.list_base_tree("packages") == {"packages/api/AGENTS.md", "packages/api/src/app.py"}
+    assert source.list_base_tree("") >= {"CONTRIBUTING.md", "packages/api/src/app.py"}
+    assert source.read_base_many(["CONTRIBUTING.md", "packages/api/CLAUDE.md"]) == {
+        "CONTRIBUTING.md": "Use parameterised queries, �a va.\n",
+        "packages/api/CLAUDE.md": None,
+    }
 
 
 def test_undecodable_bytes_are_replaced_instead_of_failing(repo: Path) -> None:

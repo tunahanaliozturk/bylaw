@@ -1,5 +1,6 @@
 """Where a review's input comes from. GitHub and local git implement the same protocol."""
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -59,6 +60,14 @@ class RepoSource(Protocol):
 
     def list_base(self, directory: str) -> frozenset[str]:
         """Names of the files directly in a directory of the base ("" is the root); empty if it is absent."""
+        ...
+
+    def list_base_tree(self, directory: str) -> frozenset[str]:
+        """Paths, from the root, of every file under a directory of the base, in subdirectories too."""
+        ...
+
+    def read_base_many(self, paths: Sequence[str]) -> dict[str, str | None]:
+        """Several base files at once, None for one that is missing; one call where the host allows."""
         ...
 
     def read_head(self, path: str) -> str | None: ...

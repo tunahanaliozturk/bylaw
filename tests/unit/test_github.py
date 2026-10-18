@@ -414,6 +414,59 @@ def test_base_directories_are_listed_from_one_tree_read(client: GitHubClient) ->
 
 
 @respx.mock
+def test_a_base_tree_lists_every_file_under_a_directory(client: GitHubClient) -> None:
+    respx.get(f"{API}/repos/octo/app/pulls/5").mock(return_value=httpx.Response(200, json=PULL))
+    entries = [
+        {"path": "docs/adr/0001-a.md", "type": "blob", "sha": "a"},
+        {"path": "docs/adr/api/0002-b.md", "type": "blob", "sha": "b"},
+        {"path": "docs/adrs.md", "type": "blob", "sha": "c"},
+    ]
+    respx.get(f"{API}/repos/octo/app/git/trees/b1").mock(
+        return_value=httpx.Response(200, json={"truncated": False, "tree": entries})
+    )
+    source = GitHubSource(client, "octo/app", 5)
+
+    assert source.list_base_tree("docs/adr") == {"docs/adr/0001-a.md", "docs/adr/api/0002-b.md"}
+    assert source.list_base_tree("") == {e["path"] for e in entries}
+
+
+@respx.mock
+def test_base_files_are_read_in_one_graphql_call_and_a_truncated_one_through_rest(
+    client: GitHubClient,
+) -> None:
+    respx.get(f"{API}/repos/octo/app/pulls/5").mock(return_value=httpx.Response(200, json=PULL))
+    data = {
+        "repository": {
+            "f0": {"text": "# A\n", "isTruncated": False, "isBinary": False},
+            "f1": None,
+            "f2": {"text": "# partial", "isTruncated": True, "isBinary": False},
+        }
+    }
+    graphql = respx.post(f"{API}/graphql").mock(return_value=httpx.Response(200, json={"data": data}))
+    rest = respx.get(f"{API}/repos/octo/app/contents/docs/adr/0003-c.md").mock(
+        return_value=httpx.Response(200, text="# C, whole\n")
+    )
+
+    texts = GitHubSource(client, "octo/app", 5).read_base_many(
+        ["docs/adr/0001-a.md", "docs/adr/0002-gone.md", "docs/adr/0003-c.md"]
+    )
+
+    assert texts == {
+        "docs/adr/0001-a.md": "# A\n",
+        "docs/adr/0002-gone.md": None,
+        "docs/adr/0003-c.md": "# C, whole\n",
+    }
+    assert graphql.call_count == 1
+    variables = json.loads(graphql.calls[0].request.content)["variables"]
+    assert (variables["owner"], variables["name"], variables["e1"]) == (
+        "octo",
+        "app",
+        "b1:docs/adr/0002-gone.md",
+    )
+    assert rest.calls[0].request.url.params["ref"] == "b1"
+
+
+@respx.mock
 def test_a_truncated_tree_lists_a_directory_through_the_contents_api(client: GitHubClient) -> None:
     respx.get(f"{API}/repos/octo/app/pulls/5").mock(return_value=httpx.Response(200, json=PULL))
     respx.get(f"{API}/repos/octo/app/git/trees/b1").mock(

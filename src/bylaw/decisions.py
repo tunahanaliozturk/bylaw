@@ -5,9 +5,9 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from itertools import takewhile
 from pathlib import PurePosixPath
+from typing import Protocol
 
 from bylaw.model import Decision, text_lines
-from bylaw.rules import BaseReader
 
 _ATX = re.compile(r"^ {0,3}(?P<hashes>#{1,6})\s+(?P<title>.+?)\s*#*\s*$")
 _SETEXT = re.compile(r"^ {0,3}(?:=+|-+)\s*$")
@@ -34,6 +34,9 @@ _LEAD = re.compile(
     r"^[\s\-*+:|]*(?:status\s*:\s*)?(?:\d{4}-\d{2}-\d{2}\b[\s:,\-]*)?(?:under\s+|in\s+)?", re.IGNORECASE
 )
 _WILDCARD = re.compile(r"[*?\[]")
+_NOT_ADRS = re.compile(r"^(?:readme|index)\.md$|template", re.IGNORECASE)
+_ADR_DIRECTORIES = frozenset({"adr", "adrs", "decisions", "decision-records", "architecture-decisions"})
+_DOC_DIRECTORIES = frozenset({"docs", "doc", "documentation"})
 
 # Each ADR is one GitHub call; the newest are read first.
 MAX_ADR_FILES = 40
@@ -142,14 +145,40 @@ def accepted(status: str) -> bool:
     return (found := effective(status)) is not None and found[0] == "in force"
 
 
+class DecisionSource(Protocol):
+    def list_base_tree(self, directory: str) -> frozenset[str]: ...
+
+    def read_base_many(self, paths: Sequence[str]) -> dict[str, str | None]: ...
+
+
 def is_adr(path: str, globs: Sequence[str]) -> bool:
-    return path.endswith(".md") and any(PurePosixPath(path).full_match(glob) for glob in globs)
+    """A Markdown file the ADR globs match, other than an index, a README or a template."""
+    name = PurePosixPath(path).name
+    return (
+        path.endswith(".md")
+        and _NOT_ADRS.search(name) is None
+        and any(PurePosixPath(path).full_match(glob) for glob in globs)
+    )
+
+
+def scope(path: str) -> str:
+    """The directory an ADR binds: the one above its `adr` or `decisions` directory and any `docs` around
+    it, so `packages/api/docs/adr/0002-x.md` binds `packages/api`, and `docs/adr/0001-x.md` everything."""
+    parts = PurePosixPath(path).parts[:-1]
+    marks = [i for i, part in enumerate(parts) if part.lower() in _ADR_DIRECTORIES]
+    if not marks:
+        return ""
+    above = list(parts[: marks[0]])
+    if above and above[-1].lower() in _DOC_DIRECTORIES:
+        above.pop()
+    return "/".join(above)
 
 
 def collect_decisions(
-    source: BaseReader, globs: Sequence[str]
+    source: DecisionSource, globs: Sequence[str], changed: Sequence[str] = ()
 ) -> tuple[tuple[Decision, ...], tuple[str, ...]]:
-    paths = _adr_paths(source, globs)
+    """`changed` are the paths the change touches: a package's ADRs are read only when it has one."""
+    paths = [path for path in _adr_paths(source, globs) if _binds(scope(path), changed)]
     notes: list[str] = []
     if len(paths) > MAX_ADR_FILES:
         notes.append(
@@ -157,10 +186,11 @@ def collect_decisions(
             f"{', '.join(paths[MAX_ADR_FILES:][:_LISTED])} and any older ones were not."
         )
         paths = paths[:MAX_ADR_FILES]
+    texts = source.read_base_many(paths)
     decisions: list[Decision] = []
     used = 0
     for index, path in enumerate(paths):
-        if (text := source.read_base(path)) is None or (decision := _decision(path, text)) is None:
+        if (text := texts.get(path)) is None or (decision := _decision(path, text)) is None:
             continue
         decision = _cut(decision)
         if used + len(decision.text) > DECISIONS_CHARS:
@@ -211,21 +241,28 @@ def _decision(path: str, markdown: str) -> Decision | None:
         body.pop()
     title = _title(document) or PurePosixPath(path).stem
     return Decision(
-        path=path, title=title, status=found[1][:_STATUS_CHARS], start=start + 1, text="\n".join(body)
+        path=path,
+        title=title,
+        status=found[1][:_STATUS_CHARS],
+        start=start + 1,
+        text="\n".join(body),
+        directory=scope(path),
     )
 
 
-def _adr_paths(source: BaseReader, globs: Sequence[str]) -> list[str]:
+def _binds(directory: str, changed: Sequence[str]) -> bool:
+    return not directory or any(path.startswith(f"{directory}/") for path in changed)
+
+
+def _adr_paths(source: DecisionSource, globs: Sequence[str]) -> list[str]:
     """ADR files on the base branch, newest (highest number) first."""
-    # ponytail: only the files directly in each glob's fixed directory are listed, not its subdirectories,
-    # which keeps it to one listing per glob; list the base tree recursively if teams nest their ADRs.
     found: set[str] = set()
     for glob in globs:
+        # The directories before the first wildcard; `**/adr/**` lists the whole tree, one call on GitHub.
         directory = "/".join(
             takewhile(lambda part: not _WILDCARD.search(part), PurePosixPath(glob).parts[:-1])
         )
-        prefix = f"{directory}/" if directory else ""
-        found.update(path for name in source.list_base(directory) if is_adr(path := prefix + name, globs))
+        found.update(path for path in source.list_base_tree(directory) if is_adr(path, globs))
     return sorted(found, key=_number, reverse=True)
 
 

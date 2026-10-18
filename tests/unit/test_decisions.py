@@ -1,6 +1,14 @@
 import pytest
 
-from bylaw.decisions import DECISION_CHARS, DECISIONS_CHARS, accepted, collect_decisions, status_of
+from bylaw.decisions import (
+    DECISION_CHARS,
+    DECISIONS_CHARS,
+    MAX_ADR_FILES,
+    accepted,
+    collect_decisions,
+    is_adr,
+    status_of,
+)
 from tests.unit.fakes import FakeSource
 
 GLOBS = ("docs/adr/**", "docs/decisions/**")
@@ -284,3 +292,59 @@ def test_a_status_history_counts_its_last_entry_and_the_brief_shows_it() -> None
     (decision,), _ = collect_decisions(source, GLOBS)
 
     assert (decision.path, decision.status) == ("docs/adr/0007-retry.md", "2023-02-01 accepted")
+
+
+def test_adrs_in_subdirectories_and_under_wildcard_directories_are_found() -> None:
+    source = FakeSource(
+        base={
+            "docs/adr/backend/0003-queue.md": _adr("Status: Accepted"),
+            "services/pay/docs/adr/0001-money.md": _adr("Status: Accepted"),
+        }
+    )
+
+    decisions, _ = collect_decisions(
+        source, ("docs/adr/**", "services/*/docs/adr/*.md"), changed=["services/pay/app.py"]
+    )
+
+    assert {d.path for d in decisions} == {
+        "docs/adr/backend/0003-queue.md",
+        "services/pay/docs/adr/0001-money.md",
+    }
+
+
+def test_readme_index_and_template_files_are_not_adrs_and_do_not_count_toward_the_cap() -> None:
+    base = {f"docs/adr/{n:04}-d.md": _adr("Status: Accepted") for n in range(1, MAX_ADR_FILES + 1)}
+    for name in ("README.md", "index.md", "template.md", "0000-adr-template.md"):
+        base[f"docs/adr/{name}"] = _adr("Status: Accepted")
+
+    decisions, notes = collect_decisions(FakeSource(base=base), GLOBS)
+
+    assert len(decisions) == MAX_ADR_FILES
+    assert not any("newest" in note for note in notes)
+    assert not is_adr("docs/adr/README.md", GLOBS)
+    assert not is_adr("docs/adr/0000-adr-template.md", GLOBS)
+
+
+def test_adr_texts_are_read_in_one_batch() -> None:
+    source = FakeSource(base={f"docs/adr/{n:04}-d.md": _adr("Status: Accepted") for n in range(1, 4)})
+
+    collect_decisions(source, GLOBS)
+
+    assert source.batch_reads == [["docs/adr/0003-d.md", "docs/adr/0002-d.md", "docs/adr/0001-d.md"]]
+
+
+def test_a_package_adr_applies_only_under_its_package_and_is_read_only_when_the_package_changed() -> None:
+    source = FakeSource(
+        base={
+            "docs/adr/0001-root.md": _adr("Status: Accepted"),
+            "packages/api/docs/adr/0002-api.md": _adr("Status: Accepted"),
+            "packages/worker/adr/0003-worker.md": _adr("Status: Accepted"),
+        }
+    )
+
+    decisions, _ = collect_decisions(source, ("**/adr/**",), changed=["packages/api/handlers.py"])
+
+    assert [(d.path, d.directory) for d in decisions] == [
+        ("packages/api/docs/adr/0002-api.md", "packages/api"),
+        ("docs/adr/0001-root.md", ""),
+    ]

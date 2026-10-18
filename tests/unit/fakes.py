@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 
 from bylaw.model import ChangedFile
@@ -17,6 +18,7 @@ class FakeSource:
     issues: dict[IssueRef, Issue] = field(default_factory=dict)
     file_count: int | None = None
     author_trusted: bool | None = None
+    batch_reads: list[list[str]] = field(default_factory=list)
 
     def info(self) -> ChangeInfo:
         return ChangeInfo(
@@ -36,6 +38,14 @@ class FakeSource:
             for path in self.base
             if path.startswith(prefix) and "/" not in path.removeprefix(prefix)
         )
+
+    def list_base_tree(self, directory: str) -> frozenset[str]:
+        prefix = f"{directory}/" if directory else ""
+        return frozenset(path for path in self.base if path.startswith(prefix))
+
+    def read_base_many(self, paths: Sequence[str]) -> dict[str, str | None]:
+        self.batch_reads.append(list(paths))
+        return {path: self.base.get(path) for path in paths}
 
     def read_head(self, path: str) -> str | None:
         return self.head.get(path)

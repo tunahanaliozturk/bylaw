@@ -463,6 +463,23 @@ def test_a_citation_of_an_adr_line_the_brief_did_not_show_is_dropped() -> None:
         assert result.result.findings == (), evidence
 
 
+def test_a_package_decision_cannot_be_cited_against_a_file_of_another_package() -> None:
+    (decision,) = DECIDED.decisions
+    scoped = decision.model_copy(update={"path": "pkg/api/docs/adr/0002-sqlite.md", "directory": "pkg/api"})
+    files = (
+        ChangedFile(path="pkg/api/app.py", status="added", added_lines=(AddedLine(number=1, text="x"),)),
+        ChangedFile(path="pkg/worker/job.py", status="added", added_lines=(AddedLine(number=1, text="x"),)),
+    )
+    context = DECIDED.model_copy(update={"decisions": (scoped,), "files": files})
+    evidence = "pkg/api/docs/adr/0002-sqlite.md:13"
+
+    own = _finding(file="pkg/api/app.py", start=1, end=1, category=Category.RULE, evidence=evidence)
+    other = _finding(file="pkg/worker/job.py", start=1, end=1, category=Category.RULE, evidence=evidence)
+
+    assert validate(context, ReviewResult(findings=(own,))).dropped == ()
+    assert validate(context, ReviewResult(findings=(other,))).result.findings == ()
+
+
 def test_rule_and_decision_lines_count_only_newlines_as_line_breaks() -> None:
     rule = RuleSource(path="CONTRIBUTING.md", kind=RuleKind.PROSE, text="One\u2028still one.\nTwo.\n")
     (decision,) = DECIDED.decisions
