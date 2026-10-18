@@ -155,18 +155,23 @@ def _requirements(context: ReviewContext, result: ReviewResult) -> str:
         listed += [
             (item.criterion, f"{_cell(item.text or '', _CRITERION_CELL)} (inferred)") for item in inferred
         ]
+        # ADR 0014: a work item kept out of quotes shows keys, status and places, never its words or the
+        # reviewer's note, which may repeat them.
+        quoted = requirement.quoted
+        if not quoted:
+            listed = [(key, "(inferred)" if key.startswith(prefix) else "") for key, _ in listed]
         if not listed:
-            rows.append(
-                f"| {_code(requirement.source)} {_cell(requirement.title)} | no criteria listed |  |  |"
-            )
+            title = f" {_cell(requirement.title)}" if quoted else ""
+            rows.append(f"| {_code(requirement.source)}{title} | no criteria listed |  |  |")
         for key, text in listed:
             item: CriterionResult | None = results.get(key)
             status = item.status.value if item else "not assessed"
-            if item and item.note:
+            if item and item.note and quoted:
                 status = f"{status}: {_cell(item.note)}"
             code = _locations(item.code) if item else ""
             tests = _locations(item.tests) if item else ""
-            rows.append(f"| {_code(key)} {text} | {status} | {code} | {tests} |")
+            label = f"{_code(key)} {text}" if text else _code(key)
+            rows.append(f"| {label} | {status} | {code} | {tests} |")
     return "### Requirements\n\n" + "\n".join(rows)
 
 

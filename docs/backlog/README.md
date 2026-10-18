@@ -15,7 +15,7 @@ One file per roadmap feature. Each item has an id, a size and what "done" means,
 | [Linter configuration as structured rules](linter-rules.md) | Q2 | v0.3 | 6 | 6 |
 | [Nested instructions in monorepos](nested-instructions.md) | Q2 | v0.3 | 4 | 4 |
 | [ADR conformance](adr-conformance.md) | Q2 | v0.4 | 4 | 0 |
-| [Jira, Linear and Azure DevOps as requirement sources](tracker-sources.md) | Q2 | v0.4 | 6 | 4 |
+| [Jira, Linear and Azure DevOps as requirement sources](tracker-sources.md) | Q2 | v0.4 | 6 | 5 |
 | [Evaluation set v2: real pull requests](eval-v2.md) | Q2 | v0.4 | 4 | 0 |
 | [GitHub App](github-app.md) | Q3 | v0.5 | 6 | 0 |
 | [GitLab merge requests](gitlab.md) | Q3 | v0.6 | 4 | 0 |

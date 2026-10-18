@@ -119,6 +119,7 @@ def read_work_items(
                         text=item.text,
                         criteria=criteria,
                         inferable=not criteria,
+                        quoted=config.quote_trackers,
                     )
                 )
     notes.extend(f"{r.source} has no structured acceptance criteria." for r in requirements if not r.criteria)

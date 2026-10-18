@@ -12,7 +12,7 @@ Many teams keep requirements outside GitHub. Read the work items a pull request 
 - [x] **TRK-2** (M) Jira Cloud REST read with an API token; opt-in base URL and allowed projects. Done when: fake server tests.
 - [x] **TRK-3** (M) Azure DevOps work items with a PAT, including the Acceptance Criteria field. Done when: fake server tests.
 - [x] **TRK-4** (M) Linear GraphQL read. Done when: fake server tests.
-- [ ] **TRK-5** (S) ADR on quoting tracker text in public comments, with an option to keep criteria text out of the summary. Done when: ADR accepted.
+- [x] **TRK-5** (S) ADR on quoting tracker text in public comments, with an option to keep criteria text out of the summary. Done when: ADR accepted.
 - [ ] **TRK-6** (S) Setup docs per tracker. Done when: docs page.
 
 ## Notes
