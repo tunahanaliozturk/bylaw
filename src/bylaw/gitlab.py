@@ -2,7 +2,8 @@
 
 Endpoints and fields are as documented at https://docs.gitlab.com/api/merge_requests/,
 https://docs.gitlab.com/api/repository_files/, https://docs.gitlab.com/api/repositories/,
-https://docs.gitlab.com/api/discussions/ and https://docs.gitlab.com/api/notes/.
+https://docs.gitlab.com/api/discussions/, https://docs.gitlab.com/api/notes/ and
+https://docs.gitlab.com/api/issues/.
 """
 
 import hashlib
@@ -17,11 +18,11 @@ import httpx
 from pydantic import BaseModel, ConfigDict, TypeAdapter
 
 from bylaw.diff import parse_patch
-from bylaw.github import ReviewComment, SummaryComment
+from bylaw.github import ReviewComment, SummaryComment, newest_within
 from bylaw.model import ChangedFile
 from bylaw.plan import Thread, ThreadComment
 from bylaw.render import SUMMARY_MARKER
-from bylaw.source import ChangeInfo, SourceError
+from bylaw.source import ChangeInfo, Issue, IssueRef, SourceError
 
 _PAGE_SIZE = 100
 _MAX_PAGES = 50
@@ -104,6 +105,9 @@ class _Note(_Model):
     body: str = ""
     author: _User | None = None
     system: bool = False
+    # Internal notes (once called confidential) are for members only and never reach a public comment.
+    internal: bool = False
+    confidential: bool = False
     resolvable: bool = False
     resolved: bool = False
     position: _Position | None = None
@@ -115,7 +119,18 @@ class _Discussion(_Model):
     notes: list[_Note] = []
 
 
+class _Issue(_Model):
+    title: str
+    description: str | None = None
+    confidential: bool = False
+
+
+class _ClosingIssue(_Model):
+    references: _References | None = None
+
+
 _DIFFS = TypeAdapter(list[_Diff])
+_CLOSING_ISSUES = TypeAdapter(list[_ClosingIssue])
 _NOTES = TypeAdapter(list[_Note])
 _DISCUSSIONS = TypeAdapter(list[_Discussion])
 _COMMITS = TypeAdapter(list[_Commit])
@@ -240,11 +255,15 @@ class GitLabMergeRequest:
         full = self._mr.references.full if self._mr.references else ""
         return (full.rpartition("!")[0] or self._project).lower()
 
-    def info(self) -> ChangeInfo:
-        refs = self._refs
+    @cached_property
+    def _commit_messages(self) -> tuple[str, ...]:
         messages: list[str] = []
         for page in self._client.pages(f"{self._mr_path}/commits"):
             messages.extend(c.message for c in _COMMITS.validate_python(page))
+        return tuple(messages)
+
+    def info(self) -> ChangeInfo:
+        refs = self._refs
         author = self._mr.author
         return ChangeInfo(
             # The target branch commit, not the merge base: an old branch point must not bring old rules
@@ -253,7 +272,7 @@ class GitLabMergeRequest:
             refs.head_sha,
             self._mr.title,
             self._mr.description or "",
-            tuple(messages),
+            self._commit_messages,
             # ponytail: GitLab's changes_count is a string capped at "1000+"; no note about a cut listing
             # until a merge request that big needs one.
             None,
@@ -314,6 +333,65 @@ class GitLabMergeRequest:
             f"{self._base}/repository/files/{quote(path, safe='')}/raw", {"ref": ref}
         )
         return None if response is None else response.content.decode("utf-8", errors="replace")
+
+    def closing_issue_refs(self) -> tuple[IssueRef, ...]:
+        """What GitLab says the merge request closes, which follows a self-managed instance's own closing
+        pattern, and what the default pattern finds in the description and commits: GitLab lists nothing
+        for a merge request into a branch other than the default one, where the intent is the same."""
+        refs: list[IssueRef] = []
+        for page in self._client.pages(f"{self._mr_path}/closes_issues"):
+            # An external tracker's issues have no GitLab reference; trackers are read elsewhere (ADR 0014).
+            fulls = [i.references.full for i in _CLOSING_ISSUES.validate_python(page) if i.references]
+            refs.extend(closing_refs([f"Closes {full}" for full in fulls], self.repo, self._web_url))
+        texts = [self._mr.description or "", *self._commit_messages]
+        return tuple(dict.fromkeys([*refs, *closing_refs(texts, self.repo, self._web_url)]))
+
+    @property
+    def _web_url(self) -> str:
+        return self._client.api_url.removesuffix("/api/v4")
+
+    def read_issue(self, ref: IssueRef) -> Issue | None:
+        """The issue with its trusted comments. A confidential issue is left out: its text would end up in
+        the merge request's summary, which more people can read."""
+        project = f"{ref.owner}/{ref.repo}"
+        path = f"/projects/{project_path(project)}/issues/{ref.number}"
+        try:
+            response = self._client.get_optional(path)
+        except GitLabError as error:
+            if error.status == HTTPStatus.FORBIDDEN:
+                return None
+            raise
+        if response is None:
+            return None
+        issue = _Issue.model_validate(response.json())
+        if issue.confidential:
+            return None
+        trusted: list[str] = []
+        unreadable = False
+        try:
+            # Newest first, so a flood of outside comments cannot push a maintainer's word out of reach.
+            for page in self._client.pages(f"{path}/notes", {"sort": "desc", "order_by": "created_at"}):
+                trusted.extend(
+                    note.body
+                    for note in _NOTES.validate_python(page)
+                    if note.body
+                    and not (note.system or note.internal or note.confidential)
+                    and note.author is not None
+                    and self.access_level(project, note.author.id) >= DEVELOPER
+                )
+                if len(trusted) >= _MAX_ISSUE_COMMENTS:
+                    break
+        except GitLabError as error:
+            if error.status not in (HTTPStatus.FORBIDDEN, HTTPStatus.NOT_FOUND):
+                raise
+            unreadable = not trusted
+        return Issue(
+            ref=ref,
+            title=issue.title,
+            body=issue.description or "",
+            comments=newest_within(list(reversed(trusted))),
+            comments_unreadable=unreadable,
+        )
 
     # Publishing (GLB-2). `repo` and `number` are part of the Publisher protocol; this object knows both.
 
@@ -420,6 +498,48 @@ class GitLabMergeRequest:
     def set_thread_resolved(self, thread_id: str, *, resolved: bool) -> None:
         path = f"{self._mr_path}/discussions/{quote(thread_id, safe='')}"
         self._client.send("PUT", path, params={"resolved": "true" if resolved else "false"})
+
+
+_MAX_ISSUE_COMMENTS = 20
+# https://docs.gitlab.com/user/project/issues/managing_issues/#default-closing-pattern, with the link and
+# reference parts as lib/gitlab/closing_issue_extractor.rb fills `%{issue_ref}`. Case matters, as in GitLab.
+_KEYWORD = (
+    r"(?:[Cc]los(?:e[sd]?|ing)|\b[Ff]ix(?:e[sd]|ing)?|\b[Rr]esolv(?:e[sd]?|ing)|\b[Ii]mplement(?:s|ed|ing)?)"
+)
+_LINK = r"https?://[^\s>]{1,300}(?<![?!.,:])"
+_REF = r"(?:[\w.-]+(?:/[\w.-]+)*)?#\d+"
+_CLOSING = re.compile(
+    rf"\b{_KEYWORD}:? +(?:(?:issues? +)?(?:{_LINK}|{_REF})(?: *,? +and +| *,? *)?|[A-Z][A-Z0-9_]+-\d+)+"
+)
+_LINK_IN = re.compile(_LINK)
+_REF_IN = re.compile(r"(?<![\w/.#-])(?P<path>[\w.-]+(?:/[\w.-]+)*)?#(?P<iid>\d+)\b")
+
+
+def closing_refs(texts: Sequence[str], project: str, web_url: str) -> tuple[IssueRef, ...]:
+    """Issues named in closing statements. `#12` is in this project, `lib#12` in a sibling project of the
+    same namespace, `group/lib#12` anywhere, and a link only on this GitLab instance."""
+    issue_link = re.compile(rf"{re.escape(web_url)}/(?P<path>[\w.-]+(?:/[\w.-]+)+)/-/issues/(?P<iid>\d+)$")
+    namespace = project.rpartition("/")[0]
+    refs: list[IssueRef] = []
+    for text in texts:
+        for statement in _CLOSING.finditer(text):
+            found: list[tuple[str, str]] = []
+            for link in _LINK_IN.findall(statement[0]):
+                if match := issue_link.match(link):
+                    found.append((match["path"], match["iid"]))
+            for match in _REF_IN.finditer(_LINK_IN.sub(" ", statement[0])):
+                path = match["path"] or project
+                found.append((path if "/" in path else f"{namespace}/{path}", match["iid"]))
+            refs.extend(ref for path, iid in found if (ref := _issue_ref(path, int(iid))) is not None)
+    return tuple(dict.fromkeys(refs))
+
+
+def _issue_ref(path: str, number: int) -> IssueRef | None:
+    # Text from a merge request is untrusted: "fixes ../..#5" must not become a path into the API.
+    if any(part in {"", ".", ".."} for part in path.split("/")):
+        return None
+    owner, _, repo = path.lower().partition("/")
+    return IssueRef(owner, repo, number)
 
 
 def _line_range(file: ChangedFile | None, comment: ReviewComment) -> dict[str, object] | None:

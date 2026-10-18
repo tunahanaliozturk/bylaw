@@ -20,7 +20,9 @@ _BLOB_URL = re.compile(
     r"https://github\.com/(?P<repo>[\w.-]+/[\w.-]+)/blob/[^/\s]+/(?P<path>[^)\s#]+?\.md)\b"
 )
 
-_TASK = re.compile(r"^\s*[-*+]\s+\[[ xX]\]\s+(?P<text>\S.*)$")
+# GitHub and GitLab both render numbered task lists; GitLab's `[~]` marks a task that does not apply.
+_TASK = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s+\[[ xX]\]\s+(?P<text>\S.*)$")
+_INAPPLICABLE = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s+\[~\]\s")
 _HEADING = re.compile(r"^(?P<hashes>#{1,6})\s+(?P<title>.+?)\s*#*\s*$")
 _LIST_ITEM = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s+(?:\[[ xX]\]\s+)?(?P<text>\S.*)$")
 _CRITERIA_HEADING = re.compile(r"acceptance criteria|requirements|kabul kriterleri", re.IGNORECASE)
@@ -84,7 +86,7 @@ def extract_criteria(markdown: str) -> tuple[Criterion, ...]:
         if line.lstrip().startswith(("```", "~~~")):
             in_fence = not in_fence
             continue
-        if in_fence:
+        if in_fence or _INAPPLICABLE.match(line):
             continue
         if gherkin is not None:
             if _GHERKIN_NEXT.match(line):
