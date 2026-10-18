@@ -451,3 +451,12 @@ def test_a_stream_that_keeps_dropping_is_a_review_error() -> None:
 
     with pytest.raises(ReviewError, match="connection to the Anthropic API dropped"):
         reviewer.review("s", "u")
+
+
+def test_a_key_can_come_from_a_given_mapping_instead_of_the_environment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "the server's own")
+
+    assert api_key_for("anthropic", {"BYLAW_API_KEY": "installation"}) == "installation"
+    assert api_key_for("anthropic", {}) is None

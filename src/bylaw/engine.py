@@ -1,6 +1,7 @@
 """The model-facing review schema and the provider-neutral reviewer interface (ADR 0001)."""
 
 import os
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -74,9 +75,12 @@ class Reviewer(Protocol):
     def review(self, system: str, user: str) -> ReviewResult: ...
 
 
-def api_key_for(provider: str) -> str | None:
+def api_key_for(provider: str, env: Mapping[str, str] | None = None) -> str | None:
+    """The key from `env`, the process environment when not given; the GitHub App passes the
+    installation's secrets so a server-wide key never reviews for an installation (ADR 0017)."""
+    source = os.environ if env is None else env
     # The provider's own variable wins, so a key meant for one provider is never sent to another.
-    return os.environ.get(_KEY_VARIABLES.get(provider, "")) or os.environ.get("BYLAW_API_KEY") or None
+    return source.get(_KEY_VARIABLES.get(provider, "")) or source.get("BYLAW_API_KEY") or None
 
 
 def make_reviewer(provider: str, model: str | None, effort: str | None, api_key: str | None) -> Reviewer:
