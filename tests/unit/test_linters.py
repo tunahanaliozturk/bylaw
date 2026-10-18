@@ -292,3 +292,30 @@ def test_the_brief_lists_what_a_finding_may_cite() -> None:
         "- for tests/**: disabled S101\n"
         "- extends ../ruff.toml, which bylaw does not read"
     )
+
+
+def test_a_double_star_in_a_linter_glob_also_matches_no_directory_at_all() -> None:
+    eslint = LinterRules(
+        tool="eslint",
+        select=("no-console",),
+        per_file=(FileRules(pattern="src/**/*.ts", ignore=("no-console",)),),
+    )
+    ruff = LinterRules(
+        tool="ruff", select=("S",), per_file=(FileRules(pattern="**/tests/*.py", ignore=("S101",)),)
+    )
+
+    assert enables(eslint, "no-console", "src/a.ts") is False
+    assert enables(eslint, "no-console", "src/deep/a.ts") is False
+    assert enables(eslint, "no-console", "lib/a.ts") is True
+    assert enables(ruff, "S101", "tests/test_a.py") is False
+    assert enables(ruff, "S101", "app/tests/test_a.py") is False
+    assert enables(ruff, "S101", "app/a.py") is True
+
+
+def test_a_negated_ruff_per_file_pattern_applies_to_the_files_it_does_not_match() -> None:
+    rules = LinterRules(
+        tool="ruff", select=("S",), per_file=(FileRules(pattern="!src/**", ignore=("S101",)),)
+    )
+
+    assert enables(rules, "S101", "src/app.py") is True
+    assert enables(rules, "S101", "scripts/seed.py") is False
