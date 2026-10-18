@@ -17,7 +17,7 @@ def test_the_manifest_asks_for_the_permissions_the_tokens_use_and_no_more() -> N
 
 def test_the_manifest_subscribes_to_pull_request_events_only() -> None:
     assert MANIFEST["default_events"] == ["pull_request"]
-    assert REVIEW_ACTIONS == {"opened", "synchronize", "reopened", "ready_for_review"}
+    assert {"opened", "synchronize", "reopened", "ready_for_review"} == REVIEW_ACTIONS
 
 
 def test_the_app_is_private_to_the_account_that_registers_it() -> None:

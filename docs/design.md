@@ -182,6 +182,11 @@ cannot drift apart.
   works from `~/.agents/skills/`. The host model reviews in both hosts; bylaw supplies the context, the
   output schema (`bylaw schema`), the validation and the comments ([docs/hosts.md](hosts.md)).
 - **PyPI** release through trusted publishing; no stored token.
+- **GitHub App, self-hosted.** `bylaw-app` in the optional `app` extra, shipped as a container image. It
+  verifies each webhook delivery, queues it by repository, pull request and head commit, and runs the
+  same review flow as `bylaw review --pr N --post` with an installation token for one repository.
+  Organisation defaults come from the `.github` repository, model keys per installation from a secret
+  store ([ADR 0017](adr/0017-github-app.md), [docs/app/deploy.md](app/deploy.md)).
 
 ### Fork pull requests
 
@@ -196,7 +201,8 @@ which fork PRs spend API budget ([ADR 0006](adr/0006-pull-request-target-recipe.
 - Pull request, issue and spec text is untrusted. It enters the prompt as delimited data, and
   instructions inside it are not followed. A fixture with an injection attempt in the diff is part of the
   test suite.
-- Action permissions: `contents: read`, `pull-requests: write`, `issues: read`.
+- Action permissions: `contents: read`, `pull-requests: write`, `issues: read`. The app asks for the same,
+  plus `metadata: read`, which every app has, and mints each token for one repository.
 - bylaw never executes code from the pull request.
 
 ## Configuration
@@ -228,7 +234,7 @@ terminal output), an architecture diagram, a logo and a social preview card. The
 
 ## Out of scope for v1
 
-- A hosted service or GitHub App.
+- A hosted service. The GitHub App is self-hosted only ([ADR 0017](adr/0017-github-app.md)).
 - A static analysis engine of our own: linter configuration is a rule source, linters are not re-run.
 - Confluence and Notion as requirement sources. Jira, Azure Boards and Linear arrived in v0.4
   ([ADR 0014](adr/0014-tracker-requirements.md)).

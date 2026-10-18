@@ -64,6 +64,12 @@ jobs:
 
 Without a key it still runs the deterministic checks. OpenAI works too (`provider: openai`, `model: ...`). Fork pull requests need [the `pull_request_target` recipe](https://github.com/tunahanaliozturk/bylaw/blob/main/docs/recipes/pull-request-target.yml); read the warning at its top first.
 
+**GitHub App, for an organisation.** One install instead of a workflow file per repository: a server you
+run receives every chosen repository's pull requests, settings come from the organisation's `.github`
+repository, and each installation has its own model key. There is no hosted bylaw; you register the app
+from [the manifest](https://github.com/tunahanaliozturk/bylaw/blob/main/docs/app/manifest.json) and run
+the container image. Setup: [docs/app/deploy.md](https://github.com/tunahanaliozturk/bylaw/blob/main/docs/app/deploy.md).
+
 **Claude Code or Codex.** The host's own model reviews, so no API key is needed:
 
 ```
@@ -92,7 +98,7 @@ bylaw review --context context.json   # prints the findings as JSON; set ANTHROP
 1. **Context.** bylaw reads the diff, the rule files and `.bylaw.toml` from the **base** branch (so a change cannot loosen its own review), and the issues, specs and tracker work items the change links.
 2. **Review.** A model reviews with a fixed brief and a strict output schema. Text from the pull request, its issues and specs is treated as data, never as instructions.
 3. **Validate.** Every finding must sit on a line the change adds, and every rule citation must point at a real line of a rule that applies to the file, or at a linter rule id the configuration turns on for it. Anything else is dropped before it can be posted.
-4. **Post.** Inline comments for findings at or above the threshold, one summary comment with the requirement checklist. State lives in that summary, so there is no server and no database.
+4. **Post.** Inline comments for findings at or above the threshold, one summary comment with the requirement checklist. State lives in that summary, so the Action needs no server and nothing needs a database.
 
 The design and its trade-offs: [docs/design.md](https://github.com/tunahanaliozturk/bylaw/blob/main/docs/design.md) and the [ADRs](https://github.com/tunahanaliozturk/bylaw/tree/main/docs/adr/).
 
@@ -154,7 +160,7 @@ A review is one model call. On the evaluation above it used about 3,900 input an
 ## Contributing and security
 
 Contributions are welcome: [CONTRIBUTING.md](https://github.com/tunahanaliozturk/bylaw/blob/main/CONTRIBUTING.md). Please report vulnerabilities privately as described in [SECURITY.md](https://github.com/tunahanaliozturk/bylaw/blob/main/SECURITY.md), not in a public issue.
-bylaw has no server and collects no data; what it sends where is in [docs/privacy.md](https://github.com/tunahanaliozturk/bylaw/blob/main/docs/privacy.md).
+bylaw collects no data; the GitHub App is a server you run yourself. What it sends where is in [docs/privacy.md](https://github.com/tunahanaliozturk/bylaw/blob/main/docs/privacy.md).
 
 ## Licence
 
