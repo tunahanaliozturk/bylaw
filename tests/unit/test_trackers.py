@@ -7,7 +7,15 @@ import pytest
 import respx
 
 from bylaw.config import ConfigError, load_config
-from bylaw.trackers import WorkItemRef, html_markdown, parse_work_item_refs, read_work_items
+from bylaw.requirements import extract_criteria
+from bylaw.trackers import (
+    WorkItemRef,
+    adf_markdown,
+    html_markdown,
+    parse_work_item_refs,
+    read_work_items,
+    with_criteria,
+)
 
 TRACKERS = """
 [jira]
@@ -538,3 +546,82 @@ def test_trackers_for_all_authors_reads_work_items_for_any_author() -> None:
     requirements, _ = read_work_items(["ENG-7"], config, LINEAR_ENV, author_trusted=False)
 
     assert [r.source for r in requirements] == ["ENG-7"]
+
+
+def _criteria_of(markdown: str) -> list[str]:
+    return [c.text for c in extract_criteria(markdown)]
+
+
+def test_a_code_block_that_opens_a_jira_list_item_does_not_swallow_later_criteria() -> None:
+    doc = _doc(
+        {
+            "type": "bulletList",
+            "content": [
+                {"type": "listItem", "content": [{"type": "codeBlock", "content": [_text("make test")]}]},
+            ],
+        },
+        {
+            "type": "taskList",
+            "content": [
+                {"type": "taskItem", "attrs": {"state": "TODO"}, "content": [_text("Later criterion")]}
+            ],
+        },
+    )
+
+    assert _criteria_of(adf_markdown(doc)) == ["Later criterion"]
+
+
+def test_a_hard_break_or_second_paragraph_in_a_jira_list_item_stays_in_one_criterion() -> None:
+    doc = _doc(
+        {"type": "heading", "attrs": {"level": 2}, "content": [_text("Acceptance criteria")]},
+        {
+            "type": "bulletList",
+            "content": [
+                {
+                    "type": "listItem",
+                    "content": [
+                        _paragraph(_text("Exports a file"), {"type": "hardBreak"}, _text("named by date")),
+                        _paragraph(_text("in UTF-8")),
+                        _list("bulletList", "nested point"),
+                    ],
+                }
+            ],
+        },
+    )
+
+    assert _criteria_of(adf_markdown(doc)) == ["Exports a file named by date in UTF-8", "nested point"]
+
+
+def test_html_pre_blocks_are_fenced_and_keep_their_lines() -> None:
+    html = "<pre>- [ ] not a criterion\nsecond line</pre><ul><li>Real criterion</li></ul>"
+
+    markdown = html_markdown(html)
+
+    assert markdown.splitlines()[:4] == ["```", "- [ ] not a criterion", "second line", "```"]
+    assert _criteria_of("## Acceptance criteria\n" + markdown) == ["Real criterion"]
+
+
+def test_html_table_cells_are_separated_so_given_when_then_tables_survive() -> None:
+    html = (
+        "<table><tr><td>Given</td><td>a signed in user</td></tr>"
+        "<tr><td>When</td><td>they export</td></tr><tr><th>Then</th><th>a file downloads</th></tr></table>"
+    )
+
+    assert _criteria_of(html_markdown(html)) == [
+        "Given a signed in user When they export Then a file downloads"
+    ]
+
+
+def test_an_html_list_item_with_breaks_or_paragraphs_stays_one_criterion() -> None:
+    html = (
+        "<h2>Acceptance criteria</h2>"
+        "<ul><li>Exports a file<br>named by date<p>in UTF-8</p></li><li>Two</li></ul>"
+    )
+
+    assert _criteria_of(html_markdown(html)) == ["Exports a file named by date in UTF-8", "Two"]
+
+
+def test_lines_inside_a_code_fence_of_a_criteria_field_are_not_criteria() -> None:
+    field = "Refuses an expired token\n```\nexample: curl -X POST\nanother line\n```\nLogs every refusal"
+
+    assert _criteria_of(with_criteria("", field)) == ["Refuses an expired token", "Logs every refusal"]

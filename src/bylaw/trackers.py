@@ -287,6 +287,8 @@ class _HtmlText(HTMLParser):
         super().__init__(convert_charrefs=True)
         self.lines = [""]
         self._lists: list[tuple[str, int]] = []  # open lists: tag and items so far
+        self._items = 0  # open list items
+        self._pre = 0
         self._skipping = 0
 
     def _break(self) -> None:
@@ -294,39 +296,79 @@ class _HtmlText(HTMLParser):
         if not _EMPTY_LINE.match(self.lines[-1]):
             self.lines.append("")
 
+    def _space(self) -> None:
+        if self.lines[-1] and not self.lines[-1].endswith(" "):
+            self.lines[-1] += " "
+
+    def _soft_break(self) -> None:
+        # Inside a list item, a line break or a paragraph continues the item, so it stays one criterion.
+        if self._items and not self._pre:
+            self._space()
+        else:
+            self._break()
+
+    def _fence(self) -> None:
+        self._break()
+        self.lines[-1] = "```"
+        self.lines.append("")
+
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:  # noqa: ARG002
         if tag in _HTML_SKIPPED:
             self._skipping += 1
+        elif tag == "pre":
+            # Fenced, so a checklist in a code sample is not read as criteria.
+            self._fence()
+            self._pre += 1
         elif tag in {"ul", "ol"}:
             self._break()
             self._lists.append((tag, 0))
         elif tag == "li":
             self._break()
+            self._items += 1
             kind, count = self._lists[-1] if self._lists else ("ul", 0)
             if self._lists:
                 self._lists[-1] = (kind, count + 1)
             marker = f"{count + 1}. " if kind == "ol" else "- "
             self.lines[-1] = "  " * max(len(self._lists) - 1, 0) + marker
+        elif tag in {"td", "th"}:
+            # Cells of a row are one line, so a Given | When | Then table reads as a scenario.
+            self._space()
         elif tag in _HTML_HEADINGS:
             self._break()
             self.lines[-1] = "#" * _HTML_HEADINGS[tag] + " "
         elif tag in _HTML_BLOCKS:
-            self._break()
+            self._soft_break()
 
     def handle_endtag(self, tag: str) -> None:
         if tag in _HTML_SKIPPED:
             self._skipping = max(self._skipping - 1, 0)
+        elif tag == "pre" and self._pre:
+            self._pre -= 1
+            self._fence()
         elif tag in {"ul", "ol"}:
             if self._lists:
                 self._lists.pop()
             self._break()
-        elif tag == "li" or tag in _HTML_HEADINGS or tag in _HTML_BLOCKS:
+        elif tag == "li":
+            self._items = max(self._items - 1, 0)
             self._break()
+        elif tag in _HTML_HEADINGS:
+            self._break()
+        elif tag in _HTML_BLOCKS:
+            self._soft_break()
 
     def handle_data(self, data: str) -> None:
-        if not self._skipping:
-            # Whitespace in HTML is not layout; a non-breaking space counts as one too.
-            self.lines[-1] += re.sub(r"\s+", " ", data.replace("\xa0", " "))
+        if self._skipping:
+            return
+        text = data.replace("\xa0", " ")
+        if self._pre:
+            # Preformatted text keeps its lines.
+            first, *more = text.split("\n")
+            self.lines[-1] += first
+            self.lines.extend(more)
+            return
+        # Whitespace in HTML is not layout; a non-breaking space counts as one too.
+        self.lines[-1] += re.sub(r"\s+", " ", text)
 
 
 def html_markdown(html: str) -> str:
@@ -360,11 +402,14 @@ def with_criteria(text: str, criteria: str) -> str:
 
     Every line of that field counts as a criterion, so a field written as plain lines is still a checklist.
     """
-    lines = [
-        line if _LIST_LINE.match(line) else f"- {line.lstrip('# ').strip()}"
-        for line in criteria.splitlines()
-        if line.strip() and not line.lstrip().startswith(("```", "~~~"))
-    ]
+    lines: list[str] = []
+    fenced = False
+    for line in criteria.splitlines():
+        # A code sample in the field is an illustration, not a list of criteria.
+        if line.lstrip().startswith(("```", "~~~")):
+            fenced = not fenced
+        elif line.strip() and not fenced:
+            lines.append(line if _LIST_LINE.match(line) else f"- {line.lstrip('# ').strip()}")
     if not lines:
         return text
     return f"{text}\n\n## Acceptance criteria\n\n" + "\n".join(lines)
@@ -445,10 +490,15 @@ def _marker(kind: object, number: int, item: Mapping[str, Any]) -> str:
 
 def _adf_item(item: Mapping[str, Any], marker: str, indent: str) -> list[str]:
     inner = indent + "  "
-    lines = _adf_content(item, inner)
-    if not lines:
+    rest = _adf_content(item, inner)
+    if not rest:
         return []
-    return [f"{indent}{marker}{lines[0].removeprefix(inner)}", *lines[1:]]
+    # The item's own text, across hard breaks and paragraphs, is one criterion on the marker's line. A
+    # code block or a nested list starts below it, so a fence never sits behind a list marker.
+    head: list[str] = []
+    while rest and not rest[0].lstrip().startswith("```") and not _LIST_LINE.match(rest[0]):
+        head.append(rest.pop(0).strip())
+    return [f"{indent}{marker}{' '.join(head)}".rstrip(), *rest]
 
 
 def _adf_content(node: Mapping[str, Any], indent: str) -> list[str]:
