@@ -33,9 +33,24 @@ Changelog = "https://github.com/tunahanaliozturk/bylaw/blob/main/CHANGELOG.md"
 
 [project.scripts]
 bylaw = "bylaw.cli:main"
+bylaw-app = "bylaw.app.server:main"
+
+[project.optional-dependencies]
+app = [
+    "pyjwt[crypto]>=2.15.1",
+    "starlette>=1.8.0",
+    "uvicorn>=0.54.0",
+]
 
 [dependency-groups]
-dev = ["pytest>=9.1.1", "pytest-cov>=7.1.0", "respx>=0.23.1", "ruff>=0.17.0", "mypy>=2.4.0"]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+    "respx>=0.23.1",
+    "ruff>=0.17.0",
+    "mypy>=2.4.0",
+    "bylaw[app]",
+]
 
 [build-system]
 requires = ["hatchling>=1.32.4"]
@@ -65,3 +80,6 @@ plugins = ["pydantic.mypy"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra --strict-markers"
+
+[tool.uv.sources]
+bylaw = { workspace = true }

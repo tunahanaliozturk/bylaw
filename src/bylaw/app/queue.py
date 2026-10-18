@@ -1,0 +1,131 @@
+"""An in-process review queue, idempotent by repository, pull request and head commit (ADR 0017).
+
+Everything here runs on the event loop's thread except the review itself, which runs in a worker thread,
+so the bookkeeping needs no locks. Nothing survives a restart: a review missed then runs on the next push,
+or when the delivery is redelivered from the app's settings.
+"""
+
+import asyncio
+import logging
+from collections import OrderedDict
+from collections.abc import AsyncIterator, Callable
+from contextlib import asynccontextmanager, suppress
+from dataclasses import dataclass
+from enum import StrEnum
+
+log = logging.getLogger("bylaw.app")
+
+type Key = tuple[str, int]
+
+
+@dataclass(frozen=True, slots=True)
+class Job:
+    installation_id: int
+    repo: str
+    number: int
+    head_sha: str
+
+    @property
+    def key(self) -> Key:
+        return self.repo.lower(), self.number
+
+
+class Outcome(StrEnum):
+    QUEUED = "queued"
+    # A newer head replaced an older one that had not started yet.
+    SUPERSEDED = "superseded"
+    # This head is queued, under review or already reviewed.
+    DUPLICATE = "duplicate"
+    # Too many pull requests are waiting; GitHub marks the delivery failed and it can be redelivered.
+    BUSY = "busy"
+
+
+class ReviewQueue:
+    def __init__(
+        self,
+        run: Callable[[Job], None],
+        *,
+        workers: int = 2,
+        max_pending: int = 100,
+        remembered: int = 10_000,
+    ) -> None:
+        self._run = run
+        self._workers = workers
+        self._max_pending = max_pending
+        self._remembered = remembered
+        self._pending: dict[Key, Job] = {}
+        self._running: dict[Key, Job] = {}
+        # ponytail: reviewed heads are kept in memory, the oldest forgotten first; a durable store would
+        # also stop the one repeat review a restart allows, which incremental review makes cheap (ADR 0012).
+        self._done: OrderedDict[tuple[Key, str], None] = OrderedDict()
+        self._ready: asyncio.Queue[Key] = asyncio.Queue()
+
+    def offer(self, job: Job) -> Outcome:
+        key = job.key
+        running = self._running.get(key)
+        if (key, job.head_sha) in self._done or (running is not None and running.head_sha == job.head_sha):
+            return Outcome.DUPLICATE
+        if (queued := self._pending.get(key)) is not None:
+            if queued.head_sha == job.head_sha:
+                return Outcome.DUPLICATE
+            # The review reads the pull request as it is when it starts, so the newest event is all it needs.
+            self._pending[key] = job
+            return Outcome.SUPERSEDED
+        if len(self._pending) >= self._max_pending:
+            return Outcome.BUSY
+        self._pending[key] = job
+        if running is None:
+            # One review per pull request at a time: a key under review is queued again when it finishes.
+            self._ready.put_nowait(key)
+        return Outcome.QUEUED
+
+    def stats(self) -> dict[str, int]:
+        return {"pending": len(self._pending), "running": len(self._running)}
+
+    async def join(self) -> None:
+        """Wait until nothing is queued or under review."""
+        await self._ready.join()
+
+    @asynccontextmanager
+    async def running(self) -> AsyncIterator[None]:
+        tasks = [asyncio.create_task(self._work()) for _ in range(self._workers)]
+        try:
+            yield
+        finally:
+            for task in tasks:
+                task.cancel()
+            for task in tasks:
+                with suppress(asyncio.CancelledError):
+                    await task
+
+    async def _work(self) -> None:
+        while True:
+            key = await self._ready.get()
+            try:
+                job = self._pending.pop(key)
+                self._running[key] = job
+                try:
+                    await asyncio.to_thread(self._run, job)
+                except Exception as error:  # one failed review must not stop the worker
+                    # Not remembered, so a redelivery of the same event retries it.
+                    log.error(
+                        "review of %s#%d at %s failed: %s: %s",
+                        job.repo,
+                        job.number,
+                        job.head_sha,
+                        type(error).__name__,
+                        error,
+                    )
+                else:
+                    self._remember((key, job.head_sha))
+                finally:
+                    del self._running[key]
+                    if key in self._pending:
+                        self._ready.put_nowait(key)
+            finally:
+                self._ready.task_done()
+
+    def _remember(self, done: tuple[Key, str]) -> None:
+        self._done[done] = None
+        while len(self._done) > self._remembered:
+            self._done.popitem(last=False)
