@@ -15,9 +15,8 @@ from bylaw.config import Config, ConfigError, load_config
 from bylaw.context import build_context
 from bylaw.engine import PROVIDERS, OutReview, Reviewer, ReviewError, api_key_for, make_reviewer
 from bylaw.evaluation.cases import Case, load_cases
-from bylaw.evaluation.report import render
+from bylaw.evaluation.report import report
 from bylaw.evaluation.run import AnswerReviewer, CaseRun, NoModel, prepare, run_all
-from bylaw.evaluation.score import score
 from bylaw.evaluation.snapshot import snapshot_pull_request
 from bylaw.github import GitHubClient, GitHubError, GitHubSource
 from bylaw.incremental import ModelRun, keep_valid, run_model_review, trusted_memory
@@ -153,7 +152,7 @@ def _eval(args: argparse.Namespace) -> int:
             CaseRun.model_validate_json(p.read_text(encoding="utf-8")) for p in Path(args.runs).glob("*.json")
         ]
         prices = {"input_price": args.input_price, "output_price": args.output_price}
-        _write(render(score(cases, saved), args.label, **prices).rstrip("\n"), args.output)
+        _write(report(cases, saved, args.label, **prices).rstrip("\n"), args.output)
         return 0
     with tempfile.TemporaryDirectory() as work:
         if args.eval_command == "prepare":
