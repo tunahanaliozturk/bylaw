@@ -19,7 +19,7 @@ One file per roadmap feature. Each item has an id, a size and what "done" means,
 | [Evaluation set v2: real pull requests](eval-v2.md) | Q2 | v0.4 | 4 | 3 |
 | [GitHub App](github-app.md) | Q3 | v0.5 | 6 | 6 |
 | [GitLab merge requests](gitlab.md) | Q3 | v0.6 | 4 | 0 |
-| [More model providers](model-providers.md) | Q3 | v0.6 | 6 | 3 |
+| [More model providers](model-providers.md) | Q3 | v0.6 | 6 | 4 |
 | [MCP server](mcp-server.md) | Q3 | v0.6 | 3 | 0 |
 | [Compliance profiles: ISO/IEC 27001 first](compliance-profiles.md) | Q3 | v0.6 | 9 | 0 |
 | [A reviewer that learns the repository](learning.md) | Q4 | v1.0 | 5 | 0 |

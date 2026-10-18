@@ -10,7 +10,16 @@ import httpx2
 from anthropic.types.beta import BetaMessageParam, BetaOutputConfigParam, BetaTextBlockParam
 from pydantic import ValidationError
 
-from bylaw.engine import OutReview, Retry, ReviewError, Usage, added, json_instructions, review_with_retry
+from bylaw.engine import (
+    OutReview,
+    Retry,
+    ReviewError,
+    Usage,
+    added,
+    entra_token_provider,
+    json_instructions,
+    review_with_retry,
+)
 from bylaw.model import ReviewResult
 
 DEFAULT_MODEL = "claude-opus-5-5"
@@ -180,6 +189,29 @@ def vertex_reviewer(
         model=model or DEFAULT_MODEL,
         effort=effort,
         service="Vertex AI",
+        server_fallback=False,
+    )
+
+
+def foundry_reviewer(
+    model: str | None, effort: str | None, http_client: httpx2.Client | None
+) -> AnthropicReviewer:
+    """Claude in Microsoft Foundry, with structured outputs but no server-side fallback (ADR 0018). The key is
+    ANTHROPIC_FOUNDRY_API_KEY; without one, Microsoft Entra ID. The resource is ANTHROPIC_FOUNDRY_RESOURCE or
+    ANTHROPIC_FOUNDRY_BASE_URL."""
+    has_key = bool(os.environ.get("ANTHROPIC_FOUNDRY_API_KEY"))
+    tokens = None if has_key else entra_token_provider("ANTHROPIC_FOUNDRY_API_KEY")
+    try:
+        client = anthropic.AnthropicFoundry(
+            azure_ad_token_provider=tokens, http_client=http_client, max_retries=3
+        )
+    except (anthropic.AnthropicError, ValueError) as error:
+        raise ReviewError(f"Microsoft Foundry is not set up: {error}") from error
+    return AnthropicReviewer(
+        client=client,
+        model=model or DEFAULT_MODEL,
+        effort=effort,
+        service="Microsoft Foundry",
         server_fallback=False,
     )
 
