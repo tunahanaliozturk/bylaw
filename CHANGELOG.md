@@ -18,6 +18,10 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 - Setup for each tracker, the Action inputs and what a left-out work item's note means: [docs/trackers.md](docs/trackers.md).
 - Work items are read only for pull requests by owners, members and collaborators; for anyone else a note says they were not read. `trackers_for_all_authors = true` reads them for every author. The brief marks a work item kept out of quotes `Quotable: no` and tells the reviewer to name it by its labels only (ADR 0014).
 - Tracker text keeps its criteria in more shapes: a code block at the start of a Jira list item no longer hides the criteria after it, HTML `<pre>` blocks and code fences in a criteria field are not read as criteria, table rows read as one line so a Given/When/Then table is a scenario, and a list item continued after a line break or a second paragraph stays one criterion.
+- Keys in HTML comments, such as a pull request template's examples, are not work item references, and only ASCII digits make a key.
+- A work item that does not exist and one outside the allow list get the same note, so notes do not reveal which keys exist elsewhere. A tracker token an HTTP header cannot carry is a note instead of a failed run.
+- A `.bylaw.toml` error never repeats the rejected value, so a token pasted into the file stays out of the log; the message says to rotate it.
+- Quoted prose in comments cannot mention people: a zero-width space follows every `@` in text from issues, work items, specs and the model. Code spans are left as written.
 
 ## 0.2.0 - 2026-10-18
 

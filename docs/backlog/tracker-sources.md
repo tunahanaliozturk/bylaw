@@ -24,6 +24,7 @@ How it was built, and where it differs from the item text above:
 - Linear keys are team keys, so `LIN-123` stands for any listed team (`ENG-123`). Jira and Linear keys share a shape; the allow lists decide which tracker a key belongs to, and one key cannot be listed for both.
 - "Status only" in TRK-5 means the criterion's status in the review (met, partial, missing), not the work item's state in the tracker. Tracker states are not read.
 - `AB#123` names no project, so the Azure Boards allow list is checked on the answer, after the read. ADR 0014 records that cost.
+- After a security review: work items are read only for trusted authors unless `trackers_for_all_authors = true`; the review memory and the brief honour `quote_trackers = false`; missing and not-allowed work items share one note; config errors hide values; `@` in quoted prose cannot mention anyone. ADR 0014 records each.
 - Every test runs against respx fakes built from the documented request and response shapes. Nothing below has been tried against a real account yet.
 
 ## Live checks before v1.0
@@ -57,5 +58,7 @@ These need real accounts and cannot run in CI. Each one should be tried once aga
 **All trackers**
 
 1. Run the Action with the secrets passed as inputs, on a pull request from a branch and one from a fork: the fork run reports the variables as not set.
-2. `quote_trackers = false`: read the posted summary and confirm no title, criterion text or note from a work item appears, and check whether the model's findings paraphrase criteria (ADR 0014 lists this as open).
-3. Check the Actions log for the run: no token in it, and no tracker text beyond what the summary shows.
+2. `quote_trackers = false`: read the posted summary, including its hidden state, and confirm no title, criterion text or note from a work item appears, and check whether the model's findings paraphrase criteria despite the `Quotable: no` instruction.
+3. A pull request from an account that is not a member, under `pull_request_target`: the work items are not read and the note says why; with `trackers_for_all_authors = true` they are.
+4. Check that the zero-width space after `@` stops a mention in a posted summary and still reads naturally.
+5. Check the Actions log for the run: no token in it, and no tracker text beyond what the summary shows.

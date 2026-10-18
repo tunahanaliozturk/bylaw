@@ -24,8 +24,9 @@ branch configuration.
   cannot widen the list for itself.
 - **References** come from the pull request title, body and commit messages. A key counts only when its
   project or team is listed, which is also what keeps `UTF-8`, `SHA-256` or `ISO-27001` from reading as
-  work items. At most ten work items are read per run, because the pull request text decides how many
-  calls bylaw makes with the token.
+  work items. Digits are ASCII only, and keys inside HTML comments do not count, so the hidden examples
+  of a pull request template are not fetched. At most ten work items are read per run, because the pull
+  request text decides how many calls bylaw makes with the token.
 - **Only for trusted authors, unless the repository says otherwise.** Work items are read only when the
   pull request's author is an `OWNER`, `MEMBER` or `COLLABORATOR`, the associations ADR 0008 trusts.
   Anyone else, such as a fork author under the `pull_request_target` recipe, could name ten allowed keys
@@ -38,10 +39,16 @@ branch configuration.
   project check can only happen on the answer: bylaw reads the work item, and if its project is not
   listed, the text is dropped before it reaches the review. The token's own reach is the outer limit.
 - **Credentials only from the environment:** `JIRA_EMAIL` with `JIRA_API_TOKEN`, `AZURE_DEVOPS_TOKEN`,
-  `LINEAR_API_KEY`. A token in `.bylaw.toml` is a configuration error. Notes about failed reads carry the
-  key and an HTTP status or a fixed phrase, never the exception text, the API's error message or the
-  token. Only HTTPS sites are accepted, and redirects are not followed, so the credentials cannot be
-  sent on to another host.
+  `LINEAR_API_KEY`. A token in `.bylaw.toml` is a configuration error, and no configuration error repeats
+  the value it rejects, so a pasted token does not reach the Actions log; the message says to rotate it.
+  Notes about failed reads carry the key and an HTTP status or a fixed phrase, never the exception text,
+  the API's error message or the token, and a token an HTTP header cannot carry is a note too. Only HTTPS
+  sites are accepted, and redirects are not followed, so the credentials cannot be sent on to another
+  host.
+- **Notes do not tell existence apart.** A work item that does not exist and one outside the allow list
+  (moved to another Jira project or Linear team, or in an unlisted Azure DevOps project) get the same
+  note, so a pull request author cannot use the notes to learn which keys exist in projects they were not
+  given.
 - **A failed read is a note, not a failed run.** A missing token, an unreachable tracker, a 404 or an
   answer that is not JSON leaves that work item out with a note in the summary, as an unreadable issue
   does.
@@ -49,7 +56,11 @@ branch configuration.
   and Azure Boards' HTML fields are turned into Markdown first, keeping headings, lists and Jira action
   items. A dedicated criteria field (Azure Boards' Acceptance Criteria, or the Jira custom field named in
   `criteria_field`) becomes an "Acceptance criteria" section, one criterion per line. A work item with no
-  structure gets inferred criteria (ADR 0011).
+  structure gets inferred criteria (ADR 0011). Code blocks stay fenced and are never read as criteria,
+  a table row reads as one line, and a list item continued after a line break or a second paragraph
+  stays one criterion.
+- **No mentions.** Quoted prose in bylaw's comments gets a zero-width space after every `@`, so a work
+  item, an issue or the model cannot ping a person or a team. Code spans are left as written.
 - **Quoting.** By default the summary quotes work item criteria as it quotes issue criteria. With
   `quote_trackers = false` the summary shows, for work items, only the criterion keys, their status and
   the code and test locations: no title, no criterion text, no inferred criterion text and no note from
