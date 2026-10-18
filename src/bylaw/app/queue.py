@@ -18,6 +18,11 @@ log = logging.getLogger("bylaw.app")
 type Key = tuple[str, int]
 
 
+def flat(text: str) -> str:
+    """One line. Text from a repository or a model must not be able to forge a log line."""
+    return " ".join(text.splitlines())
+
+
 @dataclass(frozen=True, slots=True)
 class Job:
     installation_id: int
@@ -114,7 +119,7 @@ class ReviewQueue:
                         job.number,
                         job.head_sha,
                         type(error).__name__,
-                        error,
+                        flat(str(error)),
                     )
                 else:
                     self._remember((key, job.head_sha))

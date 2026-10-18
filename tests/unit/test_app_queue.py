@@ -197,3 +197,21 @@ def test_only_so_many_reviewed_heads_are_remembered() -> None:
         return queue.offer(_job("a"))
 
     assert asyncio.run(scenario()) == Outcome.QUEUED
+
+
+def test_an_error_message_from_a_repository_is_logged_on_one_line(caplog: pytest.LogCaptureFixture) -> None:
+    def fail(_: Job) -> None:
+        # A quoted TOML key can hold a line break, and it reaches ConfigError's message.
+        raise ValueError('.bylaw.toml is invalid: "x\nERROR bylaw.app: forged line"')
+
+    async def scenario() -> None:
+        queue = ReviewQueue(fail)
+        async with queue.running():
+            queue.offer(_job("a"))
+            await queue.join()
+
+    asyncio.run(scenario())
+
+    [record] = [r for r in caplog.records if "failed" in r.getMessage()]
+    assert "\n" not in record.getMessage()
+    assert "forged line" in record.getMessage()
