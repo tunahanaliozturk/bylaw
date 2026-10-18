@@ -15,7 +15,11 @@ NAMES = (
     "BYLAW_API_KEY",
     "JIRA_EMAIL",
     "JIRA_API_TOKEN",
+    # Where the tracker tokens may go. They serve every repository of the installation, so the operator
+    # pins the site and a repository's .bylaw.toml cannot point them elsewhere (trackers.SITES).
+    "JIRA_URL",
     "AZURE_DEVOPS_TOKEN",
+    "AZURE_DEVOPS_ORGANIZATION",
     "LINEAR_API_KEY",
 )
 

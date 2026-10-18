@@ -96,6 +96,7 @@ class Server:
 
     def __init__(self, client: TestClient, queue: ReviewQueue, github: FakeGitHub, reviewer: FakeReviewer):
         self.client, self.queue, self.github, self.reviewer = client, queue, github, reviewer
+        self.elsewhere: respx.Route | None = None
 
     def deliver(
         self, body: bytes, event: str = "pull_request", signature: str | bytes | None = None
@@ -117,8 +118,12 @@ def _serve(github: FakeGitHub, settings: Settings) -> Iterator[Server]:
     app = create_app(settings, reviewer)
     with respx.mock(assert_all_called=False) as router:
         router.route(host="api.github.test").mock(side_effect=github)
+        # Anything else is recorded, so a test can say nothing went there.
+        router.route(name="elsewhere").respond(404)
         with TestClient(app) as client:
-            yield Server(client, app.state.queue, github, reviewer)
+            server = Server(client, app.state.queue, github, reviewer)
+            server.elsewhere = router["elsewhere"]
+            yield server
 
 
 @pytest.fixture
@@ -445,3 +450,24 @@ def test_the_server_caps_connections_and_idle_keep_alive(
 
     assert (seen["limit_concurrency"], seen["timeout_keep_alive"]) == (64, 5)
     assert seen["server_header"] is False
+
+
+def test_a_repository_cannot_send_the_installation_s_jira_token_to_a_host_it_picks(
+    github: FakeGitHub,
+) -> None:
+    github.title = "PROJ-12: add x"
+    github.base[".bylaw.toml"] = (
+        'trackers_for_all_authors = true\n[jira]\nurl = "https://collector.example"\nprojects = ["PROJ"]\n'
+    )
+    environ = {
+        "BYLAW_INSTALLATION_7_JIRA_EMAIL": "bot@acme.test",
+        "BYLAW_INSTALLATION_7_JIRA_API_TOKEN": "jira-installation-token",
+        "BYLAW_INSTALLATION_7_JIRA_URL": "https://acme.atlassian.net",
+    }
+    for server in _serve(github, _settings(environ)):
+        server.deliver(_event())
+        server.settle()
+
+        assert server.elsewhere is not None
+        assert not server.elsewhere.called
+    assert "names a Jira site other than the one the app's operator set" in github.comments[0]["body"]
