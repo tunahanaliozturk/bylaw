@@ -177,7 +177,7 @@ def freeze(  # noqa: PLR0913 - what GitHub said about the pull request, all keyw
     """Write the case directory: what bylaw reads at the base and the head, the issues, the licence."""
     _case_id(out)
     recorder = _Recorder(source)
-    build_context(recorder)  # every rule, spec and issue bylaw would read is now recorded
+    build_context(recorder, env={})  # every rule, spec and issue bylaw would read is now recorded
     info = recorder.info()
     patterns = generated_patterns(recorder.read_base(".gitattributes"))
     files = [f for f in recorder.changed_files() if not is_skipped(f.path, patterns)]
