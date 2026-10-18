@@ -19,6 +19,7 @@ from bylaw.engine import (
     credential_errors,
     entra_token_provider,
     json_instructions,
+    refuse_empty,
     refuse_header_list,
     review_with_retry,
 )
@@ -146,6 +147,7 @@ def bedrock_reviewer(
     """Claude in Amazon Bedrock, the Messages API endpoint. It has no structured outputs and no server-side
     fallback (ADR 0018). Credentials and region come from the AWS chain: a Bedrock API key in
     AWS_BEARER_TOKEN_BEDROCK, or SigV4 with AWS_ACCESS_KEY_ID, a profile, SSO or a role."""
+    refuse_empty(*_BEDROCK_KEYS)
     # SigV4 signing imports boto3 and botocore; a Bedrock API key needs neither.
     if not any(os.environ.get(name) for name in _BEDROCK_KEYS) and not _installed("boto3", "botocore"):
         raise ReviewError(
@@ -204,6 +206,7 @@ def foundry_reviewer(
     ANTHROPIC_FOUNDRY_API_KEY; without one, Microsoft Entra ID. The resource is ANTHROPIC_FOUNDRY_RESOURCE or
     ANTHROPIC_FOUNDRY_BASE_URL."""
     refuse_header_list("ANTHROPIC_CUSTOM_HEADERS", "Microsoft Foundry")
+    refuse_empty("ANTHROPIC_FOUNDRY_API_KEY")
     has_key = bool(os.environ.get("ANTHROPIC_FOUNDRY_API_KEY"))
     tokens = None if has_key else entra_token_provider("ANTHROPIC_FOUNDRY_API_KEY")
     try:
