@@ -88,7 +88,7 @@ bylaw review --context context.json   # prints the findings as JSON; set ANTHROP
   <img src="https://raw.githubusercontent.com/tunahanaliozturk/bylaw/main/docs/images/flow-light.png" alt="Pull request, then context, then deterministic checks and the reviewer, then validation, then comments on the pull request" width="100%">
 </picture>
 
-1. **Context.** bylaw reads the diff, the rule files and `.bylaw.toml` from the **base** branch (so a change cannot loosen its own review), and the issues and specs the change links.
+1. **Context.** bylaw reads the diff, the rule files and `.bylaw.toml` from the **base** branch (so a change cannot loosen its own review), and the issues, specs and tracker work items the change links.
 2. **Review.** A model reviews with a fixed brief and a strict output schema. Text from the pull request, its issues and specs is treated as data, never as instructions.
 3. **Validate.** Every finding must sit on a line the change adds, and every rule citation must point at a real line of a rule that applies to the file, or at a linter rule id the configuration turns on for it. Anything else is dropped before it can be posted.
 4. **Post.** Inline comments for findings at or above the threshold, one summary comment with the requirement checklist. State lives in that summary, so there is no server and no database.
@@ -109,9 +109,15 @@ incremental = true              # on a new push, send the model only the files w
 
 [budget]
 pr_tokens = 500000              # optional: model tokens one pull request may use across all runs
+
+[jira]                          # optional: Jira issues a pull request names, such as PROJ-123
+url = "https://acme.atlassian.net"
+projects = ["PROJ"]
 ```
 
 Rule files need no setting. bylaw reads them from the base branch: the ones at the root and, in a monorepo, the nearest `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md` and linter configuration above each changed file, plus every `.editorconfig` on the way up as EditorConfig itself does, so `packages/api/` is reviewed against its own rules and the root ones. From Ruff (following `extend`), ESLint (`.eslintrc.json` or `.eslintrc.yml`), golangci-lint and .NET analyzer settings it also reads which rule ids are on, and findings can cite them as `ruff:S608`. A cited id is dropped when the configuration turns it off, or does not turn it on and bylaw read all of it; an id that may come from an ESLint `extends` or a .NET analysis level is kept. ESLint configs written in JavaScript are never run; they stay text.
+
+Requirements can also come from Jira, Azure Boards (`AB#123`) and Linear. Each is an opt-in with an allow list and a token in the environment; setup, and `quote_trackers = false` for private trackers, are in [docs/trackers.md](https://github.com/tunahanaliozturk/bylaw/blob/main/docs/trackers.md).
 
 ## Evaluation
 
