@@ -1,14 +1,25 @@
 """Reviews through the official OpenAI SDK: OpenAI and Azure OpenAI with structured outputs, and any
 server that speaks Chat Completions (Ollama, vLLM, LM Studio) with the JSON fallback."""
 
+import os
 from typing import Any, cast
 
+import httpx2
 import openai
 from openai.types.chat import ChatCompletion, ChatCompletionMessageParam
 from openai.types.shared_params import Reasoning
 from pydantic import ValidationError
 
-from bylaw.engine import OutReview, Retry, ReviewError, Usage, added, json_instructions, review_with_retry
+from bylaw.engine import (
+    OutReview,
+    Retry,
+    ReviewError,
+    Usage,
+    added,
+    entra_token_provider,
+    json_instructions,
+    review_with_retry,
+)
 from bylaw.model import ReviewResult
 
 
@@ -53,9 +64,32 @@ class OpenAIReviewer:
             raise ReviewError("the model returned output that is not a valid review") from error
         except (openai.OpenAIError, ValueError) as error:
             raise ReviewError(f"the OpenAI SDK rejected the request ({type(error).__name__})") from error
+        except ReviewError:
+            raise
+        except Exception as error:
+            # An Entra ID token provider raises its own errors from inside the request when it finds no
+            # credential. The review fails with a note, not the run.
+            raise ReviewError(
+                f"the request to {self._service} failed ({type(error).__name__}); check its credentials"
+            ) from error
         if response.output_parsed is None:
             raise ReviewError("the model declined or returned no review")
         return response.output_parsed.to_result()
+
+
+def azure_reviewer(deployment: str, effort: str | None, http_client: httpx2.Client | None) -> OpenAIReviewer:
+    """Azure OpenAI through its v1 API, which the plain OpenAI client speaks, with structured outputs. The
+    endpoint is AZURE_OPENAI_ENDPOINT, the key AZURE_OPENAI_API_KEY and, without one, Microsoft Entra ID;
+    the model is the deployment name."""
+    endpoint = os.environ.get("AZURE_OPENAI_ENDPOINT")
+    if not endpoint:
+        raise ReviewError("Azure OpenAI is not set up: set AZURE_OPENAI_ENDPOINT to the resource's endpoint")
+    # Always a credential of its own: left empty, the SDK would send OPENAI_API_KEY to Azure.
+    key = os.environ.get("AZURE_OPENAI_API_KEY") or entra_token_provider("AZURE_OPENAI_API_KEY")
+    client = openai.OpenAI(
+        api_key=key, base_url=f"{endpoint.rstrip('/')}/openai/v1/", http_client=http_client, max_retries=3
+    )
+    return OpenAIReviewer(client=client, model=deployment, effort=effort, service="Azure OpenAI")
 
 
 _SCHEMA_FORMAT: dict[str, Any] = {

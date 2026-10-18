@@ -11,11 +11,11 @@ inputs:
     required: false
     default: ""
   provider:
-    description: Model provider, anthropic, openai, bedrock, vertex or openai-compatible (docs/providers.md).
+    description: Model provider, anthropic, openai, bedrock, vertex, foundry, azure-openai or openai-compatible. Cloud providers read their credentials from the job's environment (docs/providers.md).
     required: false
     default: anthropic
   model:
-    description: Model name. Defaults to claude-opus-5-5 for anthropic; required for openai and openai-compatible.
+    description: Model name. Defaults to claude-opus-5-5 for the Claude providers (anthropic.claude-opus-5-5 on bedrock); required for openai, azure-openai (the deployment name) and openai-compatible.
     required: false
     default: ""
   base-url:
