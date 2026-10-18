@@ -1,5 +1,6 @@
 """The GitHub App end to end: signed deliveries into the ASGI app, a fake GitHub behind it, no network."""
 
+import asyncio
 import hashlib
 import hmac
 import json
@@ -13,8 +14,11 @@ import pytest
 import respx
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
+from starlette.requests import Request
 from starlette.testclient import TestClient
+from starlette.types import Message
 
+from bylaw.app import server as app_server
 from bylaw.app.auth import DEFAULTS_PERMISSIONS, REVIEW_PERMISSIONS
 from bylaw.app.queue import ReviewQueue
 from bylaw.app.secrets import EnvSecrets
@@ -405,3 +409,39 @@ def test_a_token_for_another_repository_than_the_job_s_is_not_used(
     assert [c for c in github.calls if c.path.startswith(f"/repos/{REPO}")] == []
     assert github.comments == []
     assert "the installation token GitHub returned is not for acme/app" in caplog.text
+
+
+def test_the_body_limit_fits_the_largest_pull_request_event_with_room_and_no_more() -> None:
+    # A pull request body holds up to 65,536 characters: 256 KiB at four UTF-8 bytes each.
+    assert 256 * 1024 < MAX_BODY <= 512 * 1024
+    assert _settings().max_body == MAX_BODY
+
+
+def test_a_body_that_arrives_too_slowly_is_refused() -> None:
+    async def trickle() -> Message:
+        await asyncio.sleep(1)
+        return {"type": "http.request", "body": b"{}", "more_body": False}
+
+    request = Request({"type": "http", "method": "POST", "headers": []}, trickle)
+
+    with pytest.raises(app_server.RefusedError) as refused:
+        asyncio.run(app_server.read_body(request, seconds=0.05))
+
+    assert refused.value.status == 408
+
+
+def test_the_server_caps_connections_and_idle_keep_alive(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import uvicorn  # noqa: PLC0415 - patched below
+
+    seen: dict[str, object] = {}
+    monkeypatch.setattr(uvicorn, "run", lambda _app, **options: seen.update(options))
+    monkeypatch.setenv("BYLAW_APP_CLIENT_ID", "Iv23abc")
+    monkeypatch.setenv("BYLAW_APP_PRIVATE_KEY", _private_key())
+    monkeypatch.setenv("BYLAW_WEBHOOK_SECRET", "s")
+
+    app_server.main()
+
+    assert (seen["limit_concurrency"], seen["timeout_keep_alive"]) == (64, 5)
+    assert seen["server_header"] is False

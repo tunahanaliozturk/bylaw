@@ -95,8 +95,14 @@ is not installed on `.github`, the review runs without defaults.
   with incremental review (ADR 0012), a review of an unchanged pull request sends the model nothing. The
   delivery id is not used to reject repeats, because a redelivery from the app's settings keeps the same
   id, and that is how an operator retries a review that failed.
-- *Size and floods.* The body is read up to 1 MiB and refused with `413` beyond that; a `pull_request`
-  delivery is tens of kilobytes and GitHub caps any payload at 25 MB. At most 100 pull requests wait
+- *Size, slow senders and floods.* Bytes arrive before the signature can be checked, so the body is read
+  up to 512 KiB and refused with `413` beyond that, and refused with `408` if it has not arrived within
+  10 seconds. GitHub documents only a 25 MB cap on any payload; a `pull_request` delivery is tens of
+  kilobytes, and its largest part, the pull request body of at most 65,536 characters, is 256 KiB even
+  at four bytes a character (`BYLAW_APP_MAX_BODY` raises the limit). Uvicorn takes at most 64
+  connections at once and closes idle keep-alive connections after 5 seconds. The proxy in front should
+  set the same body limit and timeouts, so a slow or large request never reaches the server at all. At
+  most 100 pull requests wait
   (`BYLAW_APP_MAX_PENDING`); past that the server answers `503` and GitHub marks the delivery failed. Two
   workers review at once (`BYLAW_APP_WORKERS`), one review per pull request at a time.
 - *Malformed but signed input.* Repository names are checked against GitHub's character set and may not

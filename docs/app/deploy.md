@@ -84,6 +84,13 @@ The server speaks plain HTTP on port 8000. Put a reverse proxy that terminates T
 nginx, your cloud's load balancer) and point the webhook URL at the proxy: GitHub should deliver over
 HTTPS, and a webhook secret proves who sent a delivery but does not hide it.
 
+Anyone on the internet can send the endpoint bytes before the signature is checked, so let the proxy turn
+away what GitHub never sends: bodies over 512 KiB and requests that trickle in. In nginx that is
+`client_max_body_size 512k;`, `client_body_timeout 10s;` and `client_header_timeout 10s;`; in Caddy,
+`request_body { max_size 512KB }` with `servers { timeouts { read_body 10s } }`. The server enforces the same
+limits itself (512 KiB, 10 seconds for the body, at most 64 connections, idle keep-alive closed after
+5 seconds), but a proxy stops them before they take a connection.
+
 Settings, all from the environment:
 
 | Variable | Default | Meaning |
@@ -96,6 +103,7 @@ Settings, all from the environment:
 | `BYLAW_MODEL`, `BYLAW_EFFORT` | provider default | As `--model` and `--effort` for `bylaw review`. |
 | `BYLAW_APP_WORKERS` | `2` | Pull requests reviewed at once. |
 | `BYLAW_APP_MAX_PENDING` | `100` | Pull requests that may wait; beyond that, deliveries get `503`. |
+| `BYLAW_APP_MAX_BODY` | `524288` | Largest delivery read, in bytes; larger ones get `413`. |
 | `BYLAW_APP_HOST`, `PORT` | `127.0.0.1`, `8000` | Where the server listens. The image sets the host to `0.0.0.0`. |
 | `GITHUB_API_URL`, `GITHUB_GRAPHQL_URL` | `https://api.github.com` | For GitHub Enterprise Server. |
 
