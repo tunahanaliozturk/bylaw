@@ -1,0 +1,17 @@
+{
+  "case_id": "vite-22611",
+  "result": {
+    "findings": [],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 0,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "no-model",
+  "case_digest": "77c0de3b502ac7ce5381ba56c5fcd156e1935acbbe93eeea6c875edbce6d00a5",
+  "dropped_findings": 0
+}
