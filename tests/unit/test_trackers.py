@@ -1,4 +1,5 @@
 import base64
+import json
 from collections.abc import Sequence
 
 import httpx
@@ -430,3 +431,73 @@ def test_an_unreadable_work_item_is_a_note_that_never_shows_the_token() -> None:
         "Could not read AB#345 from Azure Boards (HTTP 203); it is left out of the requirement check.",
     )
     assert not _notes_leak(notes, AZURE_ENV)
+
+
+LINEAR = "https://api.linear.app/graphql"
+LINEAR_ENV = {"LINEAR_API_KEY": "lin_api_secret"}
+LINEAR_CONFIG = '[linear]\nteams = ["ENG"]\n'
+
+
+def _linear_issue(team: str = "ENG", description: str | None = "- [ ] Sends a welcome email") -> object:
+    issue = {
+        "identifier": "ENG-7",
+        "title": "Welcome email",
+        "description": description,
+        "team": {"key": team},
+    }
+    return {"data": {"issue": issue}}
+
+
+@respx.mock
+def test_a_linear_issue_becomes_a_requirement_with_criteria_from_its_markdown() -> None:
+    route = respx.post(LINEAR).mock(return_value=httpx.Response(200, json=_linear_issue()))
+
+    requirements, notes = read_work_items(["ENG-7"], load_config(LINEAR_CONFIG), LINEAR_ENV)
+
+    assert notes == ()
+    [requirement] = requirements
+    assert (requirement.source, requirement.title) == ("ENG-7", "Welcome email")
+    assert [c.text for c in requirement.criteria] == ["Sends a welcome email"]
+    request = route.calls.last.request
+    # A personal API key goes in the header as it is, without "Bearer".
+    assert request.headers["authorization"] == "lin_api_secret"
+    body = json.loads(request.content)
+    assert body["variables"] == {"id": "ENG-7"}
+    assert "issue(id: $id)" in body["query"]
+
+
+@respx.mock
+def test_a_linear_issue_moved_to_a_team_outside_the_allow_list_is_left_out() -> None:
+    respx.post(LINEAR).mock(return_value=httpx.Response(200, json=_linear_issue(team="SEC")))
+
+    requirements, notes = read_work_items(["ENG-7"], load_config(LINEAR_CONFIG), LINEAR_ENV)
+
+    assert requirements == ()
+    assert notes == (
+        "ENG-7 has moved to a Linear team that is not listed under [linear] teams; it is left out.",
+    )
+
+
+@respx.mock
+def test_a_linear_error_answer_is_a_note_without_the_api_message() -> None:
+    answer = {"data": None, "errors": [{"message": "Entity not found: lin_api_secret"}]}
+    respx.post(LINEAR).mock(return_value=httpx.Response(200, json=answer))
+
+    requirements, notes = read_work_items(["ENG-7"], load_config(LINEAR_CONFIG), LINEAR_ENV)
+
+    assert requirements == ()
+    assert notes == (
+        "Could not read ENG-7 from Linear (the API answered with an error); "
+        "it is left out of the requirement check.",
+    )
+    assert not _notes_leak(notes, LINEAR_ENV)
+
+
+@respx.mock
+def test_linear_is_not_called_without_an_api_key() -> None:
+    route = respx.post(LINEAR)
+
+    requirements, notes = read_work_items(["ENG-7"], load_config(LINEAR_CONFIG), {"LINEAR_API_KEY": ""})
+
+    assert (requirements, route.called) == ((), False)
+    assert notes == ("LINEAR_API_KEY is not set, so ENG-7 was not read from Linear.",)

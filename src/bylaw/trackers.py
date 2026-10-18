@@ -12,7 +12,7 @@ from typing import Any, Literal
 
 import httpx
 
-from bylaw.config import AzureBoards, Config, Jira
+from bylaw.config import AzureBoards, Config, Jira, Linear
 from bylaw.model import Requirement
 from bylaw.requirements import extract_criteria
 
@@ -141,6 +141,12 @@ def _readers(config: Config) -> dict[Tracker, tuple[Reader, ClientFactory]]:
             lambda http, key: _read_azure_boards(http, boards, key),
             lambda secrets: _client(auth=httpx.BasicAuth("", secrets[0])),
         )
+    if (linear := config.linear) is not None:
+        # A personal API key goes in the Authorization header as it is: https://linear.app/developers/graphql
+        readers["linear"] = (
+            lambda http, key: _read_linear(http, linear, key),
+            lambda secrets: _client(headers={"Authorization": secrets[0]}),
+        )
     return readers
 
 
@@ -225,6 +231,35 @@ def _read_azure_boards(http: httpx.Client, boards: AzureBoards, key: str) -> Wor
             html_markdown(_string(values.get("System.Description"))),
             html_markdown(_string(values.get("Microsoft.VSTS.Common.AcceptanceCriteria"))),
         ),
+    )
+
+
+_LINEAR_URL = "https://api.linear.app/graphql"
+# `issue(id:)` takes an identifier such as ENG-123 (https://linear.app/developers/graphql); the field
+# names are those of the Issue type in Linear's published schema,
+# https://github.com/linear/linear/blob/master/packages/sdk/src/schema.graphql
+_LINEAR_QUERY = "query($id: String!) { issue(id: $id) { identifier title description team { key } } }"
+
+
+def _read_linear(http: httpx.Client, linear: Linear, key: str) -> WorkItem:
+    request = http.build_request("POST", _LINEAR_URL, json={"query": _LINEAR_QUERY, "variables": {"id": key}})
+    data = _fetch(http, key, "linear", request)
+    issue = _mapping(_mapping(data.get("data")).get("issue"))
+    # GraphQL reports errors with status 200. Their text is not passed on: it is the API's, not bylaw's.
+    if data.get("errors") or not issue:
+        raise _UnreadableError(
+            f"Could not read {key} from Linear (the API answered with an error); "
+            "it is left out of the requirement check."
+        )
+    # An issue moved to another team answers to its old identifier too, so the team is checked on the answer.
+    if _mapping(issue.get("team")).get("key") not in linear.teams:
+        raise _UnreadableError(
+            f"{key} has moved to a Linear team that is not listed under [linear] teams; it is left out."
+        )
+    title = issue.get("title")
+    # The description is Markdown already.
+    return WorkItem(
+        title=title if isinstance(title, str) and title else key, text=_string(issue.get("description"))
     )
 
 
