@@ -3,11 +3,15 @@
 import json
 from collections.abc import Callable, Iterator
 from pathlib import Path
+from typing import Any, cast
 
 import anthropic
+import google.auth
+import google.auth.exceptions
 import httpx2
 import openai
 import pytest
+from anthropic.lib.aws import _auth as aws_auth
 
 from bylaw import engine_anthropic
 from bylaw.engine import ReviewError, Usage, can_review, make_reviewer
@@ -51,6 +55,9 @@ def clean_env(monkeypatch: pytest.MonkeyPatch) -> None:
         "AZURE_OPENAI_ENDPOINT",
     ):
         monkeypatch.delenv(name, raising=False)
+    # The SDK keeps one boto3 session per set of arguments for the life of the process, with the
+    # credentials it found; each test starts without one so its own environment is what gets read.
+    cast(Any, aws_auth._get_session).cache_clear()
 
 
 def _chat(text: str | None, finish: str = "stop", tokens: tuple[int, int] = (10, 5)) -> dict[str, object]:
@@ -351,5 +358,113 @@ def test_keys_for_other_providers_never_reach_bedrock(monkeypatch: pytest.Monkey
     handler, sent = _claude_replies(json.dumps(REVIEW))
 
     _claude(handler, "bedrock").review("s", "u")
+
+    assert SECRET not in str(sent[0].headers)
+
+
+def test_bedrock_with_no_aws_credentials_is_a_review_error(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("AWS_CONFIG_FILE", str(tmp_path / "no-config"))
+    monkeypatch.setenv("AWS_SHARED_CREDENTIALS_FILE", str(tmp_path / "no-credentials"))
+    monkeypatch.setenv("AWS_EC2_METADATA_DISABLED", "true")
+    monkeypatch.setenv("AWS_REGION", "eu-west-1")
+    handler, sent = _claude_replies(json.dumps(REVIEW))
+
+    with pytest.raises(ReviewError, match="Amazon Bedrock"):
+        _claude(handler, "bedrock").review("s", "u")
+
+    assert sent == []
+
+
+class _Credentials:
+    """What google.auth.default returns, without a Google account."""
+
+    def __init__(self) -> None:
+        self.token: str | None = None
+        self.expired = False
+
+    def refresh(self, _request: object) -> None:
+        self.token = "ya29.fake-access-token"  # noqa: S105 - a fake token
+
+
+@pytest.fixture
+def gcp(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("CLOUD_ML_REGION", "us-east5")
+    monkeypatch.setenv("ANTHROPIC_VERTEX_PROJECT_ID", "my-project")
+    monkeypatch.setattr(google.auth, "default", lambda **_kwargs: (_Credentials(), "adc-project"))
+
+
+@pytest.mark.usefixtures("gcp")
+def test_vertex_uses_application_default_credentials_and_structured_output() -> None:
+    handler, sent = _claude_replies(json.dumps(REVIEW))
+
+    result = _claude(handler, "vertex").review("system text", "user text")
+
+    assert result.criteria[0].criterion == "issue#1/AC-1"
+    request = sent[0]
+    assert str(request.url) == (
+        "https://us-east5-aiplatform.googleapis.com/v1/projects/my-project/locations/us-east5"
+        "/publishers/anthropic/models/claude-opus-5-5:streamRawPredict"
+    )
+    assert request.headers["authorization"] == "Bearer ya29.fake-access-token"
+    body = json.loads(request.content)
+    assert body["anthropic_version"] == "vertex-2023-10-16"
+    assert body["output_config"]["format"]["type"] == "json_schema"
+    assert body["output_config"]["effort"] == "high"
+    assert "fallbacks" not in body
+    assert body["system"][0]["text"] == "system text"
+
+
+@pytest.mark.usefixtures("gcp")
+def test_vertex_takes_the_model_name_given(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("CLOUD_ML_REGION", "global")
+    handler, sent = _claude_replies(json.dumps(REVIEW))
+
+    _claude(handler, "vertex", "claude-sonnet-5-5").review("s", "u")
+
+    assert str(sent[0].url).startswith(
+        "https://aiplatform.googleapis.com/v1/projects/my-project/locations/global/"
+    )
+    assert sent[0].url.path.endswith("/models/claude-sonnet-5-5:streamRawPredict")
+
+
+def test_vertex_without_a_region_or_project_is_a_clear_review_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    with pytest.raises(ReviewError, match="CLOUD_ML_REGION"):
+        make_reviewer("vertex", None, None, None)
+    monkeypatch.setenv("CLOUD_ML_REGION", "us-east5")
+    with pytest.raises(ReviewError, match="ANTHROPIC_VERTEX_PROJECT_ID"):
+        make_reviewer("vertex", None, None, None)
+
+
+@pytest.mark.usefixtures("gcp")
+def test_vertex_without_the_extra_names_the_extra(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(engine_anthropic, "find_spec", lambda _name: None)
+
+    with pytest.raises(ReviewError, match=r"bylaw\[vertex\]"):
+        make_reviewer("vertex", None, None, None)
+
+
+@pytest.mark.usefixtures("gcp")
+def test_vertex_without_google_credentials_is_a_review_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    def missing(**_kwargs: object) -> None:
+        raise google.auth.exceptions.DefaultCredentialsError("no credentials")  # type: ignore[no-untyped-call]
+
+    monkeypatch.setattr(google.auth, "default", missing)
+    handler, sent = _claude_replies(json.dumps(REVIEW))
+
+    with pytest.raises(ReviewError, match="Vertex AI"):
+        _claude(handler, "vertex").review("s", "u")
+
+    assert sent == []
+
+
+@pytest.mark.usefixtures("gcp")
+def test_keys_for_other_providers_never_reach_vertex(monkeypatch: pytest.MonkeyPatch) -> None:
+    for name in FOREIGN_KEYS:
+        monkeypatch.setenv(name, SECRET)
+    handler, sent = _claude_replies(json.dumps(REVIEW))
+
+    _claude(handler, "vertex").review("s", "u")
 
     assert SECRET not in str(sent[0].headers)

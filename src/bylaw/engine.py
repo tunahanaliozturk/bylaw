@@ -12,11 +12,11 @@ from pydantic import BaseModel, ConfigDict, ValidationError
 
 from bylaw.model import Category, CriterionStatus, ReviewResult, Severity
 
-PROVIDERS = ("anthropic", "openai", "bedrock", "openai-compatible")
+PROVIDERS = ("anthropic", "openai", "bedrock", "vertex", "openai-compatible")
 _KEY_VARIABLES = {"anthropic": "ANTHROPIC_API_KEY", "openai": "OPENAI_API_KEY"}
 # A local server needs no key, and a cloud provider authenticates through its own credential chain (an AWS
 # profile or role, for one), which bylaw cannot see without calling it. Neither stops the model review.
-_NO_KEY_NEEDED = frozenset({"bedrock", "openai-compatible"})
+_NO_KEY_NEEDED = frozenset({"bedrock", "vertex", "openai-compatible"})
 
 
 class ReviewError(Exception):
@@ -118,6 +118,10 @@ def make_reviewer(  # noqa: PLR0913 - the base URL and the HTTP client are optio
         from bylaw.engine_anthropic import bedrock_reviewer  # noqa: PLC0415 - load one SDK only
 
         return bedrock_reviewer(model, effort, http_client)
+    if provider == "vertex":
+        from bylaw.engine_anthropic import vertex_reviewer  # noqa: PLC0415 - load one SDK only
+
+        return vertex_reviewer(model, effort, http_client)
     import openai  # noqa: PLC0415 - load one SDK only
 
     from bylaw.engine_openai import ChatReviewer, OpenAIReviewer  # noqa: PLC0415
