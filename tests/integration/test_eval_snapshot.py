@@ -242,6 +242,16 @@ def test_a_path_that_leaves_the_case_directory_or_cannot_exist_on_windows_is_ref
     assert [p for p in tmp_path.rglob("*") if "evil" in p.name.lower()] == []
 
 
+def test_adrs_bylaw_reads_in_one_batch_are_frozen_too(tmp_path: Path) -> None:
+    source = _added("a.py")
+    source.base = {"docs/adr/0001-use-sqlite.md": "# 1. Use SQLite\n\nStatus: Accepted\n\nWe use SQLite.\n"}
+
+    freeze(source, tmp_path / "cases/c", url="u", number=1, licence=MIT)
+
+    assert (tmp_path / "cases/c/base/docs/adr/0001-use-sqlite.md").is_file()
+    assert source.batch_reads  # read the way bylaw reads ADRs, through the batch call
+
+
 def test_a_snapshot_whose_added_text_differs_from_githubs_is_refused(tmp_path: Path) -> None:
     # The same line numbers, but GitHub's diff added other text than the frozen file holds.
     claimed = ChangedFile(path="a.py", status="added", added_lines=(AddedLine(number=1, text="y"),))

@@ -862,12 +862,12 @@ class GitHubSource:
         if (tree := self._tree()) is None:
             # ponytail: GitHub truncated the tree, so only the files directly in the directory are listed;
             # walk the subdirectories through the contents API if repositories that large nest their ADRs.
-            names = self._client.directory_files(self._repo, directory, self._pull.base.sha)
+            names = self._client.directory_files(self._repo, directory, self._base_sha)
             return frozenset(prefix + name for name in names)
         return frozenset(path for path in tree if path.startswith(prefix))
 
     def read_base_many(self, paths: Sequence[str]) -> dict[str, str | None]:
-        return self._client.files_text(self._repo, self._pull.base.sha, paths)
+        return self._client.files_text(self._repo, self._base_sha, paths)
 
     def read_base(self, path: str) -> str | None:
         return self._client.file_text(self._repo, path, self._base_sha)
