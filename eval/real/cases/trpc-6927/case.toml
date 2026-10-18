@@ -1,0 +1,20 @@
+kind = "rule"
+labellers = ["first pass (model)"]
+
+[[findings]]
+file = "packages/client/src/index.ts"
+lines = [21, 23]
+categories = ["bug", "rule"]
+note = "The client package added a second re-export of DataTransformer from @trpc/server, when the maintainers want each type exported from one place only."
+
+[[allowed]]
+file = "packages/client/src/index.ts"
+lines = [21, 23]
+
+[[allowed]]
+file = "packages/server/src/@trpc/server/index.ts"
+lines = [36, 36]
+
+[[allowed]]
+file = "packages/server/src/@trpc/server/index.ts"
+lines = [99, 102]

@@ -34,13 +34,12 @@ labelled code that are not the labelled defect are listed separately, not counte
 
 - bubbletea-1836: The 80x24 fallback size was applied even when output was not a terminal at all (buffer, pipe, SSH session), changing the old 0x0 behaviour for those apps.
 - cli-13068: The new recovery hint dropped the hostname, so users on a non-default host were told to run plain gh auth login.
+- cli-13756: The help example used an unquoted stars:>5000, which a shell treats as an output redirection.
 - cli-13946: The --worktree value was passed to git worktree add without an end-of-options marker, so a path starting with - would be parsed as a git flag.
 - cli-9198: The parser used a custom readLine built on bufio.Reader.ReadLine, which can return partial lines for long input, as the Go docs warn.
 - client_golang-1318: The handler relied on a shared package-level emptyLabels map that callers could write to, so labels could leak between uses and the name became misleading.
 - cobra-2023: The new errPrefix field was printed directly, so commands that never set it printed an empty prefix instead of the default "Error:".
 - echo-2380: ToMiddleware() returned only a middleware and could not report config errors, unlike the other ToMiddleware methods in the package.
-- fastify-6013: The guard read reply.request.socket.destroyed without checking the socket, but the socket can be undefined, which throws.
-- fastify-6308: The error handler's error parameter was typed as Error, but anything thrown in a route, including non-Error values, can reach it.
 - fastify-6483: The validator result was copied only when ret.value !== undefined, so a validator that legitimately coerced a value to undefined was ignored.
 - fiber-4199: AllowedHostsFunc ran before the static rules, which contradicts the docs and the CORS pattern it claims to mirror and calls a possibly expensive function on every request.
 - h3-1026: Header merging only handled Headers instances and plain objects, so an array-of-tuples HeadersInit was mishandled.
@@ -53,6 +52,7 @@ labelled code that are not the labelled defect are listed separately, not counte
 - httpx-2716: The transport imported SOCKET_OPTION from httpcore.backends.base, an undocumented private module of a dependency.
 - ky-559: The PR still fell back to credentials 'same-origin', but the issue (Cloudflare Workers) needs credentials left unset when they are unsupported.
 - starlette-2767: The test sent a message on a line that was never reached, so it did not test what it claimed.
+- trpc-6927: The client package added a second re-export of DataTransformer from @trpc/server, when the maintainers want each type exported from one place only.
 - undici-5546: The test registered cleanup with the global after() instead of the test context's t.after(), against the suite's convention.
 - vite-22468: plugin-legacy changed its minify behaviour without checking the Vite version, so an old Vite with the new plugin (or the reverse) would break.
 - vite-22611: The code compared exports[key] === null where the project's lint rule wants == null so undefined is caught too.

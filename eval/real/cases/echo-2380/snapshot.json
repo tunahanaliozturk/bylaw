@@ -8,7 +8,7 @@
   "title": "Add context timeout middleware",
   "body": "We need to introduce a new middleware (`middleware.ContextTimeout()`) that creates context with timeout and injects `ContextWithTimeout` to `c.Request().Context()`. If the handler returns an error that wraps `context.DeadlineExceeded`, it returns [Service Unavailable (503)](https://www.rfc-editor.org/rfc/rfc9110.html#name-503-service-unavailable)\r\n\r\nThis fixes  #2379, #2306.\r\n\r\nCo-authored-by: @erhanakp",
   "commit_messages": [
-    "Add context timeout middleware (#1)\n\nAdd context timeout middleware \r\n\r\nCo-authored-by: Erhan Akpınar <erhan.akpinar@yemeksepeti.com>",
+    "Add context timeout middleware (#1)\n\nAdd context timeout middleware",
     "Add error handler feature (#2)"
   ],
   "closing": [

@@ -1,0 +1,45 @@
+{
+  "repo": "cli/cli",
+  "number": 13756,
+  "url": "https://github.com/cli/cli/pull/13756",
+  "licence": "MIT",
+  "base_sha": "19201f36367ebd32188556fad7899e55655bbc00",
+  "head_sha": "8a6b76d246ac12dcf05b816f2cc349166d56631e",
+  "title": "docs(search): add examples for multiple qualifiers",
+  "body": "## Summary\n- add `gh search` examples showing multiple search-syntax qualifiers as separate CLI arguments\n- cover issues, pull requests, repositories, code, and commits search help text\n\n## Why\nIssue #13678 shows that passing a full multi-qualifier query as one shell argument can be misleading. The maintainers suggested improving the docs/examples, so this PR makes that usage explicit in the built-in help output.\n\nCloses #13678",
+  "commit_messages": [
+    "docs(search): add examples for multiple qualifiers"
+  ],
+  "closing": [
+    {
+      "owner": "cli",
+      "repo": "cli",
+      "number": 13678
+    }
+  ],
+  "issues": [
+    {
+      "owner": "cli",
+      "repo": "cli",
+      "number": 13678,
+      "title": "gh search quotes a single-argument query with multiple qualifiers as one qualifier value",
+      "body": "### Describe the bug\n\n`gh search repos` says it supports GitHub search syntax, but when a full search query with multiple qualifiers is passed as one shell argument, `gh` rewrites it as a single quoted value for the first qualifier.\n\nFor example, this query:\n\n```sh\ngh search repos 'topic:artificial-intelligence stars:>5000 pushed:>2026-06-01 archived:false' --sort updated\n```\n\nis sent to the API as:\n\n```text\ntopic:\"artificial-intelligence stars:>5000 pushed:>2026-06-01 archived:false\"\n```\n\nAs a result, qualifiers such as `stars:>5000`, `pushed:>2026-06-01`, and `archived:false` are no longer applied as filters.\n\nIf this behavior is confirmed as a bug and external contribution would be welcome, I would be happy to send a focused PR with tests.\n\n### Affected version\n\n```sh\ngh version 2.95.0 (2026-06-17)\nhttps://github.com/cli/cli/releases/tag/v2.95.0\n```\n\n### Steps to reproduce the behavior\n\n1. Run:\n\n```sh\nGH_DEBUG=api gh search repos 'topic:artificial-intelligence stars:>5000 pushed:>2026-06-01 archived:false' --sort updated --limit 1 --json fullName,stargazersCount\n```\n\n2. Observe that the request URL contains the whole query as the quoted `topic:` value:\n\n```text\nq=topic%3A%22artificial-intelligence+stars%3A%3E5000+pushed%3A%3E2026-06-01+archived%3Afalse%22\n```\n\n3. Observe that a repository below 5,000 stars can be returned:\n\n```json\n[{\"fullName\":\"EalZz/IT-AI-NEWS\",\"stargazersCount\":2}]\n```\n\n### Expected vs actual behavior\n\nExpected:\n\nThe query should preserve the GitHub search syntax:\n\n```text\ntopic:artificial-intelligence stars:>5000 pushed:>2026-06-01 archived:false\n```\n\nActual:\n\nThe query is rewritten as:\n\n```text\ntopic:\"artificial-intelligence stars:>5000 pushed:>2026-06-01 archived:false\"\n```\n\nThis makes the later qualifiers part of the `topic:` value instead of independent filters.\n\nPassing the qualifiers as separate argv entries works:\n\n```sh\ngh search repos topic:artificial-intelligence 'stars:>5000' 'pushed:>2026-06-01' archived:false --sort updated --limit 1 --json fullName,stargazersCount\n```\n\nUsing flags also works:\n\n```sh\ngh search repos --topic artificial-intelligence --stars '>5000' --updated '>2026-06-01' --archived=false --sort updated --limit 1 --json fullName,stargazersCount\n```\n\n### Logs\n\n```text\n* Request to https://api.github.com/search/repositories?page=1&per_page=1&q=topic%3A%22artificial-intelligence+stars%3A%3E5000+pushed%3A%3E2026-06-01+archived%3Afalse%22&sort=updated\n[{\"fullName\":\"EalZz/IT-AI-NEWS\",\"stargazersCount\":2}]\n```\n",
+      "comments": [
+        "Thanks for opening this issue, @jianongHe! 🙏 \n\nThat's by design. The `search` commandset expects separate qualifiers to be provided as separate positional arguments.\n\nMaybe we can improve this with a new example in `--help` docs, though. 🤔\n\nI'll label this as an enhancement.",
+        "@jianongHe, I didn't mark this as help-wanted, but you're welcome to submit a PR that adds examples to `search` subcommands showing how multiple qualifiers can be used."
+      ],
+      "comments_unreadable": false
+    }
+  ],
+  "remove": [],
+  "left_out": [],
+  "evidence": {
+    "url": "https://github.com/cli/cli/pull/13756#discussion_r3498344651",
+    "path": "pkg/cmd/search/repos/repos.go",
+    "lines": [
+      60,
+      60
+    ],
+    "body": "The `stars:>5000` should be quoted (otherwise it'll be interpreted as a shell redirection), and the example can also be simplified:\n\n\n```suggestion\n\t\t\t$ gh search repos topic:github 'stars:>5000'\n```"
+  }
+}
