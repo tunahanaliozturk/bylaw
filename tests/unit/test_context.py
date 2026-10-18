@@ -2,7 +2,19 @@ import pytest
 
 from bylaw.config import ConfigError, load_config
 from bylaw.context import build_context, generated_patterns, is_skipped
-from bylaw.model import AddedLine, ChangedFile, FileRules, LinterRules, ReviewContext
+from bylaw.model import (
+    AddedLine,
+    Category,
+    ChangedFile,
+    FileRules,
+    Finding,
+    LinterRules,
+    ReviewContext,
+    ReviewResult,
+    Severity,
+)
+from bylaw.prompt import render_input
+from bylaw.validate import validate
 from tests.unit.fakes import FakeSource
 
 
@@ -78,6 +90,34 @@ def test_a_change_in_a_package_brings_its_agents_md_into_the_context() -> None:
         ("AGENTS.md", ""),
         ("packages/api/AGENTS.md", "packages/api"),
     ]
+
+
+def test_a_root_contributing_guide_under_github_stays_a_rule_for_the_whole_repository() -> None:
+    source = FakeSource(
+        base={".github/CONTRIBUTING.md": "Use parameterised SQL.", "docs/CONTRIBUTING.md": "Write docs."},
+        files=(
+            _file(".github/workflows/ci.yml", "on: push"),
+            _file("docs/guide.md", "More."),
+            _file("src/app.py", "x = 1"),
+        ),
+    )
+    context = build_context(source)
+    finding = Finding(
+        file="src/app.py",
+        line_start=1,
+        line_end=1,
+        category=Category.RULE,
+        severity=Severity.MEDIUM,
+        message="m",
+        evidence=".github/CONTRIBUTING.md:1",
+    )
+
+    assert [(r.path, r.directory) for r in context.rules] == [
+        (".github/CONTRIBUTING.md", ""),
+        ("docs/CONTRIBUTING.md", ""),
+    ]
+    assert validate(context, ReviewResult(findings=(finding,))).dropped == ()
+    assert "Rules for" not in render_input(context, nonce="feedc0de")[0]
 
 
 def test_a_change_to_a_package_rule_file_is_noted_as_reviewed_against_the_base() -> None:

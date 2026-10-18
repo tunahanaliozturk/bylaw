@@ -85,6 +85,10 @@ def collect_rules(
         if text is not None:
             sources.append(RuleSource(path=path, kind=RuleKind.PROSE, text=text))
     nested, notes = _nested(live, base)
+    # .github/CONTRIBUTING.md and docs/CONTRIBUTING.md are root rules for the whole repository; a change
+    # under .github/ must not turn them into rules of that directory.
+    root_paths = {rule.path for rule in sources}
+    nested = [rule for rule in nested if rule.path not in root_paths]
     read: list[RuleSource] = []
     problems: list[str] = []
     for rule in (*sources, *nested):
