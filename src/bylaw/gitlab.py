@@ -178,6 +178,9 @@ class GitLabClient:
             yield response.json()
             url = response.links.get("next", {}).get("url")
             query = None  # the next link carries every parameter
+            if url is not None and not url.startswith(f"{self.api_url}/"):
+                # The token goes with every request; a proxy that rewrites links must not take it elsewhere.
+                raise GitLabError(f"GitLab's next page link points at another address than {self.api_url}")
 
     def send(
         self, method: str, path: str, *, params: Params | None = None, json: object = None
