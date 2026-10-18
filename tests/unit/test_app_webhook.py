@@ -69,7 +69,7 @@ def test_the_four_review_actions_become_a_job(action: str) -> None:
     ("event", "body"),
     [
         ("pull_request", _event("closed")),
-        ("pull_request", _event("labeled")),
+        ("pull_request", _event("unlabeled")),
         ("issue_comment", _event()),
         ("installation", b'{"action": "created"}'),
     ],
@@ -95,3 +95,11 @@ def test_other_events_and_actions_are_nothing_to_do(event: str, body: bytes) -> 
 def test_a_malformed_pull_request_event_is_refused(body: bytes) -> None:
     with pytest.raises(ValueError, match="pull_request event"):
         review_job("pull_request", body)
+
+
+def test_a_label_added_becomes_a_job_that_names_the_label() -> None:
+    body = _event("labeled", label={"name": "bylaw: review"})
+
+    assert review_job("pull_request", body) == Job(
+        installation_id=7, repo="acme/app", number=5, head_sha=SHA, label="bylaw: review"
+    )

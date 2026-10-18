@@ -103,6 +103,7 @@ Settings, all from the environment:
 | `BYLAW_MODEL`, `BYLAW_EFFORT` | provider default | As `--model` and `--effort` for `bylaw review`. |
 | `BYLAW_APP_WORKERS` | `2` | Pull requests reviewed at once. |
 | `BYLAW_APP_MAX_PENDING` | `100` | Pull requests that may wait; beyond that, deliveries get `503`. |
+| `BYLAW_APP_MAX_PENDING_PER_INSTALLATION` | `20` | Of those, how many may come from one installation, so one organisation cannot fill the queue. |
 | `BYLAW_APP_MAX_BODY` | `524288` | Largest delivery read, in bytes; larger ones get `413`. |
 | `BYLAW_APP_HOST`, `PORT` | `127.0.0.1`, `8000` | Where the server listens. The image sets the host to `0.0.0.0`. |
 | `GITHUB_API_URL`, `GITHUB_GRAPHQL_URL` | `https://api.github.com` | For GitHub Enterprise Server. |
@@ -147,6 +148,25 @@ the pull request under review: one is read at its base commit, the other on the 
 default branch, so a change to the defaults takes effect once it merges there. When the app is not
 installed on `.github`, or the file does not exist, there are no defaults. An invalid defaults file stops
 the review with an error in the server log naming that file.
+
+### Which pull requests the model reviews
+
+The installation's key pays for every review, and anyone can open a pull request against a public
+repository. So by default the model reviews only a branch of the same repository opened by an owner,
+member or collaborator. A pull request from a fork, or by anyone else, gets bylaw's own checks, and its
+summary says why and how to change it. Two settings open it up, in the organisation's defaults or a
+repository's `.bylaw.toml`; the Action ignores them, since its workflow decides who runs it:
+
+```toml
+[app]
+model_review = "all"                # every pull request, forks included
+model_review_label = "bylaw: review"  # or: one pull request, once a maintainer adds this label
+```
+
+Adding a label reviews the pull request again, so the label works at once; only people with triage
+access or more can add labels, which a fork's author cannot. In the app a pull request may also use at
+most 500,000 model tokens across its runs unless `[budget] pr_tokens` says otherwise, roughly a hundred
+small reviews or one or two of the largest.
 
 ## 5. Model keys per installation
 

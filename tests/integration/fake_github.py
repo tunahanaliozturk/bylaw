@@ -42,6 +42,10 @@ class FakeGitHub:
     calls: list[Call] = field(default_factory=list)
     patch: str = "@@ -0,0 +1,2 @@\n+x = 1   \n+y = 2\n"
     title: str = "Add x"
+    # A member's branch in the same repository unless a test says otherwise; None is a deleted fork.
+    author_association: str = "MEMBER"
+    head_repo: str | None = REPO
+    labels: list[str] = field(default_factory=list)
 
     def __call__(self, request: httpx.Request) -> httpx.Response:
         body = json.loads(request.content) if request.content else None
@@ -104,9 +108,13 @@ class FakeGitHub:
             "body": "",
             "changed_files": 1,
             "user": {"type": "User", "login": "contributor"},
-            "author_association": "CONTRIBUTOR",
-            "base": {"sha": BASE_SHA},
-            "head": {"sha": HEAD_SHA},
+            "author_association": self.author_association,
+            "base": {"sha": BASE_SHA, "repo": {"full_name": REPO}},
+            "head": {
+                "sha": HEAD_SHA,
+                "repo": None if self.head_repo is None else {"full_name": self.head_repo},
+            },
+            "labels": [{"name": name} for name in self.labels],
         }
 
     def _comments(self, method: str, body: Any, params: httpx.QueryParams) -> httpx.Response:

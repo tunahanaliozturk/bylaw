@@ -56,8 +56,18 @@ class _Model(BaseModel):
     model_config = ConfigDict(frozen=True, extra="ignore")
 
 
+class _RefRepo(_Model):
+    full_name: str
+
+
 class _Ref(_Model):
     sha: str
+    # None for the head of a pull request whose fork was deleted.
+    repo: _RefRepo | None = None
+
+
+class _Label(_Model):
+    name: str
 
 
 class PullRequest(_Model):
@@ -68,6 +78,13 @@ class PullRequest(_Model):
     author_association: str = "NONE"
     base: _Ref
     head: _Ref
+    labels: tuple[_Label, ...] = ()
+
+    @property
+    def from_fork(self) -> bool:
+        """Whether the head lives in another repository than the base, or in one that is gone."""
+        head = self.head.repo.full_name.lower() if self.head.repo else None
+        return head is None or self.base.repo is None or head != self.base.repo.full_name.lower()
 
 
 class PullFile(_Model):
@@ -806,6 +823,10 @@ class GitHubSource:
     @cached_property
     def _pull(self) -> PullRequest:
         return self._client.pull(self._repo, self._number)
+
+    def pull_request(self) -> PullRequest:
+        """The pull request as GitHub returned it, read once."""
+        return self._pull
 
     def info(self) -> ChangeInfo:
         pull = self._pull

@@ -44,7 +44,9 @@ over HTTPS, and a test repository with a `.editorconfig` that trims trailing whi
   fix for an inline finding and check that its thread is resolved.
 - [ ] `GET /app` returns the slug, and GraphQL names the bot's comments `<slug>` without `[bot]`, which
   the login comparison assumes: a second push edits the same summary instead of posting a new one.
-- [ ] A fork pull request is reviewed like any other, with no workflow and no secret on the fork.
+- [ ] A fork pull request gets bylaw's own checks and the note explaining why, with no workflow and no
+  secret on the fork; adding the configured `model_review_label` delivers `labeled` and the review runs
+  again with the model.
 - [ ] With the app installed on `.github` and a `.bylaw.toml` there, its settings apply; without the app on
   `.github`, the token request for it fails with `422` (or `404`) and the review runs without defaults.
 - [ ] Redelivering a delivery from **Advanced** settings answers `202` with `duplicate` and posts nothing;

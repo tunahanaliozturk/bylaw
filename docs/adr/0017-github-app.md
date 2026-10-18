@@ -89,6 +89,20 @@ said would win:
 - an inline comment's fingerprint marker counts as bylaw's own only from that login, or from an `OWNER`,
   `MEMBER` or `COLLABORATOR` as before, for maintainers' `bylaw: ignore`.
 
+**Who spends the installation's key.** In the Action a fork's pull request gets no secrets on
+`pull_request`, and the `pull_request_target` recipe lets maintainers gate it with a label (ADR 0006).
+The app has the key for every pull request it sees, so anyone who can open a pull request against a
+public repository could make the organisation pay for model reviews, one per push. The app follows ADR
+0006 instead: by default the model reviews only a branch of the same repository by an `OWNER`, `MEMBER`
+or `COLLABORATOR`. A fork's pull request (a deleted fork counts as one), or one by anyone else, gets
+bylaw's own checks and a summary note that says why and how to change it. Two settings in `.bylaw.toml`,
+from the base branch or the organisation's defaults, open it up: `[app] model_review = "all"` for every
+pull request, or `[app] model_review_label` for a label a maintainer adds to one pull request. Adding a
+label reviews the pull request again, so the label takes effect at once. In the app a pull request also
+gets `[budget] pr_tokens = 500000` when the repository sets no cap, about a hundred small reviews or one
+or two of the largest: the key pays for every repository, so none gets an open cheque, and a repository
+that wants more sets its own cap.
+
 **Settings from the organisation.** `.bylaw.toml` on the default branch of the owner's `.github`
 repository supplies defaults; the repository's base branch `.bylaw.toml` overrides them key by key. A
 table such as `[jira]` counts as one key and is replaced whole, so a tracker site from one file never
@@ -117,8 +131,10 @@ is not installed on `.github`, the review runs without defaults.
   connections at once and closes idle keep-alive connections after 5 seconds. The proxy in front should
   set the same body limit and timeouts, so a slow or large request never reaches the server at all. At
   most 100 pull requests wait
-  (`BYLAW_APP_MAX_PENDING`); past that the server answers `503` and GitHub marks the delivery failed. Two
-  workers review at once (`BYLAW_APP_WORKERS`), one review per pull request at a time.
+  (`BYLAW_APP_MAX_PENDING`), and at most 20 from one installation (`BYLAW_APP_MAX_PENDING_PER_INSTALLATION`),
+  so a flood of pull requests into one organisation cannot turn every other away; past either the server
+  answers `503` and GitHub marks the delivery failed. Two workers review at once (`BYLAW_APP_WORKERS`), one
+  review per pull request at a time.
 - *Malformed but signed input.* Repository names are checked against GitHub's character set and may not
   contain dot segments, head commits must be hex. Anything else is `400`.
 - *Code execution.* bylaw never checks out or runs repository code. It reads the diff and files through
@@ -128,6 +144,7 @@ is not installed on `.github`, the review runs without defaults.
   rule that matters still holds: secrets must not reach untrusted code, and since no pull request code
   runs, the model key and the token stay inside the server process. Prompt injection from fork text is
   handled as before: text is data, findings must pass the validator, and the token can only comment.
+  What a fork can still do is spend the key, which the next decision limits.
 - *Logs.* Keys, tokens and the webhook secret are never logged and the settings hide them in their repr.
   Text from a pull request or the model is flattened to one line, so it cannot forge log lines.
 

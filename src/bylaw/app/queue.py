@@ -29,10 +29,17 @@ class Job:
     repo: str
     number: int
     head_sha: str
+    # The label a `labeled` event added; a label can unlock the model review, so it reviews again once.
+    label: str | None = None
 
     @property
     def key(self) -> Key:
         return self.repo.lower(), self.number
+
+    @property
+    def mark(self) -> str:
+        """What makes two jobs for one pull request the same review."""
+        return self.head_sha if self.label is None else f"{self.head_sha}+{self.label}"
 
 
 class Outcome(StrEnum):
@@ -53,11 +60,14 @@ class ReviewQueue:
         *,
         workers: int = 2,
         max_pending: int = 100,
+        max_pending_per_installation: int = 20,
         remembered: int = 10_000,
     ) -> None:
         self._run = run
         self._workers = workers
         self._max_pending = max_pending
+        # So that one organisation, or a flood of pull requests into one, cannot turn every other away.
+        self._max_per_installation = max_pending_per_installation
         self._remembered = remembered
         self._pending: dict[Key, Job] = {}
         self._running: dict[Key, Job] = {}
@@ -69,16 +79,17 @@ class ReviewQueue:
     def offer(self, job: Job) -> Outcome:
         key = job.key
         running = self._running.get(key)
-        if (key, job.head_sha) in self._done or (running is not None and running.head_sha == job.head_sha):
+        if (key, job.mark) in self._done or (running is not None and running.mark == job.mark):
             return Outcome.DUPLICATE
         if (queued := self._pending.get(key)) is not None:
-            if queued.head_sha == job.head_sha:
+            if queued.mark == job.mark:
                 return Outcome.DUPLICATE
             # The review reads the pull request as it is when it starts, so one waiting job is enough, even
             # when a redelivered older event replaces a newer one: the head the review reads is remembered.
             self._pending[key] = job
             return Outcome.SUPERSEDED
-        if len(self._pending) >= self._max_pending:
+        mine = sum(1 for waiting in self._pending.values() if waiting.installation_id == job.installation_id)
+        if len(self._pending) >= self._max_pending or mine >= self._max_per_installation:
             return Outcome.BUSY
         self._pending[key] = job
         if running is None:
@@ -126,6 +137,7 @@ class ReviewQueue:
                 else:
                     # The head the review read is reviewed too, whatever older head the event named.
                     self._remember((key, job.head_sha))
+                    self._remember((key, job.mark))
                     if read is not None:
                         self._remember((key, read))
                 finally:

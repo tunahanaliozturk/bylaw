@@ -1,7 +1,7 @@
 """Optional .bylaw.toml, always read from the base branch so a change cannot loosen its own review."""
 
 import tomllib
-from typing import Annotated, Self
+from typing import Annotated, Literal, Self
 from urllib.parse import urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
@@ -66,6 +66,18 @@ class Linear(BaseModel):
     teams: tuple[TrackerKey, ...] = Field(min_length=1)
 
 
+class App(BaseModel):
+    """Settings only the GitHub App reads (ADR 0017). The Action leaves fork pull requests to its workflow."""
+
+    model_config = _SETTINGS
+
+    # Which pull requests the installation's model key reviews: "trusted" is a branch of this repository
+    # by an owner, member or collaborator; "all" is every pull request, forks included.
+    model_review: Literal["trusted", "all"] = "trusted"
+    # A label a maintainer adds to one pull request to give it the model review anyway.
+    model_review_label: str | None = Field(default=None, min_length=1, max_length=50)
+
+
 class Config(BaseModel):
     model_config = _SETTINGS
 
@@ -89,6 +101,7 @@ class Config(BaseModel):
     # Work items are read only for pull requests by owners, members and collaborators unless this is set:
     # anyone else could name allowed keys to pull their text into a comment (ADR 0014).
     trackers_for_all_authors: bool = False
+    app: App = App()
 
     @model_validator(mode="after")
     def _one_tracker_per_key(self) -> Self:
