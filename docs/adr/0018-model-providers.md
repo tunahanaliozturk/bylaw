@@ -26,16 +26,28 @@ Bedrock, `AnthropicVertex`, `AnthropicFoundry`), and Azure OpenAI and local serv
 Per provider we record only what differs: the client, whether structured outputs exist, whether server-side
 fallback exists, and the name an error note uses.
 
-Credentials come only from each provider's standard variables and chains. A cloud provider never reads
-`BYLAW_API_KEY`, and no client is left to fall back to `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`. Every
-cloud provider is tried when it is chosen; a chain that finds nothing fails the model review with a note,
-and bylaw's own checks still run.
+Credentials come only from each provider's standard variables and chains. `BYLAW_API_KEY` is for the
+Claude and OpenAI APIs only; a local server gets its own `BYLAW_BASE_URL_KEY`, because `--base-url` can
+name any host. No client is left to fall back to `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`, the OpenAI
+client's organization and project ids are cleared for Azure and local servers, and a set
+`OPENAI_CUSTOM_HEADERS` or `ANTHROPIC_CUSTOM_HEADERS` is refused where its headers would reach another
+provider. A key variable set but empty is refused rather than sent as an empty key. Plain `http://` is
+refused for a server that is not on the same machine.
+
+Every cloud provider is tried when it is chosen. A chain that finds nothing fails the model review with a
+note, and bylaw's own checks still run. Only what a chain raises becomes a note: botocore, google-auth and
+azure-identity errors, the SDKs' credential `RuntimeError`s and an `ImportError` from a missing piece of an
+extra, and only for the cloud providers. Anything else, such as a `TypeError` after an SDK upgrade, is a
+bug and stops the run, so that it cannot pass `fail-on` as a quiet note.
 
 Where structured outputs are missing or not trusted, the JSON fallback: the schema goes into the prompt,
 the answer is validated against it, and a wrong answer goes back once with its problems by field path.
-A second failure is a `ReviewError`. The problems never quote the answer, because that text came from the
-model and the note may be posted. For local servers bylaw also asks for the schema as a strict response
-format, and drops that request when the server answers 400 or 422.
+A second failure is a `ReviewError`. The answer is read after dropping `<think>` blocks, from the first JSON
+object that decodes, and an empty answer is no review. The problems never quote the answer and name only
+the schema's fields and indexes, because that text came from the model and the note may be posted. The
+retry is skipped when it would pass what is left of `[budget] pr_tokens`, and in the fallback the brief is
+marked for the prompt cache so a retry reads it at the cache price. For local servers bylaw also asks for
+the schema as a strict response format, and drops that request when the server answers 400 or 422.
 
 The cloud sign-in libraries are optional extras (`bylaw[bedrock]`, `bylaw[vertex]`, `bylaw[azure]`); the
 development environment installs them so the tests and the licence audit cover them.
@@ -44,13 +56,17 @@ development environment installs them so the tests and the licence audit cover t
 
 - A user picks a provider with one flag and the variables their cloud's own tools already use. The privacy
   table in [providers.md](../providers.md) is the same list of variables.
-- Leaving `BYLAW_API_KEY` out of the clouds means the Action's `api-key` input does nothing for them; keys
-  for Bedrock or Foundry go in `env`. A key from an earlier `provider` cannot reach another company.
+- Leaving `BYLAW_API_KEY` out of the clouds and local servers means the Action's `api-key` input does
+  nothing for them; keys for Bedrock or Foundry go in `env`, and a local server's in `base-url-api-key`.
+  A key from an earlier `provider` cannot reach another company or another host.
+- A user who set `OPENAI_CUSTOM_HEADERS` for the OpenAI API has to unset it for Azure or a local server.
+  We prefer that to guessing which of their headers are safe to pass on.
+- A local server on another machine needs TLS or a tunnel. There is no opt-in for plain `http://`, because
+  the brief is the pull request's code.
 - Bedrock reviews are less certain to parse than those on platforms with structured outputs, and a retry
   is a second paid call. Its tokens count towards `[budget] pr_tokens`.
-- Failures inside a credential chain (botocore, google-auth, azure-identity) are caught broadly at the
-  request and reported by type. A bug in that path would also become a note rather than a crash; the
-  tests pin the notes so that would show.
+- The `RuntimeError` caught for the clouds is wider than the SDKs' credential errors alone; a cloud bug
+  that raises one would become a note. The first-party providers catch only their SDK's errors and `ValueError`, as before.
 - Nothing here has been run against a live cloud account: every provider is tested through a fake
   transport, with the SDK's real request building and, for Bedrock, the real SigV4 signer. Evaluation
   reports per provider and model (PRV-5) are still to come.
