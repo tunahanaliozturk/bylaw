@@ -90,6 +90,58 @@ def test_files_that_do_not_fit_are_left_out_and_named() -> None:
     assert "x" * 100 not in text
 
 
+def test_package_rules_are_grouped_by_directory_and_say_which_changed_files_they_cover() -> None:
+    files = tuple(
+        ChangedFile(path=path, status="modified", patch="@@ -1 +1 @@\n+x\n")
+        for path in (
+            "packages/api/app.py",
+            "packages/api/db/models.py",
+            "packages/worker/jobs.py",
+            "README.md",
+        )
+    )
+    rules = (
+        RuleSource(path="AGENTS.md", kind=RuleKind.PROSE, text="Root rule."),
+        RuleSource(
+            path="packages/api/AGENTS.md",
+            kind=RuleKind.PROSE,
+            text="Return errors.",
+            directory="packages/api",
+        ),
+        RuleSource(
+            path="packages/worker/AGENTS.md",
+            kind=RuleKind.PROSE,
+            text="Raise errors.",
+            directory="packages/worker",
+        ),
+    )
+    context = CONTEXT.model_copy(update={"files": files, "rules": rules})
+
+    text, _ = render_input(context, nonce="feedc0de")
+    block = text.split('kind="rules">')[1].split("</data-feedc0de>")[0]
+
+    assert block.index("Rules for the whole repository") < block.index("AGENTS.md (prose)")
+    api = block.index("Rules for files under packages/api/")
+    worker = block.index("Rules for files under packages/worker/")
+    assert api < block.index("packages/api/AGENTS.md (prose)") < worker
+    assert "changed here: packages/api/app.py, packages/api/db/models.py" in block[api:worker]
+    assert "changed here: packages/worker/jobs.py" in block[worker:]
+    assert "these win" in block[api:worker]
+
+
+def test_rules_of_a_repository_without_packages_are_not_grouped() -> None:
+    text, _ = render_input(CONTEXT, nonce="feedc0de")
+
+    assert "Rules for" not in text
+
+
+def test_the_system_prompt_explains_which_rules_apply_to_a_file() -> None:
+    prompt = system_prompt()
+
+    assert "nearest directory" in prompt
+    assert "another package" in prompt
+
+
 def test_the_system_prompt_states_the_output_rules() -> None:
     prompt = system_prompt()
 
