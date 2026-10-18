@@ -3,6 +3,7 @@
 import re
 import shutil
 import tempfile
+from collections.abc import Sequence
 from functools import cached_property
 from pathlib import Path
 
@@ -95,6 +96,15 @@ class _Recorder:
     def list_base(self, directory: str) -> frozenset[str]:
         # Not recorded: a replay lists the snapshot's own base, which holds every file bylaw read.
         return self._source.list_base(directory)
+
+    def list_base_tree(self, directory: str) -> frozenset[str]:
+        return self._source.list_base_tree(directory)
+
+    def read_base_many(self, paths: Sequence[str]) -> dict[str, str | None]:
+        missing = [path for path in paths if path not in self.base]
+        if missing:
+            self.base.update(self._source.read_base_many(missing))
+        return {path: self.base[path] for path in paths}
 
     def read_base(self, path: str) -> str | None:
         if path not in self.base:
