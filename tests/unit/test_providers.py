@@ -795,3 +795,23 @@ def test_an_empty_bedrock_answer_is_no_review_and_is_not_sent_back() -> None:
         _claude(handler, "bedrock").review("s", "u")
 
     assert len(sent) == 1
+
+
+@pytest.mark.usefixtures("aws", "foundry", "azure_openai", "entra")
+@pytest.mark.parametrize(
+    ("provider", "variable"),
+    [
+        ("bedrock", "AWS_BEARER_TOKEN_BEDROCK"),
+        ("bedrock", "ANTHROPIC_AWS_API_KEY"),
+        ("foundry", "ANTHROPIC_FOUNDRY_API_KEY"),
+        ("azure-openai", "AZURE_OPENAI_API_KEY"),
+    ],
+)
+def test_a_key_variable_set_but_empty_is_refused_rather_than_sent(
+    monkeypatch: pytest.MonkeyPatch, provider: str, variable: str
+) -> None:
+    # What a workflow leaves when it passes a secret that does not exist.
+    monkeypatch.setenv(variable, "")
+
+    with pytest.raises(ReviewError, match=f"{variable} is set but empty"):
+        make_reviewer(provider, "m", None, None)

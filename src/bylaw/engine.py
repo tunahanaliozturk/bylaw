@@ -220,6 +220,14 @@ def refuse_header_list(variable: str, provider: str) -> None:
         raise ReviewError(f"{variable} is set; it would send its headers to {provider}, so unset it")
 
 
+def refuse_empty(*variables: str) -> None:
+    """A key variable set to nothing, as a workflow leaves it when the secret it passes does not exist. The
+    SDKs would take it as a key and send an empty one instead of using the credential chain."""
+    for variable in variables:
+        if os.environ.get(variable) == "":
+            raise ReviewError(f"{variable} is set but empty; give it a value or unset it")
+
+
 def without_openai_ids(client: object) -> None:
     """The OpenAI client fills these from OPENAI_ORG_ID and OPENAI_PROJECT_ID, which belong to OpenAI."""
     client.organization = None  # type: ignore[attr-defined]
