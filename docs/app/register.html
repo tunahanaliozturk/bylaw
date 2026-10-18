@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Register bylaw as a GitHub App</title>
+<style>
+  body { font: 16px/1.5 system-ui, sans-serif; max-width: 42rem; margin: 2rem auto; padding: 0 1rem; }
+  label { display: block; margin-top: 1rem; font-weight: 600; }
+  input, textarea { width: 100%; box-sizing: border-box; font: inherit; padding: .4rem; }
+  textarea { font-family: ui-monospace, monospace; font-size: 14px; height: 20rem; }
+  button { margin-top: 1.5rem; font: inherit; padding: .5rem 1rem; }
+</style>
+</head>
+<body>
+<h1>Register bylaw as a GitHub App</h1>
+<p>
+  Open this file from your clone of bylaw in a browser. It sends the manifest below to GitHub, which
+  shows you the app it will create before anything happens. Nothing is sent anywhere else.
+  The steps after this page are in <code>docs/app/deploy.md</code>.
+</p>
+<form id="register" method="post">
+  <label for="org">Organisation (empty for your personal account)</label>
+  <input id="org" placeholder="acme" autocomplete="off">
+  <label for="name">App name (unique on GitHub)</label>
+  <input id="name" value="bylaw-your-org" required>
+  <label for="hook">Webhook URL of your server</label>
+  <input id="hook" type="url" value="https://bylaw.example.com/webhook" required>
+  <label for="manifest-text">Manifest</label>
+  <textarea id="manifest-text" readonly></textarea>
+  <input type="hidden" name="manifest" id="manifest-field">
+  <button type="submit">Create the app on GitHub</button>
+</form>
+<script type="application/json" id="manifest">
+{
+  "name": "bylaw-your-org",
+  "url": "https://github.com/tunahanaliozturk/bylaw",
+  "description": "Reviews pull requests against the repository's own rules, decisions and requirements. Self-hosted.",
+  "public": false,
+  "hook_attributes": {
+    "url": "https://bylaw.example.com/webhook",
+    "active": true
+  },
+  "redirect_url": "http://localhost:8000/registered",
+  "default_permissions": {
+    "contents": "read",
+    "issues": "read",
+    "metadata": "read",
+    "pull_requests": "write"
+  },
+  "default_events": ["pull_request"]
+}
+</script>
+<script>
+  const base = JSON.parse(document.getElementById("manifest").textContent);
+  const fields = ["org", "name", "hook"].map((id) => document.getElementById(id));
+  function manifest() {
+    return { ...base, name: fields[1].value.trim(), hook_attributes: { ...base.hook_attributes, url: fields[2].value.trim() } };
+  }
+  function refresh() {
+    document.getElementById("manifest-text").value = JSON.stringify(manifest(), null, 2);
+  }
+  fields.forEach((field) => field.addEventListener("input", refresh));
+  refresh();
+  document.getElementById("register").addEventListener("submit", (event) => {
+    const org = fields[0].value.trim();
+    event.target.action = org
+      ? `https://github.com/organizations/${encodeURIComponent(org)}/settings/apps/new`
+      : "https://github.com/settings/apps/new";
+    document.getElementById("manifest-field").value = JSON.stringify(manifest());
+  });
+</script>
+</body>
+</html>

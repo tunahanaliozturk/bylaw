@@ -8,6 +8,8 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 - In the app, `.bylaw.toml` on the default branch of the organisation's `.github` repository sets defaults, and a repository's base branch `.bylaw.toml` overrides them key by key; a table such as `[jira]` counts as one key. A pull request can change neither (ADR 0004).
 - In the app, model keys and tracker tokens are per installation, from `BYLAW_INSTALLATION_<id>_<NAME>` variables or a mounted directory with one file per secret. A server-wide key is never used for an installation.
 - In the app, only the app's own bot login carries bylaw's state: a summary or a fingerprint marker from any other bot, or a summary written by a person, is ignored and never edited (ADR 0017, the alternative ADR 0008 named).
+- `docs/app/manifest.json` registers the app with four permissions, pull requests write and contents, issues and metadata read, and the `pull_request` event only; `docs/app/register.html` sends it to GitHub from a local page. A test keeps the manifest equal to the permissions the server's tokens ask for.
+
 
 ## 0.4.0 - 2026-10-18
 

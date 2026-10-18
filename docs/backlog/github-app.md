@@ -9,7 +9,7 @@ One install for an organisation instead of a workflow file per repository.
 ## Items
 
 - [x] **APP-1** (M) ADR: hosting model, key storage, what runs where. Done when: ADR accepted.
-- [ ] **APP-2** (S) App manifest with the narrowest permissions. Done when: manifest.
+- [x] **APP-2** (S) App manifest with the narrowest permissions. Done when: manifest.
 - [x] **APP-3** (L) Webhook receiver on the same core, with a queue and idempotency by head SHA. Done when: integration tests.
 - [x] **APP-4** (M) Organisation defaults from the `.github` repository's `.bylaw.toml`. Done when: config tests.
 - [ ] **APP-5** (M) Model key per installation in a secret store. Done when: docs and tests.
