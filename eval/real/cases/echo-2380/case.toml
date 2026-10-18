@@ -1,0 +1,16 @@
+kind = "rule"
+labellers = ["first pass (model)"]
+
+[[findings]]
+file = "middleware/context_timeout.go"
+lines = [69, 69]
+categories = ["bug", "rule"]
+note = "ToMiddleware() returned only a middleware and could not report config errors, unlike the other ToMiddleware methods in the package."
+
+[[allowed]]
+file = "middleware/context_timeout.go"
+lines = [1, 92]
+
+[[allowed]]
+file = "middleware/context_timeout_test.go"
+lines = [1, 431]

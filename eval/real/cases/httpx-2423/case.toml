@@ -1,0 +1,76 @@
+kind = "bug"
+labellers = ["first pass (model)"]
+
+[[findings]]
+file = "httpx/_decoders.py"
+lines = [278, 278]
+categories = ["bug"]
+note = "The line decoder only treated a trailing \\n as a line end, so text ending in \\r or another str.splitlines separator was buffered and emitted late."
+
+[[allowed]]
+file = "httpx/_decoders.py"
+lines = [270, 281]
+
+[[allowed]]
+file = "httpx/_decoders.py"
+lines = [286, 286]
+
+[[allowed]]
+file = "tests/models/test_responses.py"
+lines = [643, 643]
+
+[[allowed]]
+file = "tests/models/test_responses.py"
+lines = [656, 656]
+
+[[allowed]]
+file = "tests/test_decoders.py"
+lines = [228, 228]
+
+[[allowed]]
+file = "tests/test_decoders.py"
+lines = [233, 233]
+
+[[allowed]]
+file = "tests/test_decoders.py"
+lines = [239, 239]
+
+[[allowed]]
+file = "tests/test_decoders.py"
+lines = [242, 242]
+
+[[allowed]]
+file = "tests/test_decoders.py"
+lines = [249, 249]
+
+[[allowed]]
+file = "tests/test_decoders.py"
+lines = [254, 255]
+
+[[allowed]]
+file = "tests/test_decoders.py"
+lines = [261, 261]
+
+[[allowed]]
+file = "tests/test_decoders.py"
+lines = [264, 264]
+
+[[allowed]]
+file = "tests/test_decoders.py"
+lines = [270, 270]
+
+[[allowed]]
+file = "tests/test_decoders.py"
+lines = [275, 275]
+
+[[allowed]]
+file = "tests/test_decoders.py"
+lines = [281, 281]
+
+[[allowed]]
+file = "tests/test_decoders.py"
+lines = [287, 287]
+
+[[allowed]]
+file = "tests/test_decoders.py"
+lines = [290, 290]

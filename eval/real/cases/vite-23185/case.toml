@@ -1,0 +1,72 @@
+kind = "bug"
+labellers = ["first pass (model)"]
+
+[[findings]]
+file = "packages/vite/src/node/plugins/dynamicImportVars.ts"
+lines = [328, 338]
+categories = ["bug"]
+note = "The build plugin resolved dynamic import variables with its own inline resolver, different from the one used in dev, so dev and build could resolve differently."
+
+[[allowed]]
+file = "packages/vite/src/node/plugins/dynamicImportVars.ts"
+lines = [25, 25]
+
+[[allowed]]
+file = "packages/vite/src/node/plugins/dynamicImportVars.ts"
+lines = [45, 45]
+
+[[allowed]]
+file = "packages/vite/src/node/plugins/dynamicImportVars.ts"
+lines = [113, 116]
+
+[[allowed]]
+file = "packages/vite/src/node/plugins/dynamicImportVars.ts"
+lines = [126, 126]
+
+[[allowed]]
+file = "packages/vite/src/node/plugins/dynamicImportVars.ts"
+lines = [134, 172]
+
+[[allowed]]
+file = "packages/vite/src/node/plugins/dynamicImportVars.ts"
+lines = [185, 193]
+
+[[allowed]]
+file = "packages/vite/src/node/plugins/dynamicImportVars.ts"
+lines = [243, 253]
+
+[[allowed]]
+file = "packages/vite/src/node/plugins/dynamicImportVars.ts"
+lines = [327, 339]
+
+[[allowed]]
+file = "packages/vite/src/node/plugins/resolve.ts"
+lines = [353, 353]
+
+[[allowed]]
+file = "packages/vite/src/node/plugins/resolve.ts"
+lines = [491, 491]
+
+[[allowed]]
+file = "packages/vite/src/node/plugins/resolve.ts"
+lines = [494, 502]
+
+[[allowed]]
+file = "packages/vite/src/node/plugins/resolve.ts"
+lines = [1036, 1039]
+
+[[allowed]]
+file = "playground/dynamic-import/__tests__/dynamic-import.spec.ts"
+lines = [118, 123]
+
+[[allowed]]
+file = "playground/dynamic-import/index.html"
+lines = [28, 30]
+
+[[allowed]]
+file = "playground/dynamic-import/nested/index.js"
+lines = [130, 133]
+
+[[allowed]]
+file = "playground/dynamic-import/package.json"
+lines = [6, 8]

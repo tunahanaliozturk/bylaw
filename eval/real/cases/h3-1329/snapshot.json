@@ -1,0 +1,43 @@
+{
+  "repo": "h3js/h3",
+  "number": 1329,
+  "url": "https://github.com/h3js/h3/pull/1329",
+  "licence": "MIT",
+  "base_sha": "5da2989cb1bd85fd238b69a5f6838ef3321a9dfc",
+  "head_sha": "45490d5333612d0585ab787ddd98f598a8aad645",
+  "title": "feat: add redirectBack utility",
+  "body": "## Summary\n\nCloses #642\n\nAdds `redirectBack(event, opts?)` — redirects the client to the previous page using the `referer` header.\n\n```ts\napp.post(\"/submit\", (event) => {\n  // process form...\n  return redirectBack(event, { fallback: \"/form\" });\n});\n```\n\n### Safety\n\n- Only redirects to **same-origin** referer URLs (prevents open redirect)\n- Falls back to `opts.fallback` (default `\"/\"`) when referer is missing or cross-origin\n- Invalid referer URLs are caught and fall back safely\n\n### API\n\n```ts\nredirectBack(event: H3Event, opts?: {\n  fallback?: string;  // default: \"/\"\n  status?: number;    // default: 302\n}): HTTPResponse\n```\n\nReuses the existing `redirect()` function internally.\n\n## Test plan\n\n- [x] Redirects to same-origin referer\n- [x] Falls back on cross-origin referer\n- [x] Falls back when no referer header\n- [x] Defaults fallback to \"/\"\n- [x] All tests pass in both web and node modes (8/8)\n- [x] Package exports snapshot updated\n\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\n<!-- This is an auto-generated comment: release notes by coderabbit.ai -->\n## Summary by CodeRabbit\n\n* **New Features**\n  * Added a redirect helper that sends users back to a same-origin Referer (strips query by default), with options to preserve query, set a fallback URL (default \"/\"), and override status code.\n\n* **Documentation**\n  * Added usage docs and examples for the new redirect helper.\n\n* **Tests**\n  * Added tests covering same-origin behavior, query-preservation option, cross-origin/missing/invalid referer fallbacks, and default behavior.\n<!-- end of auto-generated comment: release notes by coderabbit.ai -->",
+  "commit_messages": [
+    "feat: add redirectBack utility\n\nRedirect the client back to the previous page using the referer header.\nFalls back to a configurable URL (default \"/\") when:\n- No referer header is present\n- Referer is a different origin (prevents open redirect)\n\nUsage:\n  app.post(\"/submit\", (event) => redirectBack(event, { fallback: \"/form\" }));\n\nCloses #642\n\nCo-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>",
+    "chore: apply automated updates"
+  ],
+  "closing": [
+    {
+      "owner": "h3js",
+      "repo": "h3",
+      "number": 642
+    }
+  ],
+  "issues": [
+    {
+      "owner": "h3js",
+      "repo": "h3",
+      "number": 642,
+      "title": "Create a `sendRedirectBack` utility",
+      "body": "This utility could be a wrapper of `sendRedirect`:\n\n```ts\nfunction sendRedirectBack(event) {\n  const back = getHeader(event, 'referer') || '/'\n  return sendRedirect(event, back)\n}\n```\n\nThis type of utility is in many framework:\n\nhttps://expressjs.com/en/4x/api.html#res.redirect\nhttps://docs.adonisjs.com/guides/response#redirect-back-to-the-previous-page\n\n",
+      "comments": [],
+      "comments_unreadable": false
+    }
+  ],
+  "remove": [],
+  "left_out": [],
+  "evidence": {
+    "url": "https://github.com/h3js/h3/pull/1329#discussion_r2935904692",
+    "path": "src/utils/response.ts",
+    "lines": [
+      84,
+      84
+    ],
+    "body": "Errors = Errors. Silently ignoring them is not best idea."
+  }
+}

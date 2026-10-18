@@ -1,0 +1,47 @@
+{
+  "repo": "fastify/fastify",
+  "number": 6483,
+  "url": "https://github.com/fastify/fastify/pull/6483",
+  "licence": "MIT",
+  "base_sha": "f9c63991d1c1b97c66903299f3914456f867254b",
+  "head_sha": "b29db5bb1730d8891dd780822e0c225a4818a023",
+  "title": "fix(validation): correctly update falsy values from validator",
+  "body": "Fixes #6411.\n\n## Summary\n\n- Update `validateParam` when a custom validator returns an explicit `value`, including falsy values such as `0`, `\"\"`, `false`, and `null`.\n- Guard the `value in ret` check with `typeof ret === 'object'` because synchronous Ajv validation may return a boolean.\n- Add regression coverage proving that the validator output replaces the original request value for each supported falsy value.\n\n## Root cause\n\n`validateParam` currently uses `if (ret && ret.value)`. The truthiness check skips an update whenever a custom validator intentionally returns a falsy value, leaving the original request value in place.\n\n## Validation\n\n- `npm run unit`: 2205 passed, 4 skipped, 0 failed\n- Full GitHub Actions matrix is green on the current head\n\n## Scope\n\nThe earlier documentation change was removed after review; the final diff contains only the validation fix and its regression test.\n",
+  "commit_messages": [
+    "fix(validation): correctly update falsy values from validator",
+    "Merge branch 'main' into fix/nullable-number-zero-validation",
+    "Merge branch 'main' into fix/nullable-number-zero-validation",
+    "test(validation): add failing test case for falsy values from validator",
+    "Merge branch 'main' into fix/nullable-number-zero-validation",
+    "Merge branch 'main' into fix/nullable-number-zero-validation"
+  ],
+  "closing": [
+    {
+      "owner": "fastify",
+      "repo": "fastify",
+      "number": 6411
+    }
+  ],
+  "issues": [
+    {
+      "owner": "fastify",
+      "repo": "fastify",
+      "number": 6411,
+      "title": "Validation of optional, nullable number where property value is `0` will default to `null`",
+      "body": "### Prerequisites\n\n- [x] I have written a descriptive issue title\n- [x] I have searched existing issues to ensure the bug has not already been reported\n\n\n### Fastify version\n\n5.6.2\n\n### Plugin version\n\n_No response_\n\n### Node.js version\n\n24.11.0\n\n### Operating system\n\nWindows\n\n### Operating system version (i.e. 20.04, 11.3, 10)\n\n10\n\n### Description\n\nWhen using a schema that defines an optional, nullable number as a property if I send the value `0` then the property is evaluated to be `null` I have added `preValidation` and `preHandler` hooks to look at the incoming body shape and can confirm before the validation step the raw value is `0` and after validation is `null` my schema for validating the model is:\n\n```json\n{\n  \"type\": \"object\",\n  \"properties\": {\n    \"length\": {\n      \"anyOf\": [\n        {\n          \"type\": \"null\"\n        },\n        {\n          \"type\": \"number\"\n        }\n      ]\n    }\n  },\n  \"$id\": \"MyModel\"\n}\n```\n\nmy request body sent from client (and during `preValidation`) is:\n\n```json\n{\n  \"length\": 0\n}\n```\n\nmy resulting model in my handler (and during `preHandler`) is:\n\n```json\n{\n  \"length\": null\n}\n```\n\nI can't see any immediate ajv options (or issues in their repo) about this.\n\nIf I make the property \"required\" then I see no change.\n\nIf I make the property \"required and not nullable\" then it works but is now breaking my contract.\n\n### Link to code that reproduces the bug\n\nhttps://gist.github.com/cmcnicholas/cc83f261bb9cbd6847c901e7c1482b92\n\n### Expected Behavior\n\nI would expect that sending explicit `0` value to a validated model property should retain that value and not default to `null`",
+      "comments": [],
+      "comments_unreadable": false
+    }
+  ],
+  "remove": [],
+  "left_out": [],
+  "evidence": {
+    "url": "https://github.com/fastify/fastify/pull/6483#discussion_r3000298883",
+    "path": "lib/validation.js",
+    "lines": [
+      141,
+      141
+    ],
+    "body": "```suggestion\n    if (ret && 'value' in ret) request[paramName] = ret.value\n```"
+  }
+}

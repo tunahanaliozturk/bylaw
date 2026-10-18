@@ -1,0 +1,45 @@
+{
+  "repo": "encode/httpx",
+  "number": 2716,
+  "url": "https://github.com/encode/httpx/pull/2716",
+  "licence": "BSD-3-Clause",
+  "base_sha": "a682f6f1c7f1c5e10c66ae5bef139aea37ef0c4e",
+  "head_sha": "0c308b0bf6b67617326450c423c778bda8b42d37",
+  "title": "Add `socket_options` argument to `httpx.HTTPTransport` class",
+  "body": "closes #2715 ",
+  "commit_messages": [
+    "Add `socket_options` argument to `httpx.HTTPTransport` and `httpx.AsyncHTTPTransport` classes",
+    "Update changelog",
+    "Fix changelog format",
+    "Set httpcore's minimum version to 0.17.2"
+  ],
+  "closing": [
+    {
+      "owner": "encode",
+      "repo": "httpx",
+      "number": 2715
+    }
+  ],
+  "issues": [
+    {
+      "owner": "encode",
+      "repo": "httpx",
+      "number": 2715,
+      "title": "Add `socket_options` to `httpx.HTTPTransport`.",
+      "body": "Since [version 0.17.2](https://github.com/encode/httpcore/pull/697#issuecomment-1559059612) the `httpcore` package has support for a `socket_options` parameter.\r\nWe should add a corresponding parameter to `httpx.HTTPTransport`, which can be passed through to the connection pool.\r\n\r\nThis will resolve the use-case raised in discussion https://github.com/encode/httpx/discussions/2635...\r\n\r\n```python\r\n>>> import httpx\r\n>>> socket_options = [(socket.SOL_SOCKET, socket.SO_BINDTODEVICE, b\"ETH999\")]\r\n>>> transport = httpx.HTTPTransport(socket_options=socket_options)\r\n>>> client = httpx.Client(transport=transport)\r\n```",
+      "comments": [],
+      "comments_unreadable": false
+    }
+  ],
+  "remove": [],
+  "left_out": [],
+  "evidence": {
+    "url": "https://github.com/encode/httpx/pull/2716#discussion_r1203667142",
+    "path": "httpx/_transports/default.py",
+    "lines": [
+      31,
+      31
+    ],
+    "body": "Let's not import that type definition, it's not documented public API.\r\n\r\nIt's be okay to instead define the socket option types here.\r\n\r\n```python\r\nSOCKET_OPTION = typing.Union[\r\n    typing.Tuple[int, int, int],\r\n    typing.Tuple[int, int, typing.Union[bytes, bytearray]],\r\n    typing.Tuple[int, int, None, int],\r\n]\r\n```"
+  }
+}

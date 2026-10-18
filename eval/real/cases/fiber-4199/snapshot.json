@@ -1,0 +1,71 @@
+{
+  "repo": "gofiber/fiber",
+  "number": 4199,
+  "url": "https://github.com/gofiber/fiber/pull/4199",
+  "licence": "MIT",
+  "base_sha": "80c5c886280e3dba54a19719b98cc0e355b31c68",
+  "head_sha": "33347636f7a65601060be172ba357e79963aa49b",
+  "title": "🔥 feat: Host auth middleware ",
+  "body": "# Description\r\n\r\n Add a new `hostauthorization` middleware that validates the incoming Host header against a configurable allowlist, rejecting unauthorized hosts with 403 Forbidden. This protects against DNS rebinding attacks\r\n  where an attacker-controlled domain resolves to the application's internal IP, causing browsers to send requests with a malicious Host header.\r\n\r\n  The middleware supports exact host matching, subdomain wildcards (.myapp.com), and CIDR ranges (10.0.0.0/8), with an optional dynamic validator function for runtime host resolution. It complements the `Domain()`\r\n  router (#4100) — `Domain()` handles `host-based` routing while `hostauthorization` acts as a security gate.\r\n\r\n  Fixes #4148\r\n\r\n## Changes introduced\r\n\r\n  - [x] Benchmarks: 3 benchmarks included (exact match, CIDR, mixed rules). All ~3,200 ns/op with 25 allocs on Apple M5.\r\n  - [x] Documentation Update: Added docs/middleware/hostauthorization.md with full usage guide, config reference, matching semantics, normalization rules, proxy support, and RFC compliance notes.\r\n  - [x] Changelog/What's New: New hostauthorization middleware — DNS rebinding protection via Host header validation with exact match, subdomain wildcard, and CIDR support.\r\n  - [x] Migration Guide: N/A — new middleware, no breaking changes.\r\n  - [x] API Alignment with Express: Modeled after host-validation (closest Express ecosystem equivalent). AllowedHosts/AllowedHostsFunc mirrors the AllowOrigins/AllowOriginsFunc pattern from the existing cors\r\n  middleware. Next, ErrorHandler follow established Fiber conventions.\r\n  - [x] API Longevity: Minimal API surface (4 config fields). String-based allowlists and callback escape hatches — same patterns Rails has used since Rails 6 (2019) without breaking changes. No external\r\n  dependencies, no state, no caching.\r\n  - [x] Examples: Usage examples covering basic protection, subdomain wildcards, CIDR ranges, health check exclusion, dynamic validation, custom error responses, and combined usage with `Domain()` router.\r\n\r\n## Type of change\r\n\r\nPlease delete options that are not relevant.\r\n\r\n- [x] New feature (non-breaking change which adds functionality)\r\n- [ ] Enhancement (improvement to existing features and functionality)\r\n- [ ] Documentation update (changes to documentation)\r\n- [ ] Performance improvement (non-breaking change which improves efficiency)\r\n- [ ] Code consistency (non-breaking change which improves code reliability and robustness)\r\n\r\n## Checklist\r\n\r\nBefore you submit your pull request, please make sure you meet these requirements:\r\n\r\n- [x] Followed the inspiration of the Express.js framework for new functionalities, making them similar in usage.\r\n- [x] Conducted a self-review of the code and provided comments for complex or critical parts.\r\n- [x] Updated the documentation in the `/docs/` directory for [Fiber's documentation](https://docs.gofiber.io/).\r\n- [x] Added or updated unit tests to validate the effectiveness of the changes or new features.\r\n- [x] Ensured that new and existing unit tests pass locally with the changes.\r\n- [x] Verified that any new dependencies are essential and have been agreed upon by the maintainers/community.\r\n- [x] Aimed for optimal performance with minimal allocations in the new code.\r\n- [x] Provided benchmarks for the new code to analyze and improve upon.\r\n\r\n## Commit formatting\r\n\r\nPlease use emojis in commit messages for an easy way to identify the purpose or intention of a commit. Check out the emoji cheatsheet here: [CONTRIBUTING.md](https://github.com/gofiber/fiber/blob/main/.github/CONTRIBUTING.md#pull-requests-or-commits)\r\n",
+  "commit_messages": [
+    "feat(middleware): add hostauthorization config",
+    "feat(middleware): add hostauthorization handler",
+    "test(middleware): add hostauthorization config, normalizeHost, and matching tests",
+    "test(middleware): add hostauthorization integration tests",
+    "test(middleware): add hostauthorization benchmarks",
+    "fix(middleware): panic on no-arg hostauthorization config",
+    "docs(middleware): add hostauthorization usage documentation",
+    "chore(middleware): add hostauthorization to README, fix lint issues",
+    "Zero allocation fixes + utils",
+    "feat(middleware): add hostauthorization config",
+    "feat(middleware): add hostauthorization handler",
+    "test(middleware): add hostauthorization config, normalizeHost, and matching tests",
+    "test(middleware): add hostauthorization integration tests",
+    "test(middleware): add hostauthorization benchmarks",
+    "fix(middleware): panic on no-arg hostauthorization config",
+    "Merge branch 'main' into host_auth_middleware",
+    "Test fixes",
+    "Merge branch 'main' into host_auth_middleware",
+    "Merge branch 'main' into host_auth_middleware",
+    "Fix tests with fasthttp",
+    "Fix codecov",
+    "Merge branch 'main' into host_auth_middleware",
+    "Fix Go 1.26 test failure and improve test hygiene in the hostauthorization middleware",
+    "Merge branch 'main' into host_auth_middleware",
+    "Fix normalizeHosts",
+    "CIDR fixes",
+    "Merge branch 'main' into host_auth_middleware"
+  ],
+  "closing": [
+    {
+      "owner": "gofiber",
+      "repo": "fiber",
+      "number": 4148
+    }
+  ],
+  "issues": [
+    {
+      "owner": "gofiber",
+      "repo": "fiber",
+      "number": 4148,
+      "title": "📝 [Proposal]:  Host authorization middleware — DNS rebinding protection via Host header validation",
+      "body": "### Feature Proposal Description\n\n A middleware that validates the incoming Host header against a configurable allowlist, rejecting requests with unrecognized hosts with 403 Forbidden. This protects against DNS rebinding attacks, where an\n  attacker-controlled domain resolves to the application's internal IP, causing browsers to send requests with a malicious Host header to the application.\n\n### Alignment with Express API\n\nExpress does not have a built-in host authorization middleware. The closest third-party equivalent is host-validation -> https://github.com/brannondorsey/host-validation\n\n### HTTP RFC Standards Compliance\n\n RFC 9112 (HTTP/1.1), Section 3.2 requires servers to respond with 400 Bad Request to requests that lack a Host header, contain multiple Host headers, or have an invalid Host value. This middleware builds on top\nof that baseline requirement.\n\n RFC 9110 (HTTP Semantics), Section 7.2 (\"Host and :authority\") establishes that the Host header identifies the target origin server for the request. Section 17.1 (\"Establishing Authority\") states:\n\nAn origin server is responsible for ensuring services controlling its certificate's private key are prepared to reject requests that appear to have been misdirected.\n\nThis middleware implements that recommendation at the application layer by rejecting requests whose Host header does not match the expected values — going beyond the RFC's minimum syntactic validation to\nprovide semantic validation against DNS rebinding and host header injection attacks.\n\nThe middleware will:\n - Strip the port from the Host header before matching (per RFC 9110 Section 7.2, the host and port are separate components)\n  - Respect X-Forwarded-Host when Fiber's TrustProxy is enabled\n  - Return 403 Forbidden by default for unauthorized hosts (not 400, since the request is syntactically valid but semantically unauthorized)\n\n### API Stability\n\nThe API surface is minimal and modeled after patterns already proven stable in Fiber:\n\n  1. AllowedHosts []string — mirrors cors.AllowOrigins. String-based allowlists are the most stable configuration pattern.\n  2. AllowedHostsFunc func(string) bool — mirrors cors.AllowOriginsFunc. Same escape hatch pattern.\n  3. Next, Exclude, ErrorHandler — all existing Fiber conventions used across multiple middleware.\n  4. Matching semantics (exact, subdomain wildcard, CIDR) — these are the same patterns Rails has used since Rails 6 (2019) without breaking changes.\n\nNo external dependencies are required — only net from the standard library for CIDR parsing. The middleware has no state, no caching, and no side effects beyond rejecting requests, which makes API evolution straightforward.\n\n\n### Feature Examples\n\n```go\nProtect a production API\n\n\n  app := fiber.New()\n\n  app.Use(hostauthorization.New(hostauthorization.Config{\n      AllowedHosts: []string{\"api.myapp.com\"},\n  }))\n\n  app.Get(\"/users\", func(c fiber.Ctx) error {\n      return c.JSON(getUsers())\n  })\n\n  // Host: api.myapp.com → 200 OK\n  // Host: evil.com      → 403 Forbidden\n\n  Allow subdomains and exclude health checks\n\n  app.Use(hostauthorization.New(hostauthorization.Config{\n      AllowedHosts: []string{\".myapp.com\"},\n      Exclude: func(c fiber.Ctx) bool {\n          return c.Path() == \"/healthz\"\n      },\n  }))\n\n  // Host: api.myapp.com  GET /users   → 200 OK\n  // Host: www.myapp.com  GET /        → 200 OK\n  // Host: evil.com       GET /users   → 403 Forbidden\n  // Host: evil.com       GET /healthz → 200 OK (excluded)\n\n\n\nInternal service with CIDR ranges:\n\n\n  app.Use(hostauthorization.New(hostauthorization.Config{\n      AllowedHosts: []string{\n          \"internal.myapp.com\",\n          \"10.0.0.0/8\",       // internal network\n          \"127.0.0.1\",        // localhost\n      },\n  }))\n\n  // Host: internal.myapp.com → 200 OK\n  // Host: 10.0.50.3          → 200 OK\n  // Host: 169.254.169.254    → 403 Forbidden (blocks cloud metadata)\n\n\nScoped to a route group:\n\n\n  admin := app.Group(\"/admin\")\n  admin.Use(hostauthorization.New(hostauthorization.Config{\n      AllowedHosts: []string{\"admin.myapp.com\"},\n  }))\n\n  // Host: admin.myapp.com GET /admin/dashboard → 200 OK\n  // Host: myapp.com       GET /admin/dashboard → 403 Forbidden\n  // Host: myapp.com       GET /public          → 200 OK (not in group)\n```\n\n### Checklist:\n\n- [x] I agree to follow Fiber's [Code of Conduct](https://github.com/gofiber/fiber/blob/main/.github/CODE_OF_CONDUCT.md).\n- [x] I have searched for existing issues that describe my proposal before opening this one.\n- [x] I understand that a proposal that does not meet these guidelines may be closed without explanation.",
+      "comments": [
+        "@mutantkeyboard we are adding a Domain() based router, i think that solves this issue? \n\nPR is here #4100 ",
+        "Although having a separate middleware is not a bad idea."
+      ],
+      "comments_unreadable": false
+    }
+  ],
+  "remove": [],
+  "left_out": [],
+  "evidence": {
+    "url": "https://github.com/gofiber/fiber/pull/4199#discussion_r3147276744",
+    "path": "middleware/hostauthorization/hostauthorization.go",
+    "lines": [
+      80,
+      80
+    ],
+    "body": "**This contradicts both the docs and the stated CORS pattern.**\n\nThe middleware docs say:\n\n> `AllowedHostsFunc` is only called when static `AllowedHosts` don't match\n\nAnd the PR description claims this mirrors the CORS `AllowOriginsFunc` pattern, where the func is explicitly a fallback (see `middleware/cors/cors.go`):\n\n```go\n// Run AllowOriginsFunc if the logic for handling the value in 'AllowOrigins'\n// does not result in allowOrigin being set.\nif allowOrigin == \"\" && cfg.AllowOriginsFunc != nil && cfg.AllowOriginsFunc(originHeaderRaw) {\n```\n\nPerformance-wise this matters too: a user-supplied `AllowedHostsFunc` is the most expensive lookup (the docs even suggest \"Look up tenant domains from database\"), so calling it on every request before the static map lookup is exactly the wrong default.\n\nSuggest reordering to: exact → wildcard → CIDR → `AllowedHostsFunc`. That matches the documented behaviour and the CORS convention.\n\nA counter-based test would prevent regressions:\n\n```go\ncalled := 0\nfn := func(host string) bool { called++; return false }\n// request that matches a static AllowedHosts entry\nrequire.Equal(t, 0, called, \"AllowedHostsFunc should not be called when static hosts match\")\n```"
+  }
+}

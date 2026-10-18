@@ -1,0 +1,43 @@
+{
+  "repo": "labstack/echo",
+  "number": 2380,
+  "url": "https://github.com/labstack/echo/pull/2380",
+  "licence": "MIT",
+  "base_sha": "24a30611dfc07e427dc771a16ef9bb0dd94c4c2e",
+  "head_sha": "db66c130e79ba8084dd444ac70082738a4aacfed",
+  "title": "Add context timeout middleware",
+  "body": "We need to introduce a new middleware (`middleware.ContextTimeout()`) that creates context with timeout and injects `ContextWithTimeout` to `c.Request().Context()`. If the handler returns an error that wraps `context.DeadlineExceeded`, it returns [Service Unavailable (503)](https://www.rfc-editor.org/rfc/rfc9110.html#name-503-service-unavailable)\r\n\r\nThis fixes  #2379, #2306.\r\n\r\nCo-authored-by: @erhanakp",
+  "commit_messages": [
+    "Add context timeout middleware (#1)\n\nAdd context timeout middleware \r\n\r\nCo-authored-by: Erhan Akpınar <erhan.akpinar@yemeksepeti.com>",
+    "Add error handler feature (#2)"
+  ],
+  "closing": [
+    {
+      "owner": "labstack",
+      "repo": "echo",
+      "number": 2379
+    }
+  ],
+  "issues": [
+    {
+      "owner": "labstack",
+      "repo": "echo",
+      "number": 2379,
+      "title": "ContextWithTimeout middleware feature request",
+      "body": "### Issue Description\r\n\r\nNeed timeout support on long-running operations like Db, HTTP calls, etc. [timeout](https://github.com/labstack/echo/blob/master/middleware/timeout.go) middleware supports cancellation with context but has race conditions.\r\n\r\nWe need a middleware that creates context with timeout and injects `ContextWithTimeout` to `c.Request().Context()`\r\nNew approach also fixes [#2306](https://github.com/labstack/echo/issues/2306).\r\n\r\n### Expected behaviour\r\nWe need to introduce a new middleware (`middleware.ContextTimeout()`) that creates context with timeout and injects `ContextWithTimeout` to `c.Request().Context()`. If the handler returns an error that wraps `context.DeadlineExceeded`, it returns [Service Unavailable (503)](https://www.rfc-editor.org/rfc/rfc9110.html#name-503-service-unavailable)\r\n\r\nNew approach also fixes [#2306](https://github.com/labstack/echo/issues/2306).\r\n\r\n### Actual behaviour\r\nWith current timeout middleware, since it has a race condition, it is not safe to use in production.\r\n",
+      "comments": [],
+      "comments_unreadable": false
+    }
+  ],
+  "remove": [],
+  "left_out": [],
+  "evidence": {
+    "url": "https://github.com/labstack/echo/pull/2380#discussion_r1083345491",
+    "path": "middleware/context_timeout.go",
+    "lines": [
+      69,
+      69
+    ],
+    "body": "this method should return `(echo.MiddlewareFunc, error)` as `ToMiddleware()` are meant to be way to create middlewares with possibility of errors. See how these errors should be handled by other creator functions https://github.com/labstack/echo/blob/24a30611dfc07e427dc771a16ef9bb0dd94c4c2e/middleware/request_logger.go#L215-L220"
+  }
+}

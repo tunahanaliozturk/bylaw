@@ -1,0 +1,50 @@
+{
+  "repo": "vitejs/vite",
+  "number": 22611,
+  "url": "https://github.com/vitejs/vite/pull/22611",
+  "licence": "MIT",
+  "base_sha": "4551a4bbc26e3434048f87035dd5c2f8be411c3e",
+  "head_sha": "6a5b37b54f1aab18d8d1e640a6ae15ec9885102e",
+  "title": "fix(optimizer): skip null-valued exports in expandGlobIds glob resolution",
+  "body": "Fixes #22586.\n\nWhen using glob patterns in `optimizeDeps.include` (e.g. `my-pkg/*`), Vite expands the pattern against the package's `exports` field. The non-glob path of that expansion unconditionally added every export key to the candidate list, including keys with a `null` value.\n\nPer the Node.js docs, a `null` export value is how packages mark subpaths as intentionally private and unreachable:\n\n> To exclude private subfolders from patterns, null targets can be used.\n> https://nodejs.org/api/packages.html#subpath-patterns\n\nFor example, a package with this in its `package.json`:\n\n```json\n{\n  \"exports\": {\n    \".\": \"./dist/index.js\",\n    \"./utils\": \"./dist/utils.js\",\n    \"./internal\": null\n  }\n}\n```\n\nWhen a user adds `\"my-pkg/*\"` to `optimizeDeps.include`, the old code would include `my-pkg/internal` in the resolved list. Vite then tries to bundle that path, fails to find a file for it, and throws a build error.\n\nThe glob branch already handled this correctly by calling `getFirstExportStringValue` which returns `undefined` for `null`, triggering an early `continue`. The non-glob branch just needed the same null check.\n\nThe fix is a single guard in `expandGlobIds` inside `packages/vite/src/node/optimizer/resolve.ts`:\n\n```ts\nif (exports[key] === null) continue\n```\n\nA unit test is added that confirms null-valued export keys are excluded from the resolved list while non-null ones are still included.",
+  "commit_messages": [
+    "fix(optimizer): skip null-valued exports in expandGlobIds glob resolution",
+    "test(optimizer): fix expandGlobIds spec to work with isolate:false\n\nThe previous test used vi.mock to stub resolvePackageData, but\nvitest's isolate:false shares the module graph across test files.\nBy the time expandGlobIds.spec.ts runs, packages.ts is already\ncached, so the mock never intercepts the real call and the function\nreturns [] early.\n\nReplace the mock with a real temp-dir fixture: write an actual\npackage.json under a mkdtemp directory, point the config root there,\nand let resolvePackageData resolve it naturally. Matches the pattern\nused by other tests in this directory.",
+    "test(optimizer): resolve symlinked tmpdir on macOS in expandGlobIds spec\n\nfs.mkdtempSync on macOS returns a path under /var/folders/... which is a\nsymlink to /private/var/folders/.... Vite's resolvePackageData uses realpaths\ninternally, so the fixture root mismatched and the test failed only on\nnode-24/macOS CI. Wrap mkdtempSync with fs.realpathSync to normalise the path.",
+    "refactor(test): move expandGlobIds fixture into committed fixtures dir, fix comment style\n\nMove the temp-dir package setup in expandGlobIds.spec.ts into a\ncommitted fixture at packages/vite/src/node/__tests__/fixtures/glob-exports,\nfollowing the same on-disk layout used by the config/entry and\nscan-subpath-import-glob fixtures. The test now resolves the fixture root\nvia import.meta.dirname and drops the os.tmpdir/mkdtemp/realpathSync\nscaffolding entirely.\n\nAlso change the code comment in optimizer/resolve.ts from the\nparenthesis-wrapped URL form to a bare URL line as requested in review."
+  ],
+  "closing": [
+    {
+      "owner": "vitejs",
+      "repo": "vite",
+      "number": 22586
+    }
+  ],
+  "issues": [
+    {
+      "owner": "vitejs",
+      "repo": "vite",
+      "number": 22586,
+      "title": "optimizeDeps.include glob should ignore null exports",
+      "body": "### Describe the bug\n\nWhen using the \"experimental\" feature to use globs in `optimizeDeps.include`, it will expand all matching export paths based on package.json exports. However, it will also expand keys that have a `null` value. `null` can be used to [declare private modules ](https://nodejs.org/api/packages.html#subpath-patterns) though:\n\n> To exclude private subfolders from patterns, null targets can be used:\n\nSo these keys should be explicitly ignored, not expanded.\n\nI have a local patch working on my machine, will work on a proper upstream PR next!\n\n### Reproduction\n\nhttps://stackblitz.com/edit/vitejs-vite-pvd2ygpz?file=vite.config.js\n\n### Steps to reproduce\n\nBuild error triggers immediately after opening stackblitz (`pnpm install && pnpm run dev`)\n\n### System Info\n\n```shell\nSystem:\n    OS: macOS 26.2\n    CPU: (8) arm64 Apple M2\n    Memory: 99.75 MB / 24.00 GB\n    Shell: 5.9 - /bin/zsh\n  Binaries:\n    Node: 24.16.0 - /Users/simonihmig/.volta/tools/image/node/24.16.0/bin/node\n    Yarn: 1.22.19 - /Users/simonihmig/.volta/tools/image/yarn/1.22.19/bin/yarn\n    npm: 11.13.0 - /Users/simonihmig/.volta/tools/image/node/24.16.0/bin/npm\n    pnpm: 10.15.0 - /Users/simonihmig/.volta/tools/image/pnpm/10.15.0/bin/pnpm\n  Browsers:\n    Safari: 26.2\n```\n\n### Used Package Manager\n\npnpm\n\n### Logs\n\n_No response_\n\n### Validations\n\n- [x] Follow our [Code of Conduct](https://github.com/vitejs/vite/blob/main/CODE_OF_CONDUCT.md)\n- [x] Read the [Contributing Guidelines](https://github.com/vitejs/vite/blob/main/CONTRIBUTING.md).\n- [x] Read the [docs](https://vite.dev/guide).\n- [x] Check that there isn't [already an issue](https://github.com/vitejs/vite/issues) that reports the same bug to avoid creating a duplicate.\n- [x] Make sure this is a Vite issue and not a framework-specific issue. For example, if it's a Vue SFC related bug, it should likely be reported to [vuejs/core](https://github.com/vuejs/core) instead.\n- [x] Check that this is a concrete bug. For Q&A open a [GitHub Discussion](https://github.com/vitejs/vite/discussions) or join our [Discord Chat Server](https://chat.vite.dev/).\n- [x] The provided reproduction is a [minimal reproducible example](https://stackoverflow.com/help/minimal-reproducible-example) of the bug.",
+      "comments": [],
+      "comments_unreadable": false
+    }
+  ],
+  "remove": [],
+  "left_out": [
+    "packages/vite/src/node/__tests__/fixtures/glob-exports/node_modules/my-pkg/dist/index.js",
+    "packages/vite/src/node/__tests__/fixtures/glob-exports/node_modules/my-pkg/dist/public.js",
+    "packages/vite/src/node/__tests__/fixtures/glob-exports/node_modules/my-pkg/dist/utils.js",
+    "packages/vite/src/node/__tests__/fixtures/glob-exports/node_modules/my-pkg/package.json"
+  ],
+  "evidence": {
+    "url": "https://github.com/vitejs/vite/pull/22611#discussion_r3392860431",
+    "path": "packages/vite/src/node/optimizer/resolve.ts",
+    "lines": [
+      136,
+      136
+    ],
+    "body": "There's a lint warning here to use `==` instead"
+  }
+}

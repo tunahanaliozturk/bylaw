@@ -1,0 +1,44 @@
+{
+  "repo": "vitejs/vite",
+  "number": 22468,
+  "url": "https://github.com/vitejs/vite/pull/22468",
+  "licence": "MIT",
+  "base_sha": "0ae2844ab6d6d1ccf78a2975b8132769fc35b302",
+  "head_sha": "72895356af46ba15215d63ecd80bb94b53e1b6b4",
+  "title": "feat(legacy): prefer oxc as minifier (fix #21973)",
+  "body": "Fixes #21973\r\n\r\n**Summary**\r\n\r\n* Updates `plugin-legacy` to prefer `oxc` as the default minifier instead of always forcing `terser`.\r\n\r\n**Changelog**\r\n\r\n* Add legacy minifier resolution helpers to derive behavior from `build.minify`.\r\n* Replace hardcoded Terser paths with conditional Oxc(default)/Terser(fallback) selection.",
+  "commit_messages": [
+    "fix(plugin-legacy): prefer oxc as minifier",
+    "fix(plugin-legacy): failing build tests",
+    "Merge branch 'main' into fix/plugin-legacy-oxc-minify"
+  ],
+  "closing": [
+    {
+      "owner": "vitejs",
+      "repo": "vite",
+      "number": 21973
+    }
+  ],
+  "issues": [
+    {
+      "owner": "vitejs",
+      "repo": "vite",
+      "number": 21973,
+      "title": "legacy: use Oxc for minify by default",
+      "body": "### Description\n\nplugin-legacy has been using terser for minification regardless of the value of `build.minify` because esbuild didn't support keeping the syntax as-is. Now that Oxc supports that, we can respect `build.minify: 'oxc'` and `build.minify: true` for it.\n\n### Suggested solution\n\nRemove this line as some other places\nhttps://github.com/vitejs/vite/blob/c2d17bd87998ba828984aa9963586f09ebf2fd9b/packages/plugin-legacy/src/index.ts#L848\n\nWe should make sure to add `build.rolldownOptions.output.minify.compress.target`.\n\n\n### Alternative\n\n_No response_\n\n### Additional context\n\nOriginally suggested in https://github.com/vitejs/vite/discussions/21858\n\n### Validations\n\n- [x] Follow our [Code of Conduct](https://github.com/vitejs/vite/blob/main/CODE_OF_CONDUCT.md)\n- [x] Read the [Contributing Guidelines](https://github.com/vitejs/vite/blob/main/CONTRIBUTING.md).\n- [x] Read the [docs](https://vite.dev/guide).\n- [x] Check that there isn't already an issue that request the same feature to avoid creating a duplicate.",
+      "comments": [],
+      "comments_unreadable": false
+    }
+  ],
+  "remove": [],
+  "left_out": [],
+  "evidence": {
+    "url": "https://github.com/vitejs/vite/pull/22468#discussion_r3278736685",
+    "path": "packages/plugin-legacy/src/index.ts",
+    "lines": [
+      457,
+      475
+    ],
+    "body": "We need to change the behavior based on the Vite version because an old Vite version might be used with the new plugin-legacy version.\nAlso the opposite as well (old plugin-legacy with new Vite version).\n"
+  }
+}

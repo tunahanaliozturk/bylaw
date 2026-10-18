@@ -1,0 +1,28 @@
+kind = "bug"
+labellers = ["first pass (model)"]
+
+[[findings]]
+file = "tea.go"
+lines = [1063, 1063]
+categories = ["bug"]
+note = "The 80x24 fallback size was applied even when output was not a terminal at all (buffer, pipe, SSH session), changing the old 0x0 behaviour for those apps."
+
+[[allowed]]
+file = "tea.go"
+lines = [1063, 1064]
+
+[[allowed]]
+file = "tty.go"
+lines = [6, 6]
+
+[[allowed]]
+file = "tty.go"
+lines = [108, 146]
+
+[[allowed]]
+file = "tty.go"
+lines = [165, 166]
+
+[[allowed]]
+file = "tty_test.go"
+lines = [1, 178]

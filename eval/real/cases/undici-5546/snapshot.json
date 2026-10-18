@@ -1,0 +1,44 @@
+{
+  "repo": "nodejs/undici",
+  "number": 5546,
+  "url": "https://github.com/nodejs/undici/pull/5546",
+  "licence": "MIT",
+  "base_sha": "c7c7e7fd969fe221e2fede9f7d235cdb1fb88d5b",
+  "head_sha": "f0b477e103fe3f3e723bad5404ff90a74e1644aa",
+  "title": "fix(h2): prevent uncaughtException from onHttp2SocketError accessing undefined kClient",
+  "body": "### Root Cause\n\nIn `client-h2.js`, `onHttp2SocketError` accesses `this[kClient]` where `this` is the socket. However, `kClient` is only stored on the session (`session[kClient] = client`), never on the socket. So `this[kClient]` is `undefined`, and calling `this[kClient][kOnError](err)` throws a `TypeError`. This thrown error inside the 'error' event handler becomes an uncaughtException.\n\n### Changes\n\n1. **`onHttp2SocketError`** — Route through `this[kHTTP2Session]?.[kClient]` instead of `this[kClient]`\n2. **`util.destroy`** — Wrap `stream.destroy(err)` in try-catch (http2-managed sockets throw on direct `destroy()`)\n3. **`onHttp2SessionEnd`** — Wrap `util.destroy(this[kSocket], err)` in try-catch (same reason)\n\n### Testing\n\nAll 1421 existing tests pass (1418 pass, 3 skipped).\n\nFixes #5525",
+  "commit_messages": [
+    "fix(h2): prevent uncaughtException from onHttp2SocketError accessing undefined kClient\n\nThe onHttp2SocketError handler accesses this[kClient] where this is the\nsocket, but kClient is only stored on the session (session[kClient]),\nnever on the socket. This causes a TypeError when the error handler is\ninvoked, which becomes an uncaughtException.\n\nFix by routing through this[kHTTP2Session]?.[kClient] instead.\n\nAlso wraps stream.destroy(err) in util.destroy and onHttp2SessionEnd\nin try-catch, since http2-managed sockets throw ERR_HTTP2_NO_SOCKET_MANIPULATION\non direct destroy() calls.\n\nFixes #5525",
+    "test(h2): add regression test for uncaughtException after abort + socket close\n\nVerifies that aborting an in-flight HTTP/2 request followed by the\nsocket closing does not trigger an uncaughtException. This exercises\nthe onHttp2SocketError fix where kClient must be accessed through\nthe session rather than directly on the socket.",
+    "refactor(h2): remove dead onHttp2SessionEnd handler\n\nHttp2Session is a plain EventEmitter and never emits 'end', so this\nlistener could never fire."
+  ],
+  "closing": [
+    {
+      "owner": "nodejs",
+      "repo": "undici",
+      "number": 5525
+    }
+  ],
+  "issues": [
+    {
+      "owner": "nodejs",
+      "repo": "undici",
+      "number": 5525,
+      "title": "uncaughtException in unidici.request()",
+      "body": "My app uses `unidici 8.7.0` to download files from CloudFlare R2:\n\n```js\nconst fast_dispatcher = new Agent().compose(interceptors.redirect({maxRedirections: 5}));\nfunction get_download_stream_fast(url){\n  return request(url, {\n    dispatcher: fast_dispatcher,\n    signal: AbortSignal.timeout(30000)\n  }).then(function({statusCode, body}){\n    if(statusCode >= 200 && statusCode < 300){\n      return body;\n    }\n    body.dump(); //free the connection, we don't use the body\n    throw new Error(`HTTP ${statusCode} for: ${url}`);\n  });\n}\n```\n\nMy app also monitors for `uncaughtException` errors:\n\n```js\nprocess.on('uncaughtException', function(err) {\n  console.log( \"[UNCAUGHT EXCEPTION] \" + err.stack || err.message );\n  process.exit(1);\n});\n```\n\nI am regularly seeing these in my logs (which seems to correlate with downloads hitting the 30s timeout above). \n\n```txt\n [UNCAUGHT EXCEPTION] SocketError: other side closed\n     at TLSSocket.onHttp2SocketEnd (/frontend/node_modules/undici/lib/dispatcher/client-h2.js:661:22)\n     at TLSSocket.emit (node:events:531:35)\n     at endReadableNT (node:internal/streams/readable:1698:12)\n     at process.processTicksAndRejections (node:internal/process/task_queues:89:21)\n```\n\nPerhaps the CDN is not always 100% reliable. Is there a way to catch these exceptions, or should I just ignore them?",
+      "comments": [],
+      "comments_unreadable": false
+    }
+  ],
+  "remove": [],
+  "left_out": [],
+  "evidence": {
+    "url": "https://github.com/nodejs/undici/pull/5546#discussion_r3564731373",
+    "path": "test/http2-dispatcher.js",
+    "lines": [
+      1105,
+      1107
+    ],
+    "body": "Use `t.after`\n```suggestion\n  t.after(() => {\n    server.close()\n  })\n```\n\nDitto at other places."
+  }
+}
