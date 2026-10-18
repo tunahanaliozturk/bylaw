@@ -1,0 +1,4 @@
+project = "py-mono"
+kind = "clean"
+title = "Shipping job"
+message = "Add a job that marks orders shipped"

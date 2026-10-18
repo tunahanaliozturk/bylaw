@@ -1,0 +1,15 @@
+project = "py-mono"
+kind = "rule"
+title = "Refund job"
+message = "Add a refund job"
+
+[[findings]]
+file = "packages/worker/worker/jobs.py"
+lines = [25, 25]
+categories = ["rule"]
+note = "a job returns an error value, which the queue takes as success; the worker's AGENTS.md asks it to raise"
+evidence = "packages/worker/AGENTS.md:3"
+
+[[allowed]]
+file = "packages/worker/worker/jobs.py"
+lines = [21, 27]

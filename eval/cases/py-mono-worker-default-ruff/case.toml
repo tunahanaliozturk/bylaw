@@ -1,0 +1,16 @@
+project = "py-mono"
+kind = "rule"
+title = "Queue receipts"
+message = "Collect pending receipts"
+
+# The worker package's Ruff config selects "B"; the API package's does not.
+[[findings]]
+file = "packages/worker/worker/jobs.py"
+lines = [21, 21]
+categories = ["rule", "bug"]
+note = "mutable default list, shared between calls, which ruff's B006 flags"
+evidence = "ruff:B006"
+
+[[allowed]]
+file = "packages/worker/worker/jobs.py"
+lines = [21, 24]

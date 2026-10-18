@@ -1,0 +1,15 @@
+project = "py-mono"
+kind = "rule"
+title = "Cancel orders before they ship"
+message = "Add order cancellation"
+
+[[findings]]
+file = "packages/api/api/handlers.py"
+lines = [26, 26]
+categories = ["rule"]
+note = "an API handler raises for a missing order, where the package's AGENTS.md asks for an error Result"
+evidence = "packages/api/AGENTS.md:3"
+
+[[allowed]]
+file = "packages/api/api/handlers.py"
+lines = [22, 30]
