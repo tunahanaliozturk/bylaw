@@ -85,9 +85,18 @@ Read from the base branch, never from the pull request head
 2. **Linter configuration.** `ruff.toml` and `pyproject.toml [tool.ruff]`, `eslint.config.*`,
    `.golangci.yml`, `.globalconfig` and analyzer settings, `.rubocop.yml`, `.prettierrc`. bylaw does not
    run linters; it passes the configuration for the languages in the diff to the model as line-numbered
-   text the findings can cite.
+   text the findings can cite. Ruff, ESLint JSON and YAML, golangci-lint and .NET analyzer settings are
+   also parsed into the rule ids they enable, so a finding can cite `ruff:S608` and the validator checks
+   that the configuration covering the file turns that id on. Configuration written as code stays text
+   ([ADR 0013](adr/0013-nested-rules-and-linter-ids.md)).
 3. **Prose rules.** `CONTRIBUTING.md`, `AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`,
    `STYLEGUIDE.md`, line-numbered.
+
+In a monorepo, a package's own `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`, linter configuration and
+`.editorconfig` apply to the files under it, next to the root rules. For each changed file and each name,
+the nearest one above it is read; directories without changed files are not. The brief groups the rules by
+directory and says the nearest wins, and the validator drops a citation of another package's rule
+([ADR 0013](adr/0013-nested-rules-and-linter-ids.md)).
 4. **Built-in language conventions.** Short packs (PEP 8, Effective Go, .NET naming) used only where the
    repository has no rule of its own. Evidence reads `bylaw:conventions/python#naming` and severity is
    capped at `suggestion`.
