@@ -88,6 +88,11 @@ class OutReview(_Strict):
         return ReviewResult.model_validate(self.model_dump())
 
 
+_SCHEMA_FIELDS: frozenset[str] = frozenset().union(
+    *(model.model_fields for model in (OutReview, OutFinding, OutLocation, OutCriterion, OutScopeCreep))
+)
+
+
 class Reviewer(Protocol):
     def review(self, system: str, user: str) -> ReviewResult: ...
 
@@ -246,7 +251,9 @@ def _named(model: str | None, provider: str) -> str:
 # in the prompt, the answer is checked against it, and a wrong answer is sent back once with its problems.
 Retry = tuple[str, str]  # the answer that failed and what was wrong with it
 _MAX_PROBLEMS = 8
-_UNSAFE = re.compile(r"[^\w.\-]")
+# Reasoning models served locally often write their thinking inline, braces and all.
+_THINKING = re.compile(r"<think>.*?</think>", re.DOTALL | re.IGNORECASE)
+_DECODER = json.JSONDecoder()
 
 
 def json_instructions() -> str:
@@ -262,37 +269,65 @@ class InvalidReviewError(Exception):
 
 
 def read_review(text: str) -> OutReview:
-    # ponytail: the outermost braces, so prose or a code fence around the object does not matter; braces in
-    # prose before the object would still confuse it, and the retry is there for that.
-    start, end = text.find("{"), text.rfind("}")
+    """The first JSON object in the answer, after any thinking block, checked against the schema. Prose,
+    a code fence or a second object around it does not matter."""
+    found: dict[str, object] | None = None
+    text = _THINKING.sub("", text)
+    # ponytail: a decode attempt at every brace, quadratic in the worst case; answers are a few kilobytes.
+    for start in (i for i, char in enumerate(text) if char == "{"):
+        try:
+            value, _ = _DECODER.raw_decode(text, start)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(value, dict):
+            found = value
+            break
+    if found is None:
+        raise InvalidReviewError("the answer holds no JSON object")
     try:
-        return OutReview.model_validate_json(text[start : end + 1] if 0 <= start < end else text)
+        return OutReview.model_validate(found)
     except ValidationError as error:
         problems = [
-            f"{'.'.join(_UNSAFE.sub('?', str(part))[:40] for part in e['loc']) or 'the answer'}: {e['msg']}"
-            for e in error.errors(include_url=False, include_input=False)
+            f"{_where(e['loc'])}: {e['msg']}" for e in error.errors(include_url=False, include_input=False)
         ]
         more = len(problems) - _MAX_PROBLEMS
         listed = "; ".join(problems[:_MAX_PROBLEMS]) + (f"; and {more} more" if more > 0 else "")
         raise InvalidReviewError(listed) from error
 
 
+def _where(loc: tuple[int | str, ...]) -> str:
+    # Only the schema's own names and list indexes: a field name the model made up is its text, and it would
+    # reach the retry and the public note.
+    parts = [
+        str(part) if isinstance(part, int) else part if part in _SCHEMA_FIELDS else "an unexpected field"
+        for part in loc
+    ]
+    return ".".join(parts) or "the answer"
+
+
 def review_with_retry(ask: Callable[[Retry | None], str]) -> ReviewResult:
     """Ask, check the answer, and ask once more with what was wrong; then give up with a clear error."""
-    answer = ask(None)
+    answer = _some_text(ask(None))
     try:
         return read_review(answer).to_result()
     except InvalidReviewError as first:
         note = (
             f"That answer is not a valid review: {first}. Answer again with only the corrected JSON object."
         )
-        answer = ask((answer, note))
+        answer = _some_text(ask((answer, note)))
     try:
         return read_review(answer).to_result()
     except InvalidReviewError as second:
         raise ReviewError(
             f"the model returned output that is not a valid review after one retry: {second}"
         ) from second
+
+
+def _some_text(answer: str) -> str:
+    # An empty answer cannot be sent back: an empty assistant turn is a 400 on every API.
+    if not answer.strip():
+        raise ReviewError("the model declined or returned no review")
+    return answer
 
 
 def added(earlier: Usage | None, tokens_in: int, tokens_out: int) -> Usage:
