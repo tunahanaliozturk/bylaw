@@ -71,7 +71,7 @@ class _Checker:
         self._added = {
             f.path: frozenset(a.number for a in f.added_lines) for f in context.files if f.status != "removed"
         }
-        self._rule_lines = {r.path: len(r.text.splitlines()) for r in context.rules}
+        self._rules = {r.path: r for r in context.rules}
         self.criteria = frozenset(f"{r.source}/{c.key}" for r in context.requirements for c in r.criteria)
         self._prose = frozenset(r.source for r in context.requirements if r.inferable)
 
@@ -108,12 +108,21 @@ class _Checker:
             return (
                 "rule and requirement findings need evidence" if finding.category in _NEEDS_EVIDENCE else None
             )
-        if self._evidence_exists(finding.evidence):
-            return None
-        return f"evidence {finding.evidence} cites nothing bylaw collected"
+        return self._evidence_problem(finding.evidence, finding.file)
 
-    def _evidence_exists(self, evidence: str) -> bool:
+    def _evidence_problem(self, evidence: str, file: str) -> str | None:
         if evidence in self.criteria:
-            return True
+            return None
         path, separator, line = evidence.rpartition(":")
-        return bool(separator) and line.isdigit() and 1 <= int(line) <= self._rule_lines.get(path, 0)
+        rule = self._rules.get(path)
+        if (
+            not separator
+            or not line.isdigit()
+            or rule is None
+            or not 1 <= int(line) <= len(rule.text.splitlines())
+        ):
+            return f"evidence {evidence} cites nothing bylaw collected"
+        if rule.directory and not file.startswith(f"{rule.directory}/"):
+            # A package's rules are its own (ADR 0013): another package may well require the opposite.
+            return f"evidence {evidence} is a rule of {rule.directory}, not of this file"
+        return None
