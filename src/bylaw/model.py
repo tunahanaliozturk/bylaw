@@ -121,6 +121,8 @@ class Decision(_Frozen):
     # The file's line the shown text starts on, so a finding cites the ADR's own line numbers.
     start: int
     text: str
+    # The directory whose files it binds, "" for the whole repository: a package's own ADRs bind only it.
+    directory: str = ""
     # True when the decision was longer than its share of the brief and only its start is shown.
     cut: bool = False
 

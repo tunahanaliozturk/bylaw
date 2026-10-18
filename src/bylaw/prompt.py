@@ -119,7 +119,8 @@ def _decision(decision: Decision) -> str:
         f"{n:>4}| {line}" for n, line in enumerate(text_lines(decision.text), start=decision.start)
     )
     cut = "\n(cut here: the rest of this decision is not shown)" if decision.cut else ""
-    return f"{decision.path}: {decision.title}\nStatus: {decision.status}\n{lines}{cut}"
+    scope = f"Applies to files under {decision.directory}/ only.\n" if decision.directory else ""
+    return f"{decision.path}: {decision.title}\nStatus: {decision.status}\n{scope}{lines}{cut}"
 
 
 def _requirement(requirement: Requirement) -> str:

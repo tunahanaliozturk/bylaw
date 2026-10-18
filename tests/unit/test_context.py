@@ -250,6 +250,8 @@ def test_config_defaults_match_the_design() -> None:
 
     assert (config.severity_threshold, config.max_comments, config.issue_repos) == ("medium", 15, ())
     assert (config.incremental, config.budget.pr_tokens) == (True, None)
+    # adr-tools writes to doc/adr, MADR to docs/decisions, most teams to docs/adr.
+    assert config.adr_globs == ("docs/adr/**", "doc/adr/**", "docs/decisions/**")
 
 
 def test_incremental_review_and_a_token_budget_are_set_in_the_config() -> None:

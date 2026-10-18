@@ -71,7 +71,7 @@ class Config(BaseModel):
 
     spec_globs: tuple[str, ...] = ("docs/specs/**", "**/REQUIREMENTS.md")
     # Where the ADRs live. Accepted ones are decisions read from the base branch, never specs (ADR 0016).
-    adr_globs: tuple[str, ...] = ("docs/adr/**", "docs/decisions/**")
+    adr_globs: tuple[str, ...] = ("docs/adr/**", "doc/adr/**", "docs/decisions/**")
     severity_threshold: Severity = Severity.MEDIUM
     max_comments: int = Field(default=15, ge=0, le=50)
     issue_repos: tuple[str, ...] = ()

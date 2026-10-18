@@ -1,6 +1,7 @@
 """Reads a change from a local repository, for reviewing a branch before a pull request exists."""
 
 import subprocess
+from collections.abc import Sequence
 from pathlib import Path
 
 from bylaw.diff import parse_unified_diff
@@ -62,6 +63,18 @@ class LocalGitSource:
             if meta.split(" ")[1:2] == ["blob"]:
                 names.add(path.rpartition("/")[2])
         return frozenset(names)
+
+    def list_base_tree(self, directory: str) -> frozenset[str]:
+        paths = ("--", f"{directory}/") if directory else ()
+        result = self._run("ls-tree", "-r", "-z", "--full-tree", self._base, *paths)
+        if result.returncode != 0:
+            return frozenset()
+        listing = result.stdout.decode("utf-8", errors="replace")
+        entries = (entry.partition("\t") for entry in listing.split("\0"))
+        return frozenset(path for meta, _, path in entries if meta.split(" ")[1:2] == ["blob"])
+
+    def read_base_many(self, paths: Sequence[str]) -> dict[str, str | None]:
+        return {path: self.read_base(path) for path in paths}
 
     def closing_issue_refs(self) -> tuple[IssueRef, ...]:
         return ()

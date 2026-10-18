@@ -365,6 +365,38 @@ class GitHubClient:
         )
         return None if response is None else response.content.decode("utf-8", errors="replace")
 
+    def files_text(self, repo: str, ref: str, paths: Sequence[str]) -> dict[str, str | None]:
+        """Several files at a commit in one GraphQL call, None for a missing or binary one. A blob GitHub
+        truncates in GraphQL, and every file when the query fails, is read through the contents API."""
+        if not paths:
+            return {}
+        owner, _, name = repo.partition("/")
+        # Paths travel as variables, never inside the query text.
+        expressions = {f"e{i}": f"{ref}:{path}" for i, path in enumerate(paths)}
+        declared = "".join(f", ${key}: String!" for key in expressions)
+        fields = " ".join(
+            f"f{i}: object(expression: $e{i}) {{ ... on Blob {{ text isTruncated }} }}"
+            for i in range(len(paths))
+        )
+        query = (
+            f"query($owner: String!, $name: String!{declared}) "
+            f"{{ repository(owner: $owner, name: $name) {{ {fields} }} }}"
+        )
+        try:
+            data = self._graphql(query, {"owner": owner, "name": name, **expressions})
+        except _GraphQLError:
+            return {path: self.file_text(repo, path, ref) for path in paths}
+        repository = data.get("repository") if isinstance(data, dict) else None
+        texts: dict[str, str | None] = {}
+        for i, path in enumerate(paths):
+            blob = repository.get(f"f{i}") if isinstance(repository, dict) else None
+            if isinstance(blob, dict) and blob.get("isTruncated"):
+                texts[path] = self.file_text(repo, path, ref)
+                continue
+            text = blob.get("text") if isinstance(blob, dict) else None
+            texts[path] = text if isinstance(text, str) else None
+        return texts
+
     def tree_shas(self, repo: str, sha: str) -> dict[str, str] | None:
         """Every blob's id at a commit in one call; None when GitHub truncated the listing."""
         body = self._get(f"/repos/{repo}/git/trees/{sha}", {"recursive": "1"}).json()
@@ -770,6 +802,18 @@ class GitHubSource:
             for path in tree
             if path.startswith(prefix) and "/" not in path.removeprefix(prefix)
         )
+
+    def list_base_tree(self, directory: str) -> frozenset[str]:
+        prefix = f"{directory}/" if directory else ""
+        if (tree := self._tree()) is None:
+            # ponytail: GitHub truncated the tree, so only the files directly in the directory are listed;
+            # walk the subdirectories through the contents API if repositories that large nest their ADRs.
+            names = self._client.directory_files(self._repo, directory, self._pull.base.sha)
+            return frozenset(prefix + name for name in names)
+        return frozenset(path for path in tree if path.startswith(prefix))
+
+    def read_base_many(self, paths: Sequence[str]) -> dict[str, str | None]:
+        return self._client.files_text(self._repo, self._pull.base.sha, paths)
 
     def read_base(self, path: str) -> str | None:
         return self._client.file_text(self._repo, path, self._pull.base.sha)
