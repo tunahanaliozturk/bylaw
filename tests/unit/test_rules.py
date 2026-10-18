@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 
-from bylaw.model import ChangedFile, RuleKind
+from bylaw.model import ChangedFile, FileRules, LinterRules, RuleKind
 from bylaw.rules import MAX_RULE_DIRECTORIES, RULE_PATHS, collect_rules, is_rule_file
 from tests.unit.fakes import FakeSource
 
@@ -150,3 +150,42 @@ def test_directories_past_the_cap_are_not_read_and_the_notes_say_so() -> None:
         f"Rule files were looked for in {MAX_RULE_DIRECTORIES} of the {MAX_RULE_DIRECTORIES + 2} "
         "directories that hold changed files, the ones nearest the root; pkg40, pkg41 were not read.",
     )
+
+
+def test_the_rule_ids_a_linter_config_enables_travel_with_its_rule_source() -> None:
+    source = FakeSource(
+        base={
+            "packages/api/ruff.toml": "[lint]\nselect = ['S']\n",
+            "packages/api/.eslintrc.yml": "rules:\n  no-console: error\n",
+            "AGENTS.md": "Be kind.",
+        }
+    )
+
+    rules, notes = collect_rules(_changed("packages/api/app.py", "packages/api/web.ts"), source, [])
+
+    linters = {r.path: r.linter for r in rules}
+    assert linters["AGENTS.md"] is None
+    assert linters["packages/api/ruff.toml"] == LinterRules(tool="ruff", select=("S",))
+    assert linters["packages/api/.eslintrc.yml"] == LinterRules(tool="eslint", select=("no-console",))
+    assert notes == ()
+
+
+def test_dotnet_analyzer_settings_in_an_editorconfig_are_read_as_rule_ids() -> None:
+    files = [(".editorconfig", "[*.cs]\ndotnet_diagnostic.CA2100.severity = error\n")]
+
+    rules, _ = collect_rules(_changed("Orders.cs"), FakeSource(), files)
+
+    assert rules[0].linter == LinterRules(
+        tool="dotnet", per_file=(FileRules(pattern="*.cs", select=("CA2100",)),)
+    )
+
+
+def test_a_linter_config_bylaw_cannot_read_stays_prose_with_a_note() -> None:
+    source = FakeSource(base={"ruff.toml": "[lint\nselect = ['S']\n"})
+
+    rules, notes = collect_rules(_changed("app.py"), source, [])
+
+    assert [(r.path, r.linter) for r in rules] == [("ruff.toml", None)]
+    assert len(notes) == 1
+    assert notes[0].startswith("ruff.toml: not valid TOML")
+    assert notes[0].endswith("a finding cannot cite its rule ids.")

@@ -2,7 +2,7 @@ import pytest
 
 from bylaw.config import ConfigError, load_config
 from bylaw.context import build_context, generated_patterns, is_skipped
-from bylaw.model import AddedLine, ChangedFile, ReviewContext
+from bylaw.model import AddedLine, ChangedFile, FileRules, LinterRules, ReviewContext
 from tests.unit.fakes import FakeSource
 
 
@@ -99,7 +99,25 @@ def test_a_context_written_before_nested_rules_still_loads() -> None:
 
     context = ReviewContext.model_validate_json(old)
 
-    assert context.rules[0].directory == ""
+    assert (context.rules[0].directory, context.rules[0].linter) == ("", None)
+
+
+def test_the_rule_ids_ruff_enables_are_parsed_into_the_context() -> None:
+    source = FakeSource(
+        base={
+            "pyproject.toml": (
+                "[tool.ruff.lint]\nselect = ['S']\n[tool.ruff.lint.per-file-ignores]\n'tests/**' = ['S101']\n"
+            )
+        },
+        files=(_file("app/db.py", "x = 1"),),
+    )
+
+    context = build_context(source)
+
+    assert context.rules[0].linter == LinterRules(
+        tool="ruff", select=("S",), per_file=(FileRules(pattern="tests/**", ignore=("S101",)),)
+    )
+    assert ReviewContext.model_validate_json(context.model_dump_json()) == context
 
 
 def test_the_context_survives_a_json_round_trip() -> None:

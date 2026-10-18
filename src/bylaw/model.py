@@ -51,12 +51,33 @@ class ChangedFile(_Frozen):
     changes: int | None = None
 
 
+class FileRules(_Frozen):
+    """Rule ids a linter turns on or off for the files a glob matches, relative to its config's directory."""
+
+    pattern: str
+    select: tuple[str, ...] = ()
+    ignore: tuple[str, ...] = ()
+
+
+class LinterRules(_Frozen):
+    """The rule ids a linter configuration enables, read without running anything (ADR 0013)."""
+
+    tool: str
+    # Ruff selectors are code prefixes; for the other tools these are exact ids, "*" meaning all.
+    select: tuple[str, ...] = ()
+    ignore: tuple[str, ...] = ()
+    per_file: tuple[FileRules, ...] = ()
+    # What the configuration says that bylaw cannot turn into ids, such as an `extends`.
+    notes: tuple[str, ...] = ()
+
+
 class RuleSource(_Frozen):
     path: str
     kind: RuleKind
     text: str
     # The directory whose files the rule applies to, "" for the whole repository (ADR 0013).
     directory: str = ""
+    linter: LinterRules | None = None
 
 
 class Criterion(_Frozen):
