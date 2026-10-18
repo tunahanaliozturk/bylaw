@@ -62,13 +62,15 @@ def _sign(body: bytes) -> str:
 
 
 def _deliver(
-    client: TestClient, body: bytes, event: str = "pull_request", signature: str | None = None
+    client: TestClient, body: bytes, event: str = "pull_request", signature: str | bytes | None = None
 ) -> httpx2.Response:
+    signed = _sign(body) if signature is None else signature
+    # Bytes, so a test can send a header that is not ASCII, as a raw client could.
     headers = {
-        "X-GitHub-Event": event,
-        "X-GitHub-Delivery": "72d3162e-cc78-11e3-81ab-4c9367dc0958",
-        "X-Hub-Signature-256": _sign(body) if signature is None else signature,
-        "Content-Type": "application/json",
+        b"X-GitHub-Event": event.encode(),
+        b"X-GitHub-Delivery": b"72d3162e-cc78-11e3-81ab-4c9367dc0958",
+        b"X-Hub-Signature-256": signed if isinstance(signed, bytes) else signed.encode(),
+        b"Content-Type": b"application/json",
     }
     return client.post("/webhook", content=body, headers=headers)
 
@@ -92,7 +94,7 @@ class Server:
         self.client, self.queue, self.github, self.reviewer = client, queue, github, reviewer
 
     def deliver(
-        self, body: bytes, event: str = "pull_request", signature: str | None = None
+        self, body: bytes, event: str = "pull_request", signature: str | bytes | None = None
     ) -> httpx2.Response:
         return _deliver(self.client, body, event, signature)
 
@@ -175,10 +177,16 @@ def test_a_new_head_is_reviewed_again_and_updates_the_same_summary(server: Serve
 
 @pytest.mark.parametrize(
     "signature",
-    ["", "sha256=" + "0" * 64, "sha1=0123", _sign(b"some other body")],
+    [
+        "",
+        "sha256=" + "0" * 64,
+        "sha1=0123",
+        _sign(b"some other body"),
+        ("sha256=" + "é" * 64).encode("latin-1"),
+    ],
 )
 def test_a_delivery_without_a_valid_signature_is_refused_before_anything_runs(
-    server: Server, signature: str
+    server: Server, signature: str | bytes
 ) -> None:
     calls = len(server.github.calls)
 

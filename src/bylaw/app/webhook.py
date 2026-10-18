@@ -58,8 +58,9 @@ def verify_signature(secret: bytes, body: bytes, signature: str | None) -> bool:
     """
     if not secret or not signature:
         return False
-    expected = "sha256=" + hmac.new(secret, body, hashlib.sha256).hexdigest()
-    return hmac.compare_digest(expected, signature)
+    expected = b"sha256=" + hmac.new(secret, body, hashlib.sha256).hexdigest().encode()
+    # Bytes, not text: compare_digest raises on a string that is not ASCII, and the header is the sender's.
+    return hmac.compare_digest(expected, signature.encode("utf-8", "surrogateescape"))
 
 
 def review_job(event: str, body: bytes) -> Job | None:
