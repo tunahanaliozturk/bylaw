@@ -1,0 +1,17 @@
+{
+  "case_id": "h3-1202",
+  "result": {
+    "findings": [],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 0,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "no-model",
+  "case_digest": "14fade2bd4f095f487266acfd612838169314e5f8dc6b277ecdf2cd812c0e8d8",
+  "dropped_findings": 0
+}

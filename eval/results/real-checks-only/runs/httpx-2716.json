@@ -1,0 +1,17 @@
+{
+  "case_id": "httpx-2716",
+  "result": {
+    "findings": [],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 0,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "no-model",
+  "case_digest": "122a5e57e5c967000b9d5d4bb189a51bf33946aff40e35af1c47cb3a6e571991",
+  "dropped_findings": 0
+}

@@ -1,0 +1,17 @@
+{
+  "case_id": "cli-13068",
+  "result": {
+    "findings": [],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 0,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "no-model",
+  "case_digest": "d608ca47d5e76925b962960a61ab186ab3feb0836b55837d586d4465fa94261e",
+  "dropped_findings": 0
+}

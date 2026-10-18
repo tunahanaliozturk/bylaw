@@ -1,0 +1,17 @@
+{
+  "case_id": "httpx-2423",
+  "result": {
+    "findings": [],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 0,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "no-model",
+  "case_digest": "38f19dd1c37269fa30a4f87c7d9078bd7fc9d49da4c553d4b29c0599ab1803f6",
+  "dropped_findings": 0
+}

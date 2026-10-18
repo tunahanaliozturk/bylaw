@@ -1,0 +1,17 @@
+{
+  "case_id": "h3-1329",
+  "result": {
+    "findings": [],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 0,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "no-model",
+  "case_digest": "ca979204ff83226b723f96030bd9739017daa725d32170c9ea09aae07158daaa",
+  "dropped_findings": 0
+}

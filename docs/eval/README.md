@@ -74,7 +74,7 @@ Committed results live in `eval/results/<name>/`: the per-case runs and `report.
 
 ## Real pull requests
 
-The planted set's labels are certain but its changes are small and tidy. The second set, in `eval/real/`, holds real pull requests from permissively licensed projects, picked by the rules in [real-set.md](real-set.md) and frozen so a run never reads GitHub ([ADR 0015](../adr/0015-real-pull-request-set.md)). It is its own set root, so the commands are the same with `--set eval/real`:
+The planted set's labels are certain but its changes are small and tidy. The second set, in `eval/real/`, holds real pull requests from permissively licensed projects, picked by the rules in [real-set.md](real-set.md) and frozen so a run never reads GitHub ([ADR 0015](../adr/0015-real-pull-request-set.md)). It holds 25 cases from 14 projects in Python, TypeScript, JavaScript and Go, about 2.3 MB in all. It is its own set root, so the commands are the same with `--set eval/real`:
 
 ```
 bylaw eval run --set eval/real --no-model --out runs/real-checks
@@ -88,7 +88,7 @@ The report puts real cases in their own sections and never adds them to the plan
 To add a pull request, freeze it with a GitHub token (read-only use; it is never stored):
 
 ```
-GH_TOKEN="$(gh auth token)" bylaw eval snapshot --repo pallets/click --pr 2800 --comment 1650000000 --id click-2800
+GH_TOKEN="$(gh auth token)" bylaw eval snapshot --repo encode/httpx --pr 2423 --comment 1045653671 --id httpx-2423
 ```
 
 `--comment` is the id of the review comment the case is built around; the snapshot is the commit it was made on. The tool refuses a project whose licence is not MIT, Apache-2.0 or BSD, and a snapshot whose diff does not match GitHub's. It writes no labels: add `case.toml` as [labelling.md](labelling.md) describes.

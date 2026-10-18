@@ -1,0 +1,17 @@
+{
+  "case_id": "bubbletea-1836",
+  "result": {
+    "findings": [],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 0,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "no-model",
+  "case_digest": "a7fd03a2725f95ad6ed7406d44daa0ecb7e64e643406619fd5cba10098f6b1b0",
+  "dropped_findings": 0
+}

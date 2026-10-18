@@ -1,0 +1,17 @@
+{
+  "case_id": "ky-559",
+  "result": {
+    "findings": [],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 0,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "no-model",
+  "case_digest": "e27f57dfce36163f800a385e6286a47ed9d104fa7120b5e235cca86abe0eed71",
+  "dropped_findings": 0
+}

@@ -1,0 +1,17 @@
+{
+  "case_id": "fastify-6483",
+  "result": {
+    "findings": [],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 0,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "no-model",
+  "case_digest": "3ca7b5052e1ae08ca16d4089c67d9a640f11d3ec25027c0537664a0b39243136",
+  "dropped_findings": 0
+}
