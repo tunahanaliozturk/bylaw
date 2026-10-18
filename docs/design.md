@@ -86,8 +86,9 @@ Read from the base branch, never from the pull request head
    `.golangci.yml`, `.globalconfig` and analyzer settings, `.rubocop.yml`, `.prettierrc`. bylaw does not
    run linters; it passes the configuration for the languages in the diff to the model as line-numbered
    text the findings can cite. Ruff, ESLint JSON and YAML, golangci-lint and .NET analyzer settings are
-   also parsed into the rule ids they enable, so a finding can cite `ruff:S608` and the validator checks
-   that the configuration covering the file turns that id on. Configuration written as code stays text
+   also parsed into the rule ids they enable, so a finding can cite `ruff:S608` and the validator drops
+   an id the configuration governing the file turns off, or leaves off when bylaw read all of it.
+   Configuration written as code stays text
    ([ADR 0013](adr/0013-nested-rules-and-linter-ids.md)).
 3. **Prose rules.** `CONTRIBUTING.md`, `AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`,
    `STYLEGUIDE.md`, line-numbered.
