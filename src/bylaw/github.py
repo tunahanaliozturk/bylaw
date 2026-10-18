@@ -531,7 +531,7 @@ class GitHubClient:
             ref=ref,
             title=data.title,
             body=data.body or "",
-            comments=_newest_within(trusted),
+            comments=newest_within(trusted),
             comments_unreadable=unreadable,
         )
 
@@ -817,7 +817,7 @@ _MAX_COMMENT_PAGES = 10
 _MAX_COMMENT_CHARS = 8000
 
 
-def _newest_within(bodies: list[str]) -> tuple[str, ...]:
+def newest_within(bodies: list[str]) -> tuple[str, ...]:
     # Newest first until the budget runs out, then back in reading order: later comments usually settle
     # what earlier ones debated.
     kept: list[str] = []
