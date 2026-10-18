@@ -72,7 +72,7 @@ def client() -> Iterator[GitLabClient]:
 @pytest.fixture
 def server() -> Iterator[respx.MockRouter]:
     with respx.mock(assert_all_called=False) as router:
-        router.get(f"{P}/merge_requests/5").mock(return_value=httpx.Response(200, json=MR))
+        router.get(f"{P}/merge_requests/5", name="mr").mock(return_value=httpx.Response(200, json=MR))
         router.get(f"{API}/user").mock(return_value=httpx.Response(200, json={"id": 99}))
         levels = {1: 40, 2: 20, 3: 30}
 
@@ -90,9 +90,10 @@ def _mr(client: GitLabClient) -> GitLabMergeRequest:
     return GitLabMergeRequest(client, "42", 5)
 
 
-def test_closing_issues_come_from_gitlab_and_from_the_description_and_commits(
+def test_closing_issues_come_from_gitlab_and_from_the_title_description_and_commits(
     client: GitLabClient, server: respx.MockRouter
 ) -> None:
+    server["mr"].return_value = httpx.Response(200, json={**MR, "title": "Implement export, closes #15"})
     server.get(url__startswith=f"{P}/merge_requests/5/closes_issues").mock(
         return_value=httpx.Response(
             200, json=[{"iid": 3, "references": {"full": "Group/Other#3"}}, {"id": 1}]
@@ -104,7 +105,12 @@ def test_closing_issues_come_from_gitlab_and_from_the_description_and_commits(
 
     refs = _mr(client).closing_issue_refs()
 
-    assert refs == (IssueRef("group", "other", 3), IssueRef("group", "app", 12), IssueRef("group", "app", 14))
+    assert refs == (
+        IssueRef("group", "other", 3),
+        IssueRef("group", "app", 15),
+        IssueRef("group", "app", 12),
+        IssueRef("group", "app", 14),
+    )
 
 
 def test_an_issue_brings_its_description_and_only_developers_public_comments(

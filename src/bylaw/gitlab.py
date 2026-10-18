@@ -26,8 +26,8 @@ from bylaw.source import ChangeInfo, Issue, IssueRef, SourceError
 
 _PAGE_SIZE = 100
 _MAX_PAGES = 50
-# https://docs.gitlab.com/api/members/#roles: Developer and above can push code, the GitLab peer of
-# GitHub's write access (ADR 0008).
+# https://docs.gitlab.com/user/permissions/#default-roles: Developer and above can push code, the GitLab
+# peer of GitHub's write access (ADR 0008).
 DEVELOPER = 30
 
 Params = Mapping[str, str | int]
@@ -281,7 +281,7 @@ class GitLabMergeRequest:
 
     def access_level(self, project: str, user_id: int) -> int:
         """The user's highest role in a project, inherited and invited ones included; 0 for a non-member
-        (https://docs.gitlab.com/api/members/#retrieve-a-member-of-a-project)."""
+        (https://docs.gitlab.com/api/project_members/#retrieve-a-member-of-a-project)."""
         key = (project, user_id)
         if key not in self._levels:
             response = self._client.get_optional(f"/projects/{project_path(project)}/members/all/{user_id}")
@@ -336,14 +336,15 @@ class GitLabMergeRequest:
 
     def closing_issue_refs(self) -> tuple[IssueRef, ...]:
         """What GitLab says the merge request closes, which follows a self-managed instance's own closing
-        pattern, and what the default pattern finds in the description and commits: GitLab lists nothing
-        for a merge request into a branch other than the default one, where the intent is the same."""
+        pattern, and what the default pattern finds where GitLab looks, the title, the description and the
+        commits: GitLab lists nothing for a merge request into a branch other than the default one
+        (`MergeRequest#closes_issues`), where the intent is the same."""
         refs: list[IssueRef] = []
         for page in self._client.pages(f"{self._mr_path}/closes_issues"):
             # An external tracker's issues have no GitLab reference; trackers are read elsewhere (ADR 0014).
             fulls = [i.references.full for i in _CLOSING_ISSUES.validate_python(page) if i.references]
             refs.extend(closing_refs([f"Closes {full}" for full in fulls], self.repo, self._web_url))
-        texts = [self._mr.description or "", *self._commit_messages]
+        texts = [self._mr.title, self._mr.description or "", *self._commit_messages]
         return tuple(dict.fromkeys([*refs, *closing_refs(texts, self.repo, self._web_url)]))
 
     @property
