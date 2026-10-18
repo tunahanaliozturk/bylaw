@@ -1,0 +1,38 @@
+{
+  "case_id": "py-swallowed-commit",
+  "result": {
+    "findings": [
+      {
+        "file": "app/db.py",
+        "line_start": 20,
+        "line_end": 21,
+        "category": "bug",
+        "severity": "critical",
+        "message": "Inside this `@contextmanager` generator, catching the exception and returning tells the `with` statement to suppress it, so every error in the block silently disappears, including non-database errors and failures from `commit()` itself. Callers carry on as if the write succeeded while the transaction is discarded, and nothing retries it, so data is lost without any signal.",
+        "suggestion": "        connection.rollback()\n        raise",
+        "evidence": null
+      },
+      {
+        "file": "app/db.py",
+        "line_start": 21,
+        "line_end": 21,
+        "category": "rule",
+        "severity": "medium",
+        "message": "This changes how every database error is handled, from raising to being suppressed, but the pull request adds no test for the new behaviour.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:15"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 2,
+  "seconds": 8.652179699973203,
+  "input_tokens": 4180,
+  "output_tokens": 649,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "a274de5d66b0204b2f3c67929df44a4817d369197d3901539fda8ae923d19fd5",
+  "dropped_findings": 0
+}

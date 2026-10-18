@@ -1,0 +1,60 @@
+{
+  "case_id": "ts-req-quantity-range",
+  "result": {
+    "findings": [
+      {
+        "file": "src/cart.ts",
+        "line_start": 27,
+        "line_end": 27,
+        "category": "requirement",
+        "severity": "medium",
+        "message": "`setQuantity` accepts any number without checking it, so quantities below 1 or above 99 are not rejected with a `RangeError`. Zero, negative, fractional or NaN values end up in the cart.",
+        "suggestion": "export function setQuantity(cart: Cart, sku: string, quantity: number): Cart {\n  if (!Number.isInteger(quantity) || quantity < 1 || quantity > 99) {\n    throw new RangeError(`quantity must be between 1 and 99, got ${quantity}`);\n  }",
+        "evidence": "docs/specs/quantity.md/AC-2"
+      },
+      {
+        "file": "src/cart.ts",
+        "line_start": 28,
+        "line_end": 28,
+        "category": "bug",
+        "severity": "low",
+        "message": "When the sku is not in the cart, the function silently returns an unchanged copy of the cart. Callers cannot tell that nothing was updated.",
+        "suggestion": null,
+        "evidence": null
+      }
+    ],
+    "criteria": [
+      {
+        "criterion": "docs/specs/quantity.md/AC-1",
+        "status": "partial",
+        "text": null,
+        "code": [
+          {
+            "file": "src/cart.ts",
+            "line": 28
+          }
+        ],
+        "tests": [],
+        "note": "The quantity of a matching item is updated, but no test covers it."
+      },
+      {
+        "criterion": "docs/specs/quantity.md/AC-2",
+        "status": "missing",
+        "text": null,
+        "code": [],
+        "tests": [],
+        "note": "There is no range check and no `RangeError` is thrown."
+      }
+    ],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 2,
+  "seconds": 4.874223800026812,
+  "input_tokens": 5594,
+  "output_tokens": 527,
+  "error": null,
+  "reviewer": "openai-compatible:claude-opus-5-5:default effort@https://api.anthropic.com/v1/",
+  "case_digest": "aa9cd495c81b95e8ab8b89ff85e37e507a1d31a2643b35a72b2404d481a1215a",
+  "dropped_findings": 0
+}

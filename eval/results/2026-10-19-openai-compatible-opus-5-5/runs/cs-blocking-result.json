@@ -1,0 +1,28 @@
+{
+  "case_id": "cs-blocking-result",
+  "result": {
+    "findings": [
+      {
+        "file": "OrdersController.cs",
+        "line_start": 19,
+        "line_end": 19,
+        "category": "rule",
+        "severity": "medium",
+        "message": "The action blocks on `FindAsync(...).Result`, which breaks the async-all-the-way rule and can exhaust the thread pool under load. It also passes `CancellationToken.None`, so request aborts are ignored.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:7"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": 3.1439453000202775,
+  "input_tokens": 5279,
+  "output_tokens": 171,
+  "error": null,
+  "reviewer": "openai-compatible:claude-opus-5-5:default effort@https://api.anthropic.com/v1/",
+  "case_digest": "ba3cd323f3920dbcbc39a3327e9a2bef7c96375c54b093289418e0ca23630fc0",
+  "dropped_findings": 0
+}

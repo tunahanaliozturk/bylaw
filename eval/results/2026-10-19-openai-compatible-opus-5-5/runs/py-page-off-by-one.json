@@ -1,0 +1,48 @@
+{
+  "case_id": "py-page-off-by-one",
+  "result": {
+    "findings": [
+      {
+        "file": "app/users.py",
+        "line_start": 34,
+        "line_end": 34,
+        "category": "bug",
+        "severity": "high",
+        "message": "The slice `rows[start : start + size + 1]` returns size+1 users per page, so each page overlaps the next by one row and returns more than requested.",
+        "suggestion": "    return [User(r[\"id\"], r[\"email\"], r[\"name\"]) for r in rows[start : start + size]]",
+        "evidence": null
+      },
+      {
+        "file": "app/users.py",
+        "line_start": 32,
+        "line_end": 32,
+        "category": "bug",
+        "severity": "medium",
+        "message": "The query now loads every user into memory to return a single page, which scales with table size instead of page size. The previous LIMIT/OFFSET query avoided this.",
+        "suggestion": "    rows = connection.execute(\n        \"SELECT id, email, name FROM users ORDER BY id LIMIT ? OFFSET ?\", (size, (page - 1) * size)\n    ).fetchall()",
+        "evidence": null
+      },
+      {
+        "file": "app/users.py",
+        "line_start": 33,
+        "line_end": 33,
+        "category": "bug",
+        "severity": "medium",
+        "message": "When page is 0 or negative, `start` becomes negative. Python slicing then returns rows from the end of the list instead of an empty or error result.",
+        "suggestion": null,
+        "evidence": null
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 3,
+  "seconds": 4.382462100009434,
+  "input_tokens": 5386,
+  "output_tokens": 447,
+  "error": null,
+  "reviewer": "openai-compatible:claude-opus-5-5:default effort@https://api.anthropic.com/v1/",
+  "case_digest": "08791fbd4b6e58b1b668974059b9f613bda08ad083b883f25cfba573d823b735",
+  "dropped_findings": 0
+}

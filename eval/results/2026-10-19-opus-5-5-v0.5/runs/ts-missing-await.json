@@ -1,0 +1,48 @@
+{
+  "case_id": "ts-missing-await",
+  "result": {
+    "findings": [
+      {
+        "file": "src/server.ts",
+        "line_start": 34,
+        "line_end": 34,
+        "category": "rule",
+        "severity": "high",
+        "message": "`saveOrder(order)` is not awaited, so the handler returns 201 before the order is persisted. A failed save becomes an unhandled rejection, and the client is told the order exists when it may not.",
+        "suggestion": "  await saveOrder(order);",
+        "evidence": "CONTRIBUTING.md:11"
+      },
+      {
+        "file": "src/server.ts",
+        "line_start": 31,
+        "line_end": 31,
+        "category": "security",
+        "severity": "high",
+        "message": "The new express-checkout handler creates an order without checking or recording the signed-in user. Anyone can create orders, and they are not tied to their owner.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:10"
+      },
+      {
+        "file": "src/server.ts",
+        "line_start": 32,
+        "line_end": 32,
+        "category": "security",
+        "severity": "medium",
+        "message": "`req.body` is cast straight to `Cart` without validation. A client can send malformed data or its own item prices and totals, and these flow unchecked into the saved order.",
+        "suggestion": null,
+        "evidence": null
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 3,
+  "seconds": 8.884949899977073,
+  "input_tokens": 4199,
+  "output_tokens": 879,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "e9507e5f3308c9bc82c6c45df97f2ddb55359f3a352f7650521c363c26d65cb5",
+  "dropped_findings": 0
+}

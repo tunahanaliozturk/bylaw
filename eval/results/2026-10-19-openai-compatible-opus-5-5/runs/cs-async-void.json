@@ -1,0 +1,38 @@
+{
+  "case_id": "cs-async-void",
+  "result": {
+    "findings": [
+      {
+        "file": "OrderService.cs",
+        "line_start": 22,
+        "line_end": 22,
+        "category": "bug",
+        "severity": "high",
+        "message": "`NotifyAsync` is `async void`, so callers cannot await it and any exception it throws, such as an `ObjectDisposedException` from the scoped `DbContext`, is raised on the thread pool and crashes the process. It should return `Task`.",
+        "suggestion": "    public async Task NotifyAsync(Order order)",
+        "evidence": null
+      },
+      {
+        "file": "OrdersController.cs",
+        "line_start": 22,
+        "line_end": 22,
+        "category": "bug",
+        "severity": "high",
+        "message": "The notification is fired and forgotten, so the request can finish and dispose the scoped `OrdersDbContext` while `ReloadAsync` is still using it. That causes a race on the context and a disposed-object failure. Await the call once `NotifyAsync` returns `Task`.",
+        "suggestion": "        await orders.NotifyAsync(order);",
+        "evidence": null
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 2,
+  "seconds": 6.904703299980611,
+  "input_tokens": 5481,
+  "output_tokens": 641,
+  "error": null,
+  "reviewer": "openai-compatible:claude-opus-5-5:default effort@https://api.anthropic.com/v1/",
+  "case_digest": "88d0d2a098bb784af89ba3ecf55d70eb3d2bffb800f058d3fa87c656aced8faa",
+  "dropped_findings": 0
+}

@@ -1,0 +1,58 @@
+{
+  "case_id": "py-path-traversal",
+  "result": {
+    "findings": [
+      {
+        "file": "app/files.py",
+        "line_start": 22,
+        "line_end": 22,
+        "category": "security",
+        "severity": "critical",
+        "message": "`read_upload` joins a client-supplied name onto `UPLOAD_DIR` without validation. A name like `../../etc/passwd` or an absolute path such as `/etc/passwd` escapes the upload directory, so any readable file on the server can be fetched.",
+        "suggestion": "    path = (UPLOAD_DIR / name).resolve()\n    if not path.is_relative_to(UPLOAD_DIR.resolve()) or not path.is_file():\n        raise FileNotFoundError(name)\n    return path.read_bytes()",
+        "evidence": null
+      },
+      {
+        "file": "app/web.py",
+        "line_start": 35,
+        "line_end": 35,
+        "category": "security",
+        "severity": "high",
+        "message": "The `download` handler never checks who is asking or whether the requested file belongs to them. Any caller can read every other user's uploads just by guessing names.",
+        "suggestion": null,
+        "evidence": null
+      },
+      {
+        "file": "app/web.py",
+        "line_start": 36,
+        "line_end": 36,
+        "category": "bug",
+        "severity": "medium",
+        "message": "Calling `.decode()` on the file bytes raises `UnicodeDecodeError` for binary uploads such as images or PDFs. A missing file or an empty `file` parameter (which resolves to the directory itself) raises `FileNotFoundError` or `IsADirectoryError`. In all of these cases the client gets a 500 instead of the file or a 404.",
+        "suggestion": null,
+        "evidence": null
+      },
+      {
+        "file": "app/web.py",
+        "line_start": 33,
+        "line_end": 33,
+        "category": "rule",
+        "severity": "low",
+        "message": "This adds a new download endpoint, a change in behaviour, but no test comes with it.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:15"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 4,
+  "seconds": 10.805750699946657,
+  "input_tokens": 4474,
+  "output_tokens": 1118,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "8d887b679ae0f772a926850463c35121dc8dd9a1451dea60a8957831acf7fab5",
+  "dropped_findings": 0
+}

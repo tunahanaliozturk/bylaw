@@ -1,0 +1,38 @@
+{
+  "case_id": "go-nil-map",
+  "result": {
+    "findings": [
+      {
+        "file": "handlers.go",
+        "line_start": 57,
+        "line_end": 57,
+        "category": "bug",
+        "severity": "high",
+        "message": "`widgetViews` is declared but never initialised, so it is a nil map. The `widgetViews[id]++` on line 65 panics with \"assignment to entry in nil map\" on every request, which means the endpoint never works.",
+        "suggestion": "var widgetViews = make(map[int64]int)",
+        "evidence": null
+      },
+      {
+        "file": "handlers.go",
+        "line_start": 65,
+        "line_end": 65,
+        "category": "bug",
+        "severity": "high",
+        "message": "HTTP handlers run concurrently, and this package-level map is written without any synchronisation. Concurrent requests trigger Go's unrecoverable \"concurrent map writes\" fatal error, which crashes the whole server rather than just the request.",
+        "suggestion": "\twidgetViewsMu.Lock()\n\twidgetViews[id]++\n\twidgetViewsMu.Unlock()",
+        "evidence": null
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 2,
+  "seconds": 7.384947200072929,
+  "input_tokens": 4274,
+  "output_tokens": 688,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "b76700484f7e1cc835c3834458fb37bd0e9735c02e5c1e32d729d2681c55531e",
+  "dropped_findings": 0
+}

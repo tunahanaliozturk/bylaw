@@ -1,0 +1,38 @@
+{
+  "case_id": "py-swallowed-commit",
+  "result": {
+    "findings": [
+      {
+        "file": "app/db.py",
+        "line_start": 20,
+        "line_end": 21,
+        "category": "bug",
+        "severity": "high",
+        "message": "The exception handler no longer rolls back or re-raises, so every error inside the `with connect()` block is silently swallowed and callers believe the write succeeded. In a @contextmanager, suppressing the exception also hides non-database errors raised by the caller's code, and nothing actually retries the write, so data is lost without a trace.",
+        "suggestion": "        connection.rollback()\n        raise",
+        "evidence": null
+      },
+      {
+        "file": "app/db.py",
+        "line_start": 20,
+        "line_end": 21,
+        "category": "rule",
+        "severity": "medium",
+        "message": "This changes behaviour (exceptions are now suppressed) but the pull request adds no test covering it.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:15"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 2,
+  "seconds": 3.9912227999884635,
+  "input_tokens": 5245,
+  "output_tokens": 299,
+  "error": null,
+  "reviewer": "openai-compatible:claude-opus-5-5:default effort@https://api.anthropic.com/v1/",
+  "case_digest": "a274de5d66b0204b2f3c67929df44a4817d369197d3901539fda8ae923d19fd5",
+  "dropped_findings": 0
+}

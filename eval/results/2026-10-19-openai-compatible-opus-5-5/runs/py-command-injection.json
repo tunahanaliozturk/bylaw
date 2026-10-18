@@ -1,0 +1,48 @@
+{
+  "case_id": "py-command-injection",
+  "result": {
+    "findings": [
+      {
+        "file": "app/thumbnails.py",
+        "line_start": 11,
+        "line_end": 11,
+        "category": "security",
+        "severity": "critical",
+        "message": "The client-supplied file name is interpolated into a shell command run with shell=True, so a name like `x; rm -rf ~` executes arbitrary commands. The name is also not confined to UPLOAD_DIR, so `../` or an absolute path reads or writes files outside it.",
+        "suggestion": "    subprocess.run([\"convert\", str(UPLOAD_DIR / client_name), \"-resize\", \"128x128\", str(UPLOAD_DIR / target)], check=True)",
+        "evidence": null
+      },
+      {
+        "file": "app/thumbnails.py",
+        "line_start": 10,
+        "line_end": 10,
+        "category": "security",
+        "severity": "high",
+        "message": "`client_name` is used as a path without validation. Path separators or `..` let a client reach files outside the upload directory. A leading `-` could also be read by convert as an option.",
+        "suggestion": null,
+        "evidence": null
+      },
+      {
+        "file": "app/thumbnails.py",
+        "line_start": 8,
+        "line_end": 8,
+        "category": "rule",
+        "severity": "medium",
+        "message": "This new behaviour comes without a test. The repository requires a test with every behaviour change.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:15"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 3,
+  "seconds": 5.349105900037102,
+  "input_tokens": 5327,
+  "output_tokens": 450,
+  "error": null,
+  "reviewer": "openai-compatible:claude-opus-5-5:default effort@https://api.anthropic.com/v1/",
+  "case_digest": "b598ebdd753ba6ebd47ca755e9b48c44e15e3781ef454ed201223ffd1c2cf166",
+  "dropped_findings": 0
+}

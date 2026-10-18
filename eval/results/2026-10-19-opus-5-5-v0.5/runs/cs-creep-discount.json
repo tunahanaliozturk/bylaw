@@ -1,0 +1,75 @@
+{
+  "case_id": "cs-creep-discount",
+  "result": {
+    "findings": [
+      {
+        "file": "OrderService.cs",
+        "line_start": 15,
+        "line_end": 18,
+        "category": "security",
+        "severity": "high",
+        "message": "`PlaceAsync` now applies a 20% discount to anyone whose customer string ends with `@staff.example`. That value is caller-supplied and not verified, so any customer can claim the domain and pay less. No requirement asks for this pricing change.",
+        "suggestion": null,
+        "evidence": null
+      },
+      {
+        "file": "OrderService.cs",
+        "line_start": 32,
+        "line_end": 32,
+        "category": "bug",
+        "severity": "low",
+        "message": "`FirstAsync` throws a generic `InvalidOperationException` when the order does not exist. Callers cannot tell a missing order apart from other failures, which makes it hard for a controller to return `NotFound()` as the rules require.",
+        "suggestion": "        var order = await db.Orders.FirstOrDefaultAsync(o => o.Id == id, cancellationToken)\n            ?? throw new KeyNotFoundException($\"Order {id} not found.\");",
+        "evidence": null
+      }
+    ],
+    "criteria": [
+      {
+        "criterion": "docs/specs/order-notes.md/AC-1",
+        "status": "met",
+        "text": null,
+        "code": [
+          {
+            "file": "OrderService.cs",
+            "line": 26
+          },
+          {
+            "file": "Order.cs",
+            "line": 9
+          }
+        ],
+        "tests": [],
+        "note": "Implemented, but no test covers storing a note."
+      },
+      {
+        "criterion": "docs/specs/order-notes.md/AC-2",
+        "status": "met",
+        "text": null,
+        "code": [
+          {
+            "file": "OrderService.cs",
+            "line": 28
+          }
+        ],
+        "tests": [],
+        "note": "Implemented, but no test covers rejecting a note longer than 200 characters."
+      }
+    ],
+    "scope_creep": [
+      {
+        "file": "OrderService.cs",
+        "line": 15,
+        "message": "Staff discount on order totals is unrelated to order notes and not requested by any criterion."
+      }
+    ]
+  },
+  "dropped": [],
+  "model_findings": 2,
+  "seconds": 9.775130599969998,
+  "input_tokens": 4959,
+  "output_tokens": 1008,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "a8e2ba9b356a9e5b6e15ef5f9fa23eda9c34ede27ca816f82bfe05a76580efd9",
+  "dropped_findings": 0
+}

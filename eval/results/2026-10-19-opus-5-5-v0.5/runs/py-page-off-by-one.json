@@ -1,0 +1,48 @@
+{
+  "case_id": "py-page-off-by-one",
+  "result": {
+    "findings": [
+      {
+        "file": "app/users.py",
+        "line_start": 34,
+        "line_end": 34,
+        "category": "bug",
+        "severity": "high",
+        "message": "The slice ends at `start + size + 1`, so every page returns `size + 1` users, and the last user of each page is repeated as the first user of the next page. The old `LIMIT ? OFFSET ?` query returned exactly `size` rows.",
+        "suggestion": "    return [User(r[\"id\"], r[\"email\"], r[\"name\"]) for r in rows[start : start + size]]",
+        "evidence": null
+      },
+      {
+        "file": "app/users.py",
+        "line_start": 32,
+        "line_end": 32,
+        "category": "bug",
+        "severity": "medium",
+        "message": "The query now loads the whole `users` table into memory on every page request and pages in Python. Memory and latency grow with the table size, where `LIMIT`/`OFFSET` let SQLite fetch only the requested rows.",
+        "suggestion": null,
+        "evidence": null
+      },
+      {
+        "file": "app/users.py",
+        "line_start": 33,
+        "line_end": 33,
+        "category": "bug",
+        "severity": "low",
+        "message": "With `page <= 0`, `start` becomes negative, so Python's slicing returns rows from the end of the table or a mixed range. SQLite treated a negative `OFFSET` as 0, so behaviour for invalid pages has changed silently.",
+        "suggestion": null,
+        "evidence": null
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 3,
+  "seconds": 6.695984499994665,
+  "input_tokens": 4366,
+  "output_tokens": 679,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "08791fbd4b6e58b1b668974059b9f613bda08ad083b883f25cfba573d823b735",
+  "dropped_findings": 0
+}

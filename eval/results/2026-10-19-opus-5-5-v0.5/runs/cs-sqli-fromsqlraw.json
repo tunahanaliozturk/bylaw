@@ -1,0 +1,28 @@
+{
+  "case_id": "cs-sqli-fromsqlraw",
+  "result": {
+    "findings": [
+      {
+        "file": "OrderService.cs",
+        "line_start": 24,
+        "line_end": 24,
+        "category": "security",
+        "severity": "critical",
+        "message": "The customer value is interpolated straight into a SQL string passed to `FromSqlRaw`, so any caller-controlled input can inject arbitrary SQL. This also breaks the rule that raw SQL may only go through `FromSql` with interpolated parameters.",
+        "suggestion": "        return db.Orders.FromSql($\"SELECT * FROM Orders WHERE Customer = {customer}\").ToListAsync(cancellationToken);",
+        "evidence": "CONTRIBUTING.md:9"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": 5.81272489996627,
+  "input_tokens": 4239,
+  "output_tokens": 512,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "d843f63dbc07b2338cf206df26828024a56aa3fc48034daa4b5a887ddd977310",
+  "dropped_findings": 0
+}

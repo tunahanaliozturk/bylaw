@@ -1,0 +1,68 @@
+{
+  "case_id": "go-req-not-found",
+  "result": {
+    "findings": [
+      {
+        "file": "handlers.go",
+        "line_start": 71,
+        "line_end": 74,
+        "category": "requirement",
+        "severity": "high",
+        "message": "Every error from `Rename` becomes a 500, including the not-found case. For an unknown id the UPDATE matches no rows and the follow-up `s.Widget` lookup fails, so the client gets 500 instead of the required 404.",
+        "suggestion": null,
+        "evidence": "docs/specs/rename.md/AC-2"
+      },
+      {
+        "file": "store.go",
+        "line_start": 46,
+        "line_end": 49,
+        "category": "bug",
+        "severity": "low",
+        "message": "`Rename` ignores `RowsAffected`, so a missing widget is only noticed by the follow-up read. That read is a separate, non-atomic query, so the not-found signal depends on whatever error `s.Widget` returns rather than an explicit not-found error the handler can map to 404.",
+        "suggestion": null,
+        "evidence": null
+      }
+    ],
+    "criteria": [
+      {
+        "criterion": "docs/specs/rename.md/AC-1",
+        "status": "met",
+        "text": null,
+        "code": [
+          {
+            "file": "main.go",
+            "line": 19
+          },
+          {
+            "file": "handlers.go",
+            "line": 57
+          },
+          {
+            "file": "store.go",
+            "line": 45
+          }
+        ],
+        "tests": [],
+        "note": "Implemented, but no test exercises the rename endpoint."
+      },
+      {
+        "criterion": "docs/specs/rename.md/AC-2",
+        "status": "missing",
+        "text": null,
+        "code": [],
+        "tests": [],
+        "note": "An unknown id falls into the generic error path and returns 500, not 404. No test covers it."
+      }
+    ],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 2,
+  "seconds": 8.696897399961017,
+  "input_tokens": 5275,
+  "output_tokens": 863,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "4d7ec543d3b53b584256756613a74412975d079b2ce5ce4928c0c07069953198",
+  "dropped_findings": 0
+}

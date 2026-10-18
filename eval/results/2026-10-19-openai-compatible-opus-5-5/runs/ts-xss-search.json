@@ -1,0 +1,38 @@
+{
+  "case_id": "ts-xss-search",
+  "result": {
+    "findings": [
+      {
+        "file": "src/server.ts",
+        "line_start": 33,
+        "line_end": 33,
+        "category": "security",
+        "severity": "high",
+        "message": "The `q` query parameter is interpolated unescaped into an HTML response, which is a reflected XSS vulnerability: a crafted link can run arbitrary script in the victim's session.",
+        "suggestion": "  res.send(`<h1>Results for ${term.replace(/[&<>\"']/g, (c) => ({ \"&\": \"&amp;\", \"<\": \"&lt;\", \">\": \"&gt;\", '\"': \"&quot;\", \"'\": \"&#39;\" })[c] as string)}</h1>`);",
+        "evidence": null
+      },
+      {
+        "file": "src/server.ts",
+        "line_start": 30,
+        "line_end": 30,
+        "category": "rule",
+        "severity": "low",
+        "message": "This added blank line contains trailing whitespace, which the editorconfig forbids.",
+        "suggestion": "",
+        "evidence": ".editorconfig:5"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 2,
+  "seconds": 3.8878698999760672,
+  "input_tokens": 5252,
+  "output_tokens": 343,
+  "error": null,
+  "reviewer": "openai-compatible:claude-opus-5-5:default effort@https://api.anthropic.com/v1/",
+  "case_digest": "74ed5f6ccb4669736f9888efdf3634442494d1dfd3cca23c19de4e133df354af",
+  "dropped_findings": 0
+}

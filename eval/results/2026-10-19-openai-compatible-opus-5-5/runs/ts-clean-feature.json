@@ -1,0 +1,17 @@
+{
+  "case_id": "ts-clean-feature",
+  "result": {
+    "findings": [],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 0,
+  "seconds": 5.1874618999427184,
+  "input_tokens": 5618,
+  "output_tokens": 207,
+  "error": null,
+  "reviewer": "openai-compatible:claude-opus-5-5:default effort@https://api.anthropic.com/v1/",
+  "case_digest": "d4c1f0eb109feee3202983a90cd5404af5fb3687391467075e2fc760b4a7e0ee",
+  "dropped_findings": 0
+}

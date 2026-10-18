@@ -1,0 +1,48 @@
+{
+  "case_id": "py-pickle-cookie",
+  "result": {
+    "findings": [
+      {
+        "file": "app/web.py",
+        "line_start": 37,
+        "line_end": 37,
+        "category": "security",
+        "severity": "critical",
+        "message": "The preferences cookie is client-controlled, and unpickling it lets any visitor execute arbitrary code on the server. Use a safe format such as JSON, ideally signed.",
+        "suggestion": "    saved = json.loads(base64.b64decode(request.cookies.get(\"prefs\", \"\")) or \"{}\")",
+        "evidence": null
+      },
+      {
+        "file": "app/web.py",
+        "line_start": 37,
+        "line_end": 37,
+        "category": "bug",
+        "severity": "medium",
+        "message": "When the cookie is missing, the default \"\" decodes to b\"\", and unpickling empty bytes raises EOFError. A malformed cookie, or one that decodes to a non-dict, also crashes the handler instead of falling back to the default theme.",
+        "suggestion": null,
+        "evidence": null
+      },
+      {
+        "file": "app/web.py",
+        "line_start": 35,
+        "line_end": 38,
+        "category": "rule",
+        "severity": "low",
+        "message": "This new behaviour comes without a test, but the contributing guide requires one for every change in behaviour.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:15"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 3,
+  "seconds": 4.698740500025451,
+  "input_tokens": 5354,
+  "output_tokens": 417,
+  "error": null,
+  "reviewer": "openai-compatible:claude-opus-5-5:default effort@https://api.anthropic.com/v1/",
+  "case_digest": "5e0f0fa01c01c5614e978d46637e1b8949029c74f94acbf7b59a37a3c8f83180",
+  "dropped_findings": 0
+}

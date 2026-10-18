@@ -1,0 +1,28 @@
+{
+  "case_id": "ts-console-log",
+  "result": {
+    "findings": [
+      {
+        "file": "src/server.ts",
+        "line_start": 27,
+        "line_end": 27,
+        "category": "rule",
+        "severity": "low",
+        "message": "This replaces the shared `logger` with `console.log`, which the contribution rules forbid. It also drops the structured `orderId` field that log consumers may rely on.",
+        "suggestion": "  logger.info(\"order created\", { orderId: order.id });",
+        "evidence": "CONTRIBUTING.md:8"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": 2.232593800057657,
+  "input_tokens": 4155,
+  "output_tokens": 168,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "1cfc2ea3d4a5dfb8946c128820fe6c3e1a333680cfa07295dd26f944d3f5bdd7",
+  "dropped_findings": 0
+}
