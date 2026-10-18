@@ -1,0 +1,43 @@
+{
+  "repo": "encode/httpx",
+  "number": 2423,
+  "url": "https://github.com/encode/httpx/pull/2423",
+  "licence": "BSD-3-Clause",
+  "base_sha": "a8dd079be7028b2bf4cdbbbc3a6793a5f78ecc85",
+  "head_sha": "25d8c13191af2750b3fe294a111e9511fa490807",
+  "title": "Change LineDecoder to match stdlib splitlines, resulting in significant speed up",
+  "body": "Closes #2422\r\n\r\nLeading to enormous speedups when doing things such as Response(...).iter_lines()\r\n",
+  "commit_messages": [
+    "Replace quadratic algo in LineDecoder\n\nLeading to enormous speedups when doing things such as\nResponse(...).iter_lines() as described on issue #2422",
+    "Merge branch 'master' into fast-line-decode"
+  ],
+  "closing": [
+    {
+      "owner": "encode",
+      "repo": "httpx",
+      "number": 2422
+    }
+  ],
+  "issues": [
+    {
+      "owner": "encode",
+      "repo": "httpx",
+      "number": 2422,
+      "title": "LineDecoder is accidentally quadratic: iter_lines() seems to hang forever",
+      "body": "When calling `Response.iter_lines()`, things can seem to hang forever.\r\n\r\nThe problem is that `LineDecoder` is quadratic in it's string copying behaviour. If a 31MB chunk with 18,768 lines is passed in to `LineDecoder()` then it takes 1m45s to process it vs 0.1s for a simple `text.splitlines()`. This is readily reproduced by simply using `LineDecoder()` to decode a file, like `/usr/share/dict/words` (do not attempt, you may be waiting until the heat death of the universe).\r\n\r\nIt may be a bug somewhere else that `iter_text()` is returning chunks that are too big.\r\n\r\nBut either way, you probably want to reconsider the wisdom of slicing the string to chop the beginning off it vs. just keeping an index.\r\n\r\nYou can slice the string before returning from the decoder so it's only done once per chunk.\r\n\r\nAnyhoo, thanks for the great work!",
+      "comments": [],
+      "comments_unreadable": false
+    }
+  ],
+  "remove": [],
+  "left_out": [],
+  "evidence": {
+    "url": "https://github.com/encode/httpx/pull/2423#discussion_r1045653671",
+    "path": "httpx/_decoders.py",
+    "lines": [
+      278,
+      278
+    ],
+    "body": "The `if text.endswith(\"\\n\")` doesn't seems sufficient to me.\r\n\r\nOther newline endings [are also available](https://docs.python.org/3/library/stdtypes.html#str.splitlines).\r\n\r\nI'd assume that our test cases aren't covering this sufficiently."
+  }
+}

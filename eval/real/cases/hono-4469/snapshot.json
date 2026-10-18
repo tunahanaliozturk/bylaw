@@ -1,0 +1,43 @@
+{
+  "repo": "honojs/hono",
+  "number": 4469,
+  "url": "https://github.com/honojs/hono/pull/4469",
+  "licence": "MIT",
+  "base_sha": "db764c2f1d8a2905d66c78c41aa47e47d3a4165d",
+  "head_sha": "8b1dc2893f07d4079b945c5b2ceeaa4b27299a14",
+  "title": "fix(aws-lambda): serve microsoft office files as binary in lambda handler",
+  "body": "This PR fixes https://github.com/honojs/hono/issues/4468\r\n\r\n# Description:\r\nWhen serving Microsoft Office files, due to the existence of \"xml\" as part of the mimetype, the function `defaultIsContentTypeBinary` incorrectly classifies the response as plain text and not binary. Leading to a broken file download to the user.\r\n\r\n### The author should do the following, if applicable\r\n\r\n- [x] Add tests\r\n- [x] Run tests\r\n- [x] `bun run format:fix && bun run lint:fix` to format the code\r\n",
+  "commit_messages": [
+    "fix: serve microsoft office files as binary in lambda handler",
+    "incorporated suggested changes"
+  ],
+  "closing": [
+    {
+      "owner": "honojs",
+      "repo": "hono",
+      "number": 4468
+    }
+  ],
+  "issues": [
+    {
+      "owner": "honojs",
+      "repo": "hono",
+      "number": 4468,
+      "title": "Lambda handler doesn't serve Office files (Excel etc) as binary",
+      "body": "### What version of Hono are you using?\n\n4.10.1\n\n### What runtime/platform is your app running on? (with version if possible)\n\nAWS Lambda\n\n### What steps can reproduce the bug?\n\nServe a response with the Content Type `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`. The lambda handler will incorrectly detect it as a plain text response (due to the string \"xml\" that's part of that mime type) and therefore the file will be broken on download at the user.\n\n### What is the expected behavior?\n\nTreat the response as a binary file instead of text\n\n### What do you see instead?\n\n_No response_\n\n### Additional information\n\n_No response_",
+      "comments": [],
+      "comments_unreadable": false
+    }
+  ],
+  "remove": [],
+  "left_out": [],
+  "evidence": {
+    "url": "https://github.com/honojs/hono/pull/4469#discussion_r2442802377",
+    "path": "src/adapter/aws-lambda/handler.ts",
+    "lines": [
+      567,
+      567
+    ],
+    "body": "Thank you for considering the changes.\r\n\r\nAs indicated in #4470, I believe we should make the following changes, including improvements to the current regular expression.\r\n\r\n```suggestion\r\n  return !/^text\\/(?:plain|html|css|javascript|csv)|(?:\\/|\\+)(?:json|xml)(?:;|$)/test(\r\n```"
+  }
+}

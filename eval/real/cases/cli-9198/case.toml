@@ -1,0 +1,24 @@
+kind = "bug"
+labellers = ["first pass (model)"]
+
+[[findings]]
+file = "pkg/cmd/attestation/verification/attestation.go"
+lines = [79, 79]
+categories = ["bug"]
+note = "The parser used a custom readLine built on bufio.Reader.ReadLine, which can return partial lines for long input, as the Go docs warn."
+
+[[allowed]]
+file = "pkg/cmd/attestation/verification/attestation.go"
+lines = [76, 80]
+
+[[allowed]]
+file = "pkg/cmd/attestation/verification/attestation.go"
+lines = [83, 83]
+
+[[allowed]]
+file = "pkg/cmd/attestation/verification/attestation.go"
+lines = [90, 90]
+
+[[allowed]]
+file = "pkg/cmd/attestation/verification/attestation.go"
+lines = [96, 112]

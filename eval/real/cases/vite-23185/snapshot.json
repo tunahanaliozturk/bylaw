@@ -1,0 +1,43 @@
+{
+  "repo": "vitejs/vite",
+  "number": 23185,
+  "url": "https://github.com/vitejs/vite/pull/23185",
+  "licence": "MIT",
+  "base_sha": "ef02435114c57d0422028f0e6987f3df8db72969",
+  "head_sha": "83ddde2a3da77e1ffc99dbd62033e3d7452b4f71",
+  "title": "feat: support subpath imports in dynamic import statements",
+  "body": "Closes #23182 — supports subpath imports in dynamic `import(...)` expressions, matching the existing support in `import.meta.glob` expressions",
+  "commit_messages": [
+    "fix: support subpath imports in dynamic import statements and glob expressions",
+    "fix type errors"
+  ],
+  "closing": [
+    {
+      "owner": "vitejs",
+      "repo": "vite",
+      "number": 23182
+    }
+  ],
+  "issues": [
+    {
+      "owner": "vitejs",
+      "repo": "vite",
+      "number": 23182,
+      "title": "Dynamic Imports don't resolve when using package.json#imports",
+      "body": "### Describe the bug\n\nIn SvelteKit 3.0 we are deprecating the alias `$lib` (which uses `resolve.alias` under the hood) in favour of a platform feature: `package.json#imports`.\n\nYou can define this in your package.json\n\n```json\n{\n\t\"imports\": {\n\t\t\"#lib/*\": \"./src/lib/*\"\n\t}\n}\n```\nand it basically acts as an alias (you can do `import(\"#lib/my-file.js\")` at whatever nesting level and it will resolve correctly).\n\nThe base import works fine but where it fails is when you are using dynamic imports with vite:\n\n```ts\n// this will fail\nawait import(`#lib/${folder_name}/index.ts`);\n\n// the same with alias works fine\nawait import(`$lib/${folder_name}/index.ts`);\n\n// same if I import using a relative path\nawait import(`../../lib/${folder_name}/index.ts`);\n```\n\ngiven the rest works fine this feels like a bug worth addressing.\n\n### Reproduction\n\nhttps://stackblitz.com/edit/vitejs-vite-pj6f16ta?file=vite.config.ts,src%2Fmain.js,package.json,src%2Flib%2Falias%2Fa%2Findex.ts,src%2Flib%2Falias%2Fb%2Findex.ts,src%2Flib%2Fimportmaps%2Fa%2Findex.ts,src%2Flib%2Fimportmaps%2Fb%2Findex.ts&terminal=dev\n\n### Steps to reproduce\n\n1. open the playground\n2. run the app\n3. check that you get a warning in terminal the console\n4. try to press the \"load alias\" button and verify it works\n5. try to press the \"load import without importmaps\" and verify it works\n6. try to press the \"load import\" and verify it doesn't work\n\n### System Info\n\n```shell\nrepl\n```\n\n### Used Package Manager\n\nnpm\n\n### Logs\n\n_No response_\n\n### Validations\n\n- [x] Follow our [Code of Conduct](https://github.com/vitejs/.github/blob/main/CODE_OF_CONDUCT.md)\n- [x] Read the [Contributing Guidelines](https://github.com/vitejs/vite/blob/main/CONTRIBUTING.md).\n- [x] Read the [docs](https://vite.dev/guide).\n- [x] Check that there isn't [already an issue](https://github.com/vitejs/vite/issues) that reports the same bug to avoid creating a duplicate.\n- [x] Make sure this is a Vite issue and not a framework-specific issue. For example, if it's a Vue SFC related bug, it should likely be reported to [vuejs/core](https://github.com/vuejs/core) instead.\n- [x] Check that this is a concrete bug. For Q&A open a [GitHub Discussion](https://github.com/vitejs/vite/discussions) or join our [Discord Chat Server](https://chat.vite.dev/).\n- [x] The provided reproduction is a [minimal reproducible example](https://stackoverflow.com/help/minimal-reproducible-example) of the bug.",
+      "comments": [],
+      "comments_unreadable": false
+    }
+  ],
+  "remove": [],
+  "left_out": [],
+  "evidence": {
+    "url": "https://github.com/vitejs/vite/pull/23185#discussion_r3734099952",
+    "path": "packages/vite/src/node/plugins/dynamicImportVars.ts",
+    "lines": [
+      328,
+      338
+    ],
+    "body": "I think we should use the same function with the `resolve` option passed to `nativeDynamicImportVarsPlugin` so that the resolution is consistent for dev and build."
+  }
+}

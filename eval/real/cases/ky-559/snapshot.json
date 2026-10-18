@@ -1,0 +1,46 @@
+{
+  "repo": "sindresorhus/ky",
+  "number": 559,
+  "url": "https://github.com/sindresorhus/ky/pull/559",
+  "licence": "MIT",
+  "base_sha": "38ac18bc1ac3268130de766891ce9b718eb8145a",
+  "head_sha": "ecda8acfb186cdb910a73accc7388c531967516e",
+  "title": "fix: support cloudflare workers",
+  "body": "This PR comes to fix the Cloudflare workers issue mentioned here with the solution:\r\nhttps://github.com/sindresorhus/ky/issues/366#issuecomment-1670435774\r\n\r\nFixes #366",
+  "commit_messages": [
+    "fix: support cloudflare workers",
+    "fix: CI issue"
+  ],
+  "closing": [
+    {
+      "owner": "sindresorhus",
+      "repo": "ky",
+      "number": 366
+    }
+  ],
+  "issues": [
+    {
+      "owner": "sindresorhus",
+      "repo": "ky",
+      "number": 366,
+      "title": "The `credentials` field on `RequestInitializerDict` is not implemented; Cloudflare Workers issue.",
+      "body": "I am experiencing the same issue with credentials that prevents `ky` from being used with Cloudflare Workers that `redaxios` is also [experiencing here](https://github.com/developit/redaxios/issues/64).",
+      "comments": [
+        "I suppose we could internally feature test the field. Not ideal, though. Did setting it to `undefined` work for you?",
+        "The fix for this is likely trivial once someone who uses Workers steps in to help.\r\n\r\nWe need to guard [this line](https://github.com/sindresorhus/ky/blob/356d61c1534c9dc2cfb8ce1c1ff5c4832579e11b/source/core/Ky.ts#L122) to avoid setting `credentials` if it is unsupported.\r\n\r\nMy first guess about how to do so is:\r\n\r\n```js\r\nconst isCredentialsSupported = 'credentials' in Request.prototype;\r\n```\r\n\r\nThat resolves to `true` in browsers. Hopefully it resolves to `false` in Workers. Could someone who uses Workers please confirm?"
+      ],
+      "comments_unreadable": false
+    }
+  ],
+  "remove": [],
+  "left_out": [],
+  "evidence": {
+    "url": "https://github.com/sindresorhus/ky/pull/559#discussion_r1501353561",
+    "path": "source/core/Ky.ts",
+    "lines": [
+      124,
+      124
+    ],
+    "body": "I don’t think this is gonna work, `_options.credentials` should not be set at all, according to the error.\r\n\r\nAlso the comment is very outdated and we can probably use:\r\n\r\n```suggestion\r\n\t\t\tcredentials: isCredentialsSupported ? (this._input as Request).credentials : undefined,\r\n```\r\n\r\n… as long as CloudFlare accepts `{credentials: undefined}` and doesn't actually require `{}`\r\n\r\n\r\nby the way this would fix two duplicates:\r\n\r\n- https://github.com/sindresorhus/ky/issues/519\r\n- https://github.com/sindresorhus/ky/issues/366"
+  }
+}

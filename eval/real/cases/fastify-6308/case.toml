@@ -1,0 +1,20 @@
+kind = "bug"
+labellers = ["first pass (model)"]
+
+[[findings]]
+file = "types/instance.d.ts"
+lines = [467, 467]
+categories = ["bug"]
+note = "The error handler's error parameter was typed as Error, but anything thrown in a route, including non-Error values, can reach it."
+
+[[allowed]]
+file = "test/types/instance.test-d.ts"
+lines = [45, 45]
+
+[[allowed]]
+file = "types/instance.d.ts"
+lines = [467, 467]
+
+[[allowed]]
+file = "types/instance.d.ts"
+lines = [472, 472]

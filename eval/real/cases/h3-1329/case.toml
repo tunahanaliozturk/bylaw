@@ -1,0 +1,32 @@
+kind = "bug"
+labellers = ["first pass (model)"]
+
+[[findings]]
+file = "src/utils/response.ts"
+lines = [84, 84]
+categories = ["bug"]
+note = "Invalid Referer values were caught and silently ignored with an empty catch, hiding real errors."
+
+[[allowed]]
+file = "docs/2.utils/2.response.md"
+lines = [139, 153]
+
+[[allowed]]
+file = "src/index.ts"
+lines = [101, 108]
+
+[[allowed]]
+file = "src/utils/response.ts"
+lines = [59, 89]
+
+[[allowed]]
+file = "test/unit/package.test.ts"
+lines = [107, 107]
+
+[[allowed]]
+file = "test/utils.test.ts"
+lines = [4, 4]
+
+[[allowed]]
+file = "test/utils.test.ts"
+lines = [47, 81]

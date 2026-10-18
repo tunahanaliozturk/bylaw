@@ -1,0 +1,44 @@
+{
+  "repo": "spf13/cobra",
+  "number": 2023,
+  "url": "https://github.com/spf13/cobra/pull/2023",
+  "licence": "Apache-2.0",
+  "base_sha": "285460dca6152bb86994fa4a9659c24ca4060e2f",
+  "head_sha": "48dabba4d3133af67e2edcc2be80af2fd9f3d7fd",
+  "title": "Customizable error message prefix",
+  "body": "You can change the prefix before the error message by `SetErrPrefix()`.\r\nIt's currently `Error:`, and now it's read from `errPrefix`.\r\nIt's just like the `versionTemplate` and `SetVersionTemplate()` relationship.\r\n\r\nResolve: #1281",
+  "commit_messages": [
+    "[add] The error message prefix\n\nThe user can change it by specifying `errPrefix` by `SetErrPrefix`."
+  ],
+  "closing": [
+    {
+      "owner": "spf13",
+      "repo": "cobra",
+      "number": 1281
+    }
+  ],
+  "issues": [
+    {
+      "owner": "spf13",
+      "repo": "cobra",
+      "number": 1281,
+      "title": "Begin a command error message with a custom string",
+      "body": "It is a convention for CLI utilities in Unix-like environments to prefix the name of the utility to any error messages printed. For example, notice how the `find` command outputs the `find:` prefix:\r\n```\r\n$ find nemo\r\nfind: ‘nemo’: No such file or directory\r\n```\r\nThis is useful when debugging shell scripts for determining exactly which of the commands used in the script has failed.\r\n\r\nCobra has a convenient facility for declaring commands which might fail and return an error: the `Command.RunE()` method and friends. However, upon returning an error from such a method, we find that it is [hard-coded](https://github.com/spf13/cobra/blob/08c51e585ca78e4b9408ae034d0cdacdd81aad41/command.go#L970) in `Command.ExecuteC()` to prefix the string `Error:` to any error message that results from this.\r\n\r\nMy proposal is to add a way to change that hard-coded value to a custom string. Maybe use `argv[0]` by default to follow the convention. Without this feature, a programmer who wishes to adhere to the convention I mentioned is forced to implement their own error output in `Run()` or `RunE()` and/or silence the one provided by Cobra.",
+      "comments": [
+        "Sounds like a good idea.  But you'll have to keep the existing behavior as the default to remain backwards-compatible."
+      ],
+      "comments_unreadable": false
+    }
+  ],
+  "remove": [],
+  "left_out": [],
+  "evidence": {
+    "url": "https://github.com/spf13/cobra/pull/2023#discussion_r1311425280",
+    "path": "command.go",
+    "lines": [
+      1061,
+      1061
+    ],
+    "body": "Won’t the new variable be empty by default?  We probably need a getter for it and make it default to “Error:”"
+  }
+}

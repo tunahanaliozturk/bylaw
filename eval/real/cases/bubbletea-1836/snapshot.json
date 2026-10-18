@@ -1,0 +1,42 @@
+{
+  "repo": "charmbracelet/bubbletea",
+  "number": 1836,
+  "url": "https://github.com/charmbracelet/bubbletea/pull/1836",
+  "licence": "MIT",
+  "base_sha": "ff51ba4c51f85875761b15a64f9ab9aa0eaa9fa1",
+  "head_sha": "fa87190b4629c883fa116379c8960dc8b27d96de",
+  "title": "fix(tty): fall back to default dimensions when terminal size is 0x0",
+  "body": "### Problem\n\nWhen running Bubble Tea v2 applications on serial consoles, headless setups, or terminals where window dimensions are not yet configured or reported as 0x0 (e.g. stty rows 0 cols 0), term.GetSize returns (0, 0, nil). Bubble Tea sets p.width = 0 and p.height = 0 and passes these dimensions to the renderer and model. Because the viewport height and width are 0, rendered output lines are clipped, resulting in a completely blank screen.\n\n### Root Cause\n\nIn Program.Run and Program.checkResize:\n- term.GetSize(p.ttyOutput.Fd()) can return (0, 0, nil) or non-positive values without returning an error.\n- Previously, these dimensions were assigned directly to p.width and p.height without verifying they are positive.\n- When s.height is 0 in cursedRenderer, line buffering clips lines, producing no visible content.\n\n### Solution\n\n1. Added fallbackDimensions(width, height int) (int, int) helper on *Program with standard terminal defaults (defaultWidth = 80, defaultHeight = 24).\n2. If width <= 0, fall back to COLUMNS (checking program environment first, then os.Getenv) if positive, otherwise fall back to 80.\n3. If height <= 0, fall back to LINES (checking program environment first, then os.Getenv) if positive, otherwise fall back to 24.\n4. Applied fallback in both Program.Run and Program.checkResize.\n5. Added unit tests in tty_test.go covering fallback to 80x24, fallback to COLUMNS/LINES, handling invalid or zero env values, and initial window size message dispatch.\n\nFixes #1828",
+  "commit_messages": [
+    "fix(tty): fall back to default dimensions when terminal size is 0x0"
+  ],
+  "closing": [
+    {
+      "owner": "charmbracelet",
+      "repo": "bubbletea",
+      "number": 1828
+    }
+  ],
+  "issues": [
+    {
+      "owner": "charmbracelet",
+      "repo": "bubbletea",
+      "number": 1828,
+      "title": "v2: blank screen when tty size is 0x0 (e.g. in a serial console)",
+      "body": "**Describe the bug**\nIf the tty reports a size of 0x0 (like it does when you connect to a FreeBSD system over a serial console), bubbletea v2 apps don't draw anything and you get a blank screen, while things like `less` and `htop` just fall back to 80x24 and work fine.\n\n\n**Setup**\n- OS: any Unix system\n- Shell: any\n- Terminal Emulator: any\n- Terminal Multiplexer: none needed\n- bubbletea: v2.0.10\n\n**To Reproduce**\n1. Run `stty rows 0 cols 0`\n2. Run the code below with `go run .`\n3. Nothing gets drawn\n\n**Source Code**\n```go\npackage main\n\nimport (\n\t\"log\"\n\n\ttea \"charm.land/bubbletea/v2\"\n)\n\nfunc main() {\n\tp := tea.NewProgram(model{})\n\tif _, err := p.Run(); err != nil {\n\t\tlog.Fatal(err)\n\t}\n}\n\ntype model struct{}\n\nfunc (m model) Init() tea.Cmd {\n\treturn nil\n}\n\nfunc (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {\n\tswitch msg.(type) {\n\tcase tea.KeyPressMsg:\n\t\treturn m, tea.Quit\n\t}\n\treturn m, nil\n}\n\nfunc (m model) View() tea.View {\n\treturn tea.NewView(\"Press any key to quit.\")\n}\n```\n\n\n**Expected behavior**\nI'd expect a 0 width or height to just be treated as unknown and fall back to `$COLUMNS`/`$LINES` and then 80x24.\n\n**Screenshots**\n\n**Additional context**\n`Run()` only checks the error from `term.GetSize`, which returns `0, 0, nil` here, so the renderer just gets sized to 0x0: \n\nhttps://github.com/charmbracelet/bubbletea/blob/ff51ba4c51f85875761b15a64f9ab9aa0eaa9fa1/tea.go#L1051-L1064\n\nAFAIK there's no way to work around this from the model, the fallback would have to go in both `Run()` and `checkResize()`.\n\nRelated to #1718.",
+      "comments": [],
+      "comments_unreadable": false
+    }
+  ],
+  "remove": [],
+  "left_out": [],
+  "evidence": {
+    "url": "https://github.com/charmbracelet/bubbletea/pull/1836#discussion_r4164449107",
+    "path": "tea.go",
+    "lines": [
+      1063,
+      1063
+    ],
+    "body": "This fallback also runs when the output isn't a terminal at all, such as output to a buffer, a pipe, or a Wish/SSH session. Apps that used to receive a 0x0 size there will now get a made-up 80x24. Moving this line inside the `if p.ttyOutput != nil` block above would limit the fix to the actual bug"
+  }
+}

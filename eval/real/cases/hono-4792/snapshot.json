@@ -1,0 +1,44 @@
+{
+  "repo": "honojs/hono",
+  "number": 4792,
+  "url": "https://github.com/honojs/hono/pull/4792",
+  "licence": "MIT",
+  "base_sha": "18cc595fc2a6a24c919bda8d733e7f95460eef4f",
+  "head_sha": "b60a253937f481be7b98e54ed52308c7c7ecefc2",
+  "title": "fix(jsx): align link hoisting and dedupe with React 19",
+  "body": "fixes #4789\r\n\r\n### Summary\r\n\r\nBecause React 19 appears to dedupe only link elements that are stylesheet + precedence, this PR aligns Hono JSX runtime link hoisting/dedupe behavior with that model.\r\n\r\nIt fixes over-deduplication by href (for canonical / alternate / preload / icon / preconnect, etc.) and narrows dedupe to stylesheet links with precedence only.\r\n\r\nAs shown below, the list of links with issues reported in the issue will also remain without being deduplicated.\r\n\r\nhttps://github.com/honojs/hono/compare/fix-hoisting-link-element-3?expand=1#diff-7077a729697655835dd10a0638c9e8ffaad5aef95597d9f409cc4e3f3fb9f848R374-R384\r\n\r\n### Compatibility\r\n\r\n- No public API or type changes.\r\n- Changes are limited to internal JSX runtime `link` hoisting/dedupe behavior and tests.\r\n\r\n### The author should do the following, if applicable\r\n\r\n- [x] Add tests\r\n- [x] Run tests\r\n- [x] `bun run format:fix && bun run lint:fix` to format the code\r\n",
+  "commit_messages": [
+    "fix(jsx): align link hoisting and dedupe with React 19",
+    "ci: apply automated fixes",
+    "test(jsx): fix expected output for link element deduplication"
+  ],
+  "closing": [
+    {
+      "owner": "honojs",
+      "repo": "hono",
+      "number": 4789
+    }
+  ],
+  "issues": [
+    {
+      "owner": "honojs",
+      "repo": "hono",
+      "number": 4789,
+      "title": "link rel=canonical is silently removed when it shares the same href as link rel=alternate hreflang",
+      "body": "First of all, thank you for building Hono — it's been a joy to work with, especially the JSX renderer's automatic head hoisting. I ran into a small edge case while implementing hreflang + canonical links, and I'd love to help get it fixed.\n\n## Bug Report\n\n### Summary\n\nWhen using `jsxRenderer`, a `<link rel=\"canonical\">` tag is silently dropped from the rendered HTML if a `<link rel=\"alternate\" hreflang=\"...\">` tag shares the same `href`.\n\n### Reproduction\n\nOn a localized EN page (e.g. `/en/about`), the canonical URL and the `hreflang=\"en\"` alternate URL are identical by design. When both are declared in the renderer:\n\n```tsx\n<link rel=\"canonical\" href=\"https://example.com/en/about\" />\n<link rel=\"alternate\" hreflang=\"en\" href=\"https://example.com/en/about\" />\n<link rel=\"alternate\" hreflang=\"ja\" href=\"https://example.com/ja/about\" />\n```\n\nThe rendered HTML becomes:\n\n```html\n<!-- canonical is missing -->\n<link rel=\"alternate\" hreflang=\"en\" href=\"https://example.com/en/about\" />\n<link rel=\"alternate\" hreflang=\"ja\" href=\"https://example.com/ja/about\" />\n```\n\n### Root Cause\n\nIn `src/jsx/intrinsic-element/common.ts`, the deduplication key for `link` elements is:\n\n```ts\nconst deDupeKeyMap = {\n  link: [\"href\"],\n}\n```\n\nThe deduplication logic in `src/jsx/intrinsic-element/components.ts` uses **OR semantics**: if *any* key in `deDupeKeys` matches an existing tag's props, the new tag is considered a duplicate.\n\nBecause `rel=\"canonical\"` and `rel=\"alternate\" hreflang=\"en\"` share the same `href`, the canonical tag is treated as a duplicate of the already-registered alternate tag and removed from the buffer.\n\n### Expected Behavior\n\nTwo `<link>` elements should only be considered duplicates when **all** identifying attributes match. Specifically, `rel` (and `hreflang` for alternate links) should be part of the deduplication key.\n\n### Proposed Fix\n\n**`src/jsx/intrinsic-element/common.ts`** — add `rel` and `hreflang` to the `link` dedup keys:\n\n```ts\nconst deDupeKeyMap = {\n  link: [\"href\", \"rel\", \"hreflang\"],\n}\n```\n\n**`src/jsx/intrinsic-element/components.ts`** — change OR semantics to AND semantics for multi-key deduplication:\n\n```ts\n// Before (OR: any key match → duplicate)\nfor (const key of deDupeKeys) {\n  if ((tagProps?.[key] ?? null) === props?.[key]) {\n    duped = true\n    break LOOP\n  }\n}\n\n// After (AND: all keys must match → duplicate)\nconst allMatch = deDupeKeys.every(\n  (key) => (tagProps?.[key] ?? null) === (props?.[key] ?? null)\n)\nif (allMatch) {\n  duped = true\n  break LOOP\n}\n```\n\nWith this fix:\n\n| Scenario | Before | After |\n|---|---|---|\n| `rel=\"canonical\" href=\"X\"` vs `rel=\"alternate\" href=\"X\"` | ❌ deduped (canonical removed) | ✅ kept (different `rel`) |\n| `rel=\"alternate\" hreflang=\"en\" href=\"X\"` vs `rel=\"alternate\" hreflang=\"ja\" href=\"X\"` | ❌ deduped | ✅ kept (different `hreflang`) |\n| Two identical `rel=\"canonical\" href=\"X\"` | ✅ deduped | ✅ deduped |\n\n### Workaround\n\nUse `raw()` from `hono/html` to bypass Hono JSX's `<link>` processing:\n\n```tsx\nimport { raw } from 'hono/html'\n\n// In jsxRenderer:\n{raw(`<link rel=\"canonical\" href=\"${canonicalUrl}\">`)}\n```\n\n### Environment\n\n- Hono: 4.11.9\n- Reproduction: placing `<link rel=\"canonical\">` and `<link rel=\"alternate\" hreflang>` with the same `href` in `jsxRenderer`\n\nI'm happy to send a PR with the fix if this looks reasonable. Thanks again for all your work on Hono!",
+      "comments": [],
+      "comments_unreadable": false
+    }
+  ],
+  "remove": [],
+  "left_out": [],
+  "evidence": {
+    "url": "https://github.com/honojs/hono/pull/4792#discussion_r2894550355",
+    "path": "src/jsx/intrinsic-element/common.ts",
+    "lines": [
+      18,
+      18
+    ],
+    "body": "Can you apply the flowing patch to remove the lint error though CI does not fail?\n\n```diff\ndiff --git a/src/jsx/intrinsic-element/common.ts b/src/jsx/intrinsic-element/common.ts\nindex aaa2ce0c..937c0974 100644\n--- a/src/jsx/intrinsic-element/common.ts\n+++ b/src/jsx/intrinsic-element/common.ts\n@@ -15,7 +15,11 @@ export const dataPrecedenceAttr = 'data-precedence'\n export const isStylesheetLinkWithPrecedence = (props: Props): boolean =>\n   props.rel === 'stylesheet' && 'precedence' in props\n\n-export const shouldDeDupeByKey = (tagName: string, props: Props, supportSort: boolean): boolean => {\n+export const shouldDeDupeByKey = (\n+  tagName: string,\n+  _props: Props,\n+  supportSort: boolean\n+): boolean => {\n   if (tagName === 'link') {\n     return supportSort\n   }\n```"
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "repo": "cli/cli",
+  "number": 9198,
+  "url": "https://github.com/cli/cli/pull/9198",
+  "licence": "MIT",
+  "base_sha": "e36d8f103d5e1fb3989d9d5aefdae36b01fb88d4",
+  "head_sha": "ae715022e8265704c19678281af40822f3798e28",
+  "title": "Attestation Verification - Buffer Fix",
+  "body": "Fixes #9199\r\n\r\nCurrently lines are read using scanner, however for very large attestations the buffer can be exceeded.\r\n\r\nGolang documentation states;\r\n\r\n> Programs that need more control over error handling or large tokens, or must run sequential scans on a reader, should use [bufio.Reader](https://pkg.go.dev/bufio#Reader) instead.\r\n\r\nI encountered this error while running verification for a set of attestations:\r\n\r\n> Error: bundles could not be loaded from JSON lines file: bufio.Scanner: token too long\r\n\r\nThis changes uses bufio reader and readlines instead to avoid buffer limits. An alternative would be to set a larger buffer, but the exact size would be dependent upon the size of a possible maximum attestation (which can be quite large).\r\n\r\nThis will resolve issue #9199",
+  "commit_messages": [
+    "swap scanner to readline for attestations"
+  ],
+  "closing": [
+    {
+      "owner": "cli",
+      "repo": "cli",
+      "number": 9199
+    }
+  ],
+  "issues": [
+    {
+      "owner": "cli",
+      "repo": "cli",
+      "number": 9199,
+      "title": "Attestation Verification Buffer Size",
+      "body": "### Describe the bug\r\n\r\nAttestations that are too large will throw the following error during verification.\r\n\r\n> Error: bundles could not be loaded from JSON lines file: bufio.Scanner: token too long\r\n\r\n\r\n### Steps to reproduce the behavior\r\n\r\n`gh attestation verify oci://ghcr.io/forrin/in-toto-workflows:15f5ca8c47ad7ffca1d7cc7e9996c57010b024e7 -o Forrin --bundle sha256:05efdf15a77731613ea7f9267c2f0ca4543d8d5763f22d90f994bb5f52a48368.jsonl\r\n`\r\n### Expected vs actual behavior\r\n\r\nExpected to pass verification. Actual is an error due to bufio scanner buffer limits.\r\n\r\n### Logs\r\n\r\n```\r\nLoaded digest sha256:05efdf15a77731613ea7f9267c2f0ca4543d8d5763f22d90f994bb5f52a48368 for oci://ghcr.io/forrin/in-toto-workflows:15f5ca8c47ad7ffca1d7cc7e9996c57010b024e7\r\n✗ Loading attestations from oci://ghcr.io/forrin/in-toto-workflows:15f5ca8c47ad7ffca1d7cc7e9996c57010b024e7 failed\r\n\r\nError: bundles could not be loaded from JSON lines file: bufio.Scanner: token too long\r\n```",
+      "comments": [],
+      "comments_unreadable": false
+    }
+  ],
+  "remove": [],
+  "left_out": [],
+  "evidence": {
+    "url": "https://github.com/cli/cli/pull/9198#discussion_r1638464323",
+    "path": "pkg/cmd/attestation/verification/attestation.go",
+    "lines": [
+      79,
+      79
+    ],
+    "body": "```suggestion\r\n\tline, err = reader.ReadBytes('\\n')\r\n```\r\n\r\nFrom the docs on https://pkg.go.dev/bufio#Reader.ReadLine:\r\n\r\n>  Most callers should use [Reader.ReadBytes](https://pkg.go.dev/bufio#Reader.ReadBytes)('\\n')"
+  }
+}

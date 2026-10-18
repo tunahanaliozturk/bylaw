@@ -1,0 +1,12 @@
+kind = "rule"
+labellers = ["first pass (model)"]
+
+[[findings]]
+file = "src/utils/ws.ts"
+lines = [6, 6]
+categories = ["bug", "rule"]
+note = "ws.ts re-exported crossws types under generic names like Hooks and Peer instead of prefixing them as h3 types."
+
+[[allowed]]
+file = "src/utils/ws.ts"
+lines = [6, 7]

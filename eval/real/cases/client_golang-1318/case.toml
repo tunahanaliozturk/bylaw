@@ -1,0 +1,88 @@
+kind = "bug"
+labellers = ["first pass (model)"]
+
+[[findings]]
+file = "prometheus/promhttp/instrument_server.go"
+lines = [403, 405]
+categories = ["bug"]
+note = "The handler relied on a shared package-level emptyLabels map that callers could write to, so labels could leak between uses and the name became misleading."
+
+[[allowed]]
+file = "prometheus/promhttp/instrument_client.go"
+lines = [73, 73]
+
+[[allowed]]
+file = "prometheus/promhttp/instrument_client.go"
+lines = [78, 78]
+
+[[allowed]]
+file = "prometheus/promhttp/instrument_client.go"
+lines = [117, 117]
+
+[[allowed]]
+file = "prometheus/promhttp/instrument_client.go"
+lines = [123, 123]
+
+[[allowed]]
+file = "prometheus/promhttp/instrument_server.go"
+lines = [92, 92]
+
+[[allowed]]
+file = "prometheus/promhttp/instrument_server.go"
+lines = [100, 100]
+
+[[allowed]]
+file = "prometheus/promhttp/instrument_server.go"
+lines = [111, 111]
+
+[[allowed]]
+file = "prometheus/promhttp/instrument_server.go"
+lines = [144, 144]
+
+[[allowed]]
+file = "prometheus/promhttp/instrument_server.go"
+lines = [151, 151]
+
+[[allowed]]
+file = "prometheus/promhttp/instrument_server.go"
+lines = [162, 162]
+
+[[allowed]]
+file = "prometheus/promhttp/instrument_server.go"
+lines = [200, 200]
+
+[[allowed]]
+file = "prometheus/promhttp/instrument_server.go"
+lines = [205, 205]
+
+[[allowed]]
+file = "prometheus/promhttp/instrument_server.go"
+lines = [242, 242]
+
+[[allowed]]
+file = "prometheus/promhttp/instrument_server.go"
+lines = [250, 250]
+
+[[allowed]]
+file = "prometheus/promhttp/instrument_server.go"
+lines = [262, 262]
+
+[[allowed]]
+file = "prometheus/promhttp/instrument_server.go"
+lines = [297, 297]
+
+[[allowed]]
+file = "prometheus/promhttp/instrument_server.go"
+lines = [303, 303]
+
+[[allowed]]
+file = "prometheus/promhttp/instrument_server.go"
+lines = [401, 401]
+
+[[allowed]]
+file = "prometheus/promhttp/instrument_server.go"
+lines = [403, 405]
+
+[[allowed]]
+file = "prometheus/promhttp/instrument_server_test.go"
+lines = [349, 349]

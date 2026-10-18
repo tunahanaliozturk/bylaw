@@ -1,0 +1,136 @@
+kind = "security"
+labellers = ["first pass (model)"]
+
+[[findings]]
+file = "pkg/cmd/pr/checkout/checkout.go"
+lines = [238, 238]
+categories = ["security", "bug"]
+note = "The --worktree value was passed to git worktree add without an end-of-options marker, so a path starting with - would be parsed as a git flag."
+
+[[allowed]]
+file = "pkg/cmd/pr/checkout/checkout.go"
+lines = [7, 9]
+
+[[allowed]]
+file = "pkg/cmd/pr/checkout/checkout.go"
+lines = [39, 39]
+
+[[allowed]]
+file = "pkg/cmd/pr/checkout/checkout.go"
+lines = [67, 70]
+
+[[allowed]]
+file = "pkg/cmd/pr/checkout/checkout.go"
+lines = [108, 108]
+
+[[allowed]]
+file = "pkg/cmd/pr/checkout/checkout.go"
+lines = [119, 129]
+
+[[allowed]]
+file = "pkg/cmd/pr/checkout/checkout.go"
+lines = [160, 160]
+
+[[allowed]]
+file = "pkg/cmd/pr/checkout/checkout.go"
+lines = [172, 172]
+
+[[allowed]]
+file = "pkg/cmd/pr/checkout/checkout.go"
+lines = [176, 183]
+
+[[allowed]]
+file = "pkg/cmd/pr/checkout/checkout.go"
+lines = [193, 198]
+
+[[allowed]]
+file = "pkg/cmd/pr/checkout/checkout.go"
+lines = [202, 202]
+
+[[allowed]]
+file = "pkg/cmd/pr/checkout/checkout.go"
+lines = [216, 224]
+
+[[allowed]]
+file = "pkg/cmd/pr/checkout/checkout.go"
+lines = [226, 236]
+
+[[allowed]]
+file = "pkg/cmd/pr/checkout/checkout.go"
+lines = [238, 238]
+
+[[allowed]]
+file = "pkg/cmd/pr/checkout/checkout.go"
+lines = [240, 242]
+
+[[allowed]]
+file = "pkg/cmd/pr/checkout/checkout.go"
+lines = [250, 250]
+
+[[allowed]]
+file = "pkg/cmd/pr/checkout/checkout.go"
+lines = [255, 256]
+
+[[allowed]]
+file = "pkg/cmd/pr/checkout/checkout.go"
+lines = [268, 278]
+
+[[allowed]]
+file = "pkg/cmd/pr/checkout/checkout.go"
+lines = [280, 285]
+
+[[allowed]]
+file = "pkg/cmd/pr/checkout/checkout.go"
+lines = [287, 290]
+
+[[allowed]]
+file = "pkg/cmd/pr/checkout/checkout.go"
+lines = [330, 453]
+
+[[allowed]]
+file = "pkg/cmd/pr/checkout/checkout.go"
+lines = [456, 461]
+
+[[allowed]]
+file = "pkg/cmd/pr/checkout/checkout.go"
+lines = [464, 464]
+
+[[allowed]]
+file = "pkg/cmd/pr/checkout/checkout.go"
+lines = [466, 466]
+
+[[allowed]]
+file = "pkg/cmd/pr/checkout/checkout.go"
+lines = [468, 468]
+
+[[allowed]]
+file = "pkg/cmd/pr/checkout/checkout.go"
+lines = [482, 497]
+
+[[allowed]]
+file = "pkg/cmd/pr/checkout/checkout_test.go"
+lines = [8, 9]
+
+[[allowed]]
+file = "pkg/cmd/pr/checkout/checkout_test.go"
+lines = [66, 77]
+
+[[allowed]]
+file = "pkg/cmd/pr/checkout/checkout_test.go"
+lines = [117, 117]
+
+[[allowed]]
+file = "pkg/cmd/pr/checkout/checkout_test.go"
+lines = [191, 191]
+
+[[allowed]]
+file = "pkg/cmd/pr/checkout/checkout_test.go"
+lines = [312, 689]
+
+[[allowed]]
+file = "pkg/cmd/pr/checkout/checkout_test.go"
+lines = [706, 706]
+
+[[allowed]]
+file = "pkg/cmd/pr/checkout/checkout_test.go"
+lines = [1184, 1357]

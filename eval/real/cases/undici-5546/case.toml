@@ -1,0 +1,20 @@
+kind = "rule"
+labellers = ["first pass (model)"]
+
+[[findings]]
+file = "test/http2-dispatcher.js"
+lines = [1105, 1107]
+categories = ["bug", "rule"]
+note = "The test registered cleanup with the global after() instead of the test context's t.after(), against the suite's convention."
+
+[[allowed]]
+file = "lib/core/util.js"
+lines = [373, 378]
+
+[[allowed]]
+file = "lib/dispatcher/client-h2.js"
+lines = [650, 650]
+
+[[allowed]]
+file = "test/http2-dispatcher.js"
+lines = [1094, 1163]
