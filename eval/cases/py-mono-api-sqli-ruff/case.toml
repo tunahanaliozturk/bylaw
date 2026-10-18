@@ -1,0 +1,16 @@
+project = "py-mono"
+kind = "rule"
+title = "Filter orders by status"
+message = "Add a status filter for orders"
+
+# No prose rule forbids string-built SQL in this repository; the API package's Ruff config selects "S".
+[[findings]]
+file = "packages/api/api/handlers.py"
+lines = [24, 24]
+categories = ["rule", "security"]
+note = "SQL built with an f-string from the status argument, which ruff's S608 flags"
+evidence = "ruff:S608"
+
+[[allowed]]
+file = "packages/api/api/handlers.py"
+lines = [22, 25]

@@ -70,10 +70,24 @@ def test_an_oracle_reviewer_scores_perfectly(
 def test_the_set_has_the_size_and_mix_the_design_asks_for(cases: tuple[Case, ...]) -> None:
     kinds = Counter(case.kind for case in cases)
 
-    assert 40 <= len(cases) <= 50
+    assert 40 <= len(cases) <= 60
     assert kinds["clean"] >= 8
     assert all(kinds[k] >= 4 for k in ("security", "bug", "rule", "requirement", "scope"))
-    assert {case.project for case in cases} == {"go-api", "ts-shop", "cs-orders", "py-users"}
+    assert {case.project for case in cases} == {"go-api", "ts-shop", "cs-orders", "py-users", "py-mono"}
+
+
+def test_the_monorepo_cases_need_a_package_rule_or_a_linter_rule_id(
+    cases: tuple[Case, ...], contexts: dict[str, ReviewContext]
+) -> None:
+    mono = [case for case in cases if case.project == "py-mono"]
+    cited = {label.evidence for case in mono for label in case.findings}
+
+    assert {"packages/api/AGENTS.md:3", "packages/worker/AGENTS.md:3", "ruff:S608", "ruff:B006"} <= cited
+    assert any(case.kind == "clean" for case in mono)
+    # Only the package with changed files is read: the worker's rules stay out of an API change.
+    api = [rule.path for rule in contexts["py-mono-api-raises"].rules]
+    assert "packages/api/AGENTS.md" in api
+    assert "packages/worker/AGENTS.md" not in api
 
 
 def test_every_deterministic_label_is_found_without_a_model(
