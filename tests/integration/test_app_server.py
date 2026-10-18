@@ -392,3 +392,16 @@ def test_the_head_the_review_read_counts_as_reviewed_when_the_event_named_an_old
     server.settle()
 
     assert server.deliver(_event("synchronize")).json() == {"outcome": "duplicate"}
+
+
+def test_a_token_for_another_repository_than_the_job_s_is_not_used(
+    github: FakeGitHub, caplog: pytest.LogCaptureFixture
+) -> None:
+    github.granted_repository = "acme/other"
+    for server in _serve(github, _settings()):
+        server.deliver(_event())
+        server.settle()
+
+    assert [c for c in github.calls if c.path.startswith(f"/repos/{REPO}")] == []
+    assert github.comments == []
+    assert "the installation token GitHub returned is not for acme/app" in caplog.text

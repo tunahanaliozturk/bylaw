@@ -50,7 +50,10 @@ installation tokens. Each review mints a fresh token for **one repository** with
 `contents: read`, `issues: read`, `pull_requests: write` and `metadata: read`. Pull request write covers
 the review, the summary comment on the pull request and resolving threads; contents stay read only, so a
 token can never push code. A second token, for the owner's `.github` repository with `contents: read`
-only, reads the organisation's defaults. Tokens last an hour, are never stored and never logged.
+only, reads the organisation's defaults. GitHub's answer lists the repositories a token covers, and it
+must name exactly the job's repository (compared without case) before the token is used, so a mix-up
+between installations cannot send one repository's review through another's token. Tokens last an hour,
+are never stored and never logged.
 
 **Where the keys live.** The app's private key and webhook secret come from mounted files
 (`BYLAW_APP_PRIVATE_KEY_FILE`, `BYLAW_WEBHOOK_SECRET_FILE`), or from the environment where files are not
