@@ -1,22 +1,71 @@
 """The Markdown report README numbers are quoted from."""
 
-from bylaw.evaluation.score import Score
+from collections.abc import Sequence
+
+from bylaw.evaluation.cases import Case
+from bylaw.evaluation.run import CaseRun
+from bylaw.evaluation.score import Score, score
+
+_REAL = (
+    "Real pull requests, frozen at the commit a reviewer commented on (ADR 0015). Scored with the same",
+    "rules, never added to the planted numbers: labels say what a reviewer found and the author fixed, so",
+    "a false alarm here can be a problem nobody reported.",
+)
 
 
 def _percent(value: float | None) -> str:
     return "n/a" if value is None else f"{value:.0%}"
 
 
-def render(
-    score: Score, label: str, *, input_price: float | None = None, output_price: float | None = None
+def report(
+    cases: Sequence[Case],
+    runs: Sequence[CaseRun],
+    label: str,
+    *,
+    input_price: float | None = None,
+    output_price: float | None = None,
 ) -> str:
+    """Planted and real cases in separate sections; real ones with fewer than two labellers on their own."""
+
+    def section(part: Sequence[Case], level: str, kind: str) -> list[str]:
+        return _section(score(part, runs), level, kind, input_price=input_price, output_price=output_price)
+
+    planted = [c for c in cases if c.pull_request is None]
+    final = [c for c in cases if c.pull_request is not None and not c.provisional]
+    draft = [c for c in cases if c.provisional]
+    lines = [f"# Evaluation: {label}"]
+    if planted:
+        lines += ["", *section(planted, "##", "planted")]
+    if final:
+        lines += ["", "## Real pull requests", "", *_REAL, "", *section(final, "###", "labelled")]
+    if draft:
+        lines += [
+            "",
+            "## Real pull requests: provisional labels",
+            "",
+            *_REAL,
+            "",
+            f"{len(draft)} cases, labelled by fewer than two people (a model's first pass counts as nobody).",
+            "These numbers check the tooling, not the reviewer; quote none of them.",
+            "",
+            *section(draft, "###", "labelled"),
+        ]
+    return "\n".join(lines) + "\n"
+
+
+def _section(
+    score: Score,
+    level: str,
+    kind: str,
+    *,
+    input_price: float | None = None,
+    output_price: float | None = None,
+) -> list[str]:
     lines = [
-        f"# Evaluation: {label}",
-        "",
         f"{score.cases} cases. Matching rules: docs/eval/README.md.",
         "",
         "False alarms count findings on clean pull requests and outside the code a case adds; remarks on",
-        "planted code that are not the planted defect are listed separately, not counted.",
+        f"{kind} code that are not the {kind} defect are listed separately, not counted.",
         "",
         "| Category | Hits | False alarms | Misses | Precision | Recall |",
         "| --- | --- | --- | --- | --- | --- |",
@@ -33,7 +82,7 @@ def render(
         f"{score.clean_cases}.",
         f"- Model findings the validator dropped: {score.dropped} of {score.model_findings}.",
         f"- Duplicate findings: {score.duplicates}.",
-        f"- Other remarks on planted code, not scored: {score.ignored} ({score.ignored_inline} at medium "
+        f"- Other remarks on {kind} code, not scored: {score.ignored} ({score.ignored_inline} at medium "
         "or above).",
         f"- Rule findings citing the right rule line: {score.citations_correct} of {score.citations_total}.",
         f"- Acceptance criteria judged correctly: {score.criteria_correct} of {score.criteria_total}.",
@@ -60,5 +109,5 @@ def render(
         ("False alarms", score.false_alarms),
     ):
         if items:
-            lines += ["", f"## {title}", "", *(f"- {item}" for item in items)]
-    return "\n".join(lines) + "\n"
+            lines += ["", f"{level} {title}", "", *(f"- {item}" for item in items)]
+    return lines
