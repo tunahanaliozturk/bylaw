@@ -12,6 +12,6 @@
   "output_tokens": null,
   "error": null,
   "reviewer": "no-model",
-  "case_digest": "15aeb2f44123640ca7253acfdf32a9f54e91fd186e6ef37098578dfec50bb4e8",
+  "case_digest": "7d21a8ea760ff595a4b20a5e425cd0e2f60a63d9734d67179bc5205ecdf88d19",
   "dropped_findings": 0
 }
