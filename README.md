@@ -104,7 +104,7 @@ Optional `.bylaw.toml` at the repository root, always read from the base branch:
 severity_threshold = "medium"   # inline comments at or above this; the rest go in the summary
 max_comments = 15               # inline comments per run, 0 to 50
 spec_globs = ["docs/specs/**", "**/REQUIREMENTS.md"]
-adr_globs = ["docs/adr/**", "docs/decisions/**"]  # accepted ADRs here are decisions a change is held to
+adr_globs = ["docs/adr/**", "doc/adr/**", "docs/decisions/**"]  # accepted ADRs here are decisions a change is held to
 issue_repos = []                # other repositories whose issues may be quoted, e.g. ["acme/roadmap"]
 input_token_budget = 300000     # model input in tokens; the largest files are left out first
 incremental = true              # on a new push, send the model only the files whose change differs
@@ -119,7 +119,7 @@ projects = ["PROJ"]
 
 Rule files need no setting. bylaw reads them from the base branch: the ones at the root and, in a monorepo, the nearest `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md` and linter configuration above each changed file, plus every `.editorconfig` on the way up as EditorConfig itself does, so `packages/api/` is reviewed against its own rules and the root ones. From Ruff (following `extend`), ESLint (`.eslintrc.json` or `.eslintrc.yml`), golangci-lint and .NET analyzer settings it also reads which rule ids are on, and findings can cite them as `ruff:S608`. A cited id is dropped when the configuration turns it off, or does not turn it on and bylaw read all of it; an id that may come from an ESLint `extends` or a .NET analysis level is kept. ESLint configs written in JavaScript are never run; they stay text.
 
-ADRs are read from the base branch too, from `adr_globs`. bylaw keeps the accepted ones, whether the status is a `Status: Accepted` line, a `## Status` section (Nygard, adr-tools) or MADR front matter, and shows the reviewer only each one's title, status and decision section, newest first, about 4,000 tokens at most; the summary notes what was cut or left out. Superseded, deprecated, rejected and proposed ADRs are left out, and so is an ADR without a status or a Decision section. A finding may cite only a decision line the reviewer was shown.
+ADRs are read from the base branch too, from `adr_globs`, subdirectories included. bylaw keeps the accepted ones, whether the status is a `Status: Accepted` line, a `## Status` section (Nygard, adr-tools), a table row or MADR front matter, and shows the reviewer only each one's title, status and decision section, newest first, about 4,000 tokens at most; the summary notes what was cut or left out, and names any ADR it could not read. Superseded, deprecated, rejected and proposed ADRs are left out. An ADR under a package, such as `packages/api/docs/adr/`, applies only to that package. A finding may cite only a decision line the reviewer was shown.
 
 Requirements can also come from Jira, Azure Boards (`AB#123`) and Linear. Each is an opt-in with an allow list and a token in the environment; setup, and `quote_trackers = false` for private trackers, are in [docs/trackers.md](https://github.com/tunahanaliozturk/bylaw/blob/main/docs/trackers.md).
 
