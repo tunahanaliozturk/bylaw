@@ -301,3 +301,114 @@ def test_threads_carry_their_file(client: GitHubClient) -> None:
     (read,) = client.review_threads("octo/app", 5)
 
     assert read.path == "src/app.py"
+
+
+def _summary(comment_id: int, kind: str, login: str, association: str = "NONE") -> dict[str, object]:
+    return {
+        "id": comment_id,
+        "body": f"<!-- bylaw:summary --> {login}",
+        "user": {"type": kind, "login": login},
+        "author_association": association,
+    }
+
+
+@respx.mock
+def test_with_a_fixed_bot_login_only_that_bot_writes_the_summary() -> None:
+    comments = [
+        _summary(1, "Bot", "renovate[bot]"),
+        _summary(2, "User", "owner", "OWNER"),
+        _summary(3, "Bot", "bylaw-acme[bot]"),
+    ]
+    respx.get(url__startswith=f"{API}/repos/octo/app/issues/5/comments").mock(
+        return_value=httpx.Response(200, json=comments)
+    )
+
+    with GitHubClient("t", bot_login="bylaw-acme[bot]") as client:
+        summary = client.summary_comment("octo/app", 5)
+
+    assert summary is not None
+    assert (summary.id, summary.bot) == (3, True)
+
+
+@respx.mock
+def test_with_a_fixed_bot_login_a_summary_by_anyone_else_is_ignored() -> None:
+    comments = [_summary(1, "Bot", "renovate[bot]"), _summary(2, "User", "owner", "OWNER")]
+    respx.get(url__startswith=f"{API}/repos/octo/app/issues/5/comments").mock(
+        return_value=httpx.Response(200, json=comments)
+    )
+
+    with GitHubClient("t", bot_login="bylaw-acme[bot]") as client:
+        assert client.summary_comment("octo/app", 5) is None
+
+
+@respx.mock
+def test_with_a_fixed_bot_login_another_bot_s_thread_comment_is_not_trusted() -> None:
+    def thread(thread_id: str, kind: str, login: str, association: str) -> dict[str, object]:
+        comment = {
+            "body": "x",
+            "author": {"__typename": kind, "login": login},
+            "authorAssociation": association,
+        }
+        return {"id": thread_id, "isResolved": False, "comments": {"nodes": [comment]}}
+
+    # GraphQL names a bot without the [bot] suffix the REST API adds.
+    nodes = [
+        thread("T1", "Bot", "renovate", "NONE"),
+        thread("T2", "Bot", "bylaw-acme", "NONE"),
+        thread("T3", "User", "maintainer", "MEMBER"),
+    ]
+    respx.post(f"{API}/graphql").mock(return_value=httpx.Response(200, json=_threads_page(nodes, None)))
+
+    with GitHubClient("t", bot_login="bylaw-acme[bot]") as client:
+        threads = client.review_threads("octo/app", 5)
+
+    assert [t.comments[0].trusted for t in threads] == [False, True, True]
+
+
+@respx.mock
+def test_an_installation_token_is_scoped_to_the_repositories_and_permissions_asked_for() -> None:
+    route = respx.post(f"{API}/app/installations/7/access_tokens").mock(
+        return_value=httpx.Response(201, json={"token": "ghs_scoped", "expires_at": "2026-10-18T13:00:00Z"})
+    )
+
+    with GitHubClient("jwt") as client:
+        token = client.installation_token(7, ["app"], {"contents": "read"})
+
+    assert token == "ghs_scoped"  # noqa: S105 - a fake token
+    assert route.calls.last.request.headers["Authorization"] == "Bearer jwt"
+    assert json.loads(route.calls.last.request.content) == {
+        "repositories": ["app"],
+        "permissions": {"contents": "read"},
+    }
+
+
+@respx.mock
+def test_a_refused_installation_token_raises_with_its_status() -> None:
+    respx.post(f"{API}/app/installations/7/access_tokens").mock(
+        return_value=httpx.Response(422, json={"message": "not accessible to the installation"})
+    )
+
+    with GitHubClient("jwt") as client, pytest.raises(GitHubError) as raised:
+        client.installation_token(7, [".github"], {"contents": "read"})
+
+    assert raised.value.status == 422
+
+
+@respx.mock
+def test_the_app_login_is_its_slug_as_a_bot() -> None:
+    respx.get(f"{API}/app").mock(return_value=httpx.Response(200, json={"id": 1, "slug": "bylaw-acme"}))
+
+    with GitHubClient("jwt") as client:
+        assert client.app_login() == "bylaw-acme[bot]"
+
+
+@respx.mock
+def test_a_file_on_the_default_branch_is_read_without_a_ref() -> None:
+    route = respx.get(f"{API}/repos/acme/.github/contents/.bylaw.toml").mock(
+        return_value=httpx.Response(200, content=b"max_comments = 3\n")
+    )
+
+    with GitHubClient("t") as client:
+        assert client.file_text("acme/.github", ".bylaw.toml", None) == "max_comments = 3\n"
+
+    assert "ref" not in route.calls.last.request.url.params
