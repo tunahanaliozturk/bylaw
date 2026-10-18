@@ -18,6 +18,7 @@ from bylaw.evaluation.cases import Case, load_cases
 from bylaw.evaluation.report import render
 from bylaw.evaluation.run import AnswerReviewer, CaseRun, NoModel, prepare, run_all
 from bylaw.evaluation.score import score
+from bylaw.evaluation.snapshot import snapshot_pull_request
 from bylaw.github import GitHubClient, GitHubError, GitHubSource
 from bylaw.incremental import ModelRun, keep_valid, run_model_review, trusted_memory
 from bylaw.local_git import LocalGitSource
@@ -106,6 +107,14 @@ def _add_eval(evaluation: argparse.ArgumentParser) -> None:
     mark.add_argument("--input-price", type=float, help="USD per million input tokens")
     mark.add_argument("--output-price", type=float, help="USD per million output tokens")
     mark.add_argument("--output", help="write the report here instead of standard output")
+    freeze = steps.add_parser("snapshot", help="freeze a public pull request into a real case (reads GitHub)")
+    freeze.add_argument("--repo", required=True, help="owner/name of a permissively licensed project")
+    freeze.add_argument("--pr", type=int, required=True, help="pull request number")
+    freeze.add_argument(
+        "--comment", type=int, help="review comment id; the case is the commit it was made on"
+    )
+    freeze.add_argument("--id", required=True, help="case id, the directory under <set>/cases/")
+    freeze.add_argument("--set", default="eval/real", help="real set directory (default: eval/real)")
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -127,7 +136,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 _say(f"Left out of the review for size: {', '.join(left_out)}.")
             _write(f"{system_prompt()}\n---\n{text}", args.output)
         elif args.command == "eval":
-            return _eval(args)
+            return _snapshot(args) if args.eval_command == "snapshot" else _eval(args)
         else:
             _post(args)
     except (SourceError, GitHubError, ConfigError, OSError, ValueError, ReviewError) as error:
@@ -181,6 +190,20 @@ def _eval(args: argparse.Namespace) -> int:
         if len(runs) < len(cases):
             _say(f"stopped at the {args.max_cost} USD limit; {len(cases) - len(runs)} case(s) not started.")
         return 1 if failed else 0
+    return 0
+
+
+def _snapshot(args: argparse.Namespace) -> int:
+    root = Path(args.set)
+    token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
+    if not token:
+        # The token is read, never stored: it only lifts the rate limit on public reads.
+        _say('eval snapshot needs GITHUB_TOKEN or GH_TOKEN, for example GH_TOKEN="$(gh auth token)"')
+        return 2
+    api_url = os.environ.get("GITHUB_API_URL", "https://api.github.com")
+    with GitHubClient(token, api_url, os.environ.get("GITHUB_GRAPHQL_URL")) as client:
+        pull = snapshot_pull_request(client, args.repo, args.pr, args.comment, root / "cases" / args.id)
+    _say(f"froze {pull.url} at {pull.head_sha[:12]} into {root / 'cases' / args.id}; label it in case.toml")
     return 0
 
 

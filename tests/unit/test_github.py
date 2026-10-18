@@ -1,3 +1,4 @@
+import base64
 import json
 from collections.abc import Iterator
 
@@ -514,3 +515,64 @@ def test_a_maintainer_comment_behind_a_hundred_outsider_comments_is_still_read(c
     assert issue is not None
     assert issue.comments == ("AC-3 is out of scope.",)
     assert json.loads(route.calls[1].request.content)["variables"]["before"] == "c1"
+
+
+@respx.mock
+def test_a_comparison_gives_the_merge_base_commit_messages_and_files(client: GitHubClient) -> None:
+    respx.get(f"{API}/repos/octo/app/compare/b1...c2").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "merge_base_commit": {"sha": "m0"},
+                "commits": [{"commit": {"message": "First try"}}],
+                "files": [{"filename": "a.py", "status": "modified", "patch": "@@ -1 +1 @@\n-a\n+b"}],
+            },
+        )
+    )
+
+    comparison = client.compare("octo/app", "b1", "c2")
+
+    assert comparison.merge_base_commit.sha == "m0"
+    assert [c.commit.message for c in comparison.commits] == ["First try"]
+    assert [f.filename for f in comparison.files] == ["a.py"]
+
+
+@respx.mock
+def test_a_review_comment_is_read_with_the_commit_it_was_made_on(client: GitHubClient) -> None:
+    respx.get(f"{API}/repos/octo/app/pulls/comments/99").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "html_url": "https://github.com/octo/app/pull/5#discussion_r99",
+                "pull_request_url": f"{API}/repos/octo/app/pulls/5",
+                "path": "a.py",
+                "original_commit_id": "c2",
+                "original_line": 4,
+                "original_start_line": None,
+                "body": "This retries forever.",
+            },
+        )
+    )
+
+    comment = client.pull_comment("octo/app", 99)
+
+    assert (comment.original_commit_id, comment.path, comment.original_line) == ("c2", "a.py", 4)
+    assert comment.pull_request_url.endswith("/pulls/5")
+
+
+@respx.mock
+def test_the_licence_comes_with_its_spdx_id_file_name_and_text(client: GitHubClient) -> None:
+    text = "MIT License\n\nCopyright (c) Octo\n"
+    respx.get(f"{API}/repos/octo/app/license").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "path": "LICENSE.txt",
+                "encoding": "base64",
+                "content": base64.b64encode(text.encode()).decode(),
+                "license": {"spdx_id": "MIT"},
+            },
+        )
+    )
+
+    assert client.licence("octo/app") == ("MIT", "LICENSE.txt", text)

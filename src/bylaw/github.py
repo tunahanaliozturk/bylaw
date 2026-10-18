@@ -1,5 +1,6 @@
 """Reads a pull request through the GitHub REST and GraphQL APIs."""
 
+import base64
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from functools import cached_property
@@ -81,6 +82,36 @@ class _CommitDetail(_Model):
 
 class _Commit(_Model):
     commit: _CommitDetail
+
+
+class Comparison(_Model):
+    """Two commits as GitHub diffs them: from their merge base, the way a pull request shows a change."""
+
+    merge_base_commit: _Ref
+    commits: list[_Commit] = []
+    files: list[PullFile] = []
+
+
+class PullComment(_Model):
+    """An inline review comment, with the commit and line it was written on."""
+
+    html_url: str
+    pull_request_url: str
+    path: str
+    original_commit_id: str
+    original_line: int | None = None
+    original_start_line: int | None = None
+    body: str = ""
+
+
+class _LicenceName(_Model):
+    spdx_id: str | None = None
+
+
+class _Licence(_Model):
+    path: str
+    content: str
+    license: _LicenceName | None = None
 
 
 class _IssueResponse(_Model):
@@ -396,6 +427,18 @@ class GitHubClient:
             text = blob.get("text") if isinstance(blob, dict) else None
             texts[path] = text if isinstance(text, str) else None
         return texts
+
+    def compare(self, repo: str, base: str, head: str) -> Comparison:
+        return Comparison.model_validate(self._get(f"/repos/{repo}/compare/{base}...{head}").json())
+
+    def pull_comment(self, repo: str, comment_id: int) -> PullComment:
+        return PullComment.model_validate(self._get(f"/repos/{repo}/pulls/comments/{comment_id}").json())
+
+    def licence(self, repo: str) -> tuple[str | None, str, str]:
+        """The SPDX id GitHub detected, the licence file's name and its text."""
+        data = _Licence.model_validate(self._get(f"/repos/{repo}/license").json())
+        text = base64.b64decode(data.content).decode("utf-8", errors="replace")
+        return (data.license.spdx_id if data.license else None), data.path, text
 
     def tree_shas(self, repo: str, sha: str) -> dict[str, str] | None:
         """Every blob's id at a commit in one call; None when GitHub truncated the listing."""
@@ -752,8 +795,11 @@ class GitHubSource:
         )
 
     def changed_files(self) -> tuple[ChangedFile, ...]:
+        return self._changed(self._client.pull_files(self._repo, self._number))
+
+    def _changed(self, items: Sequence[PullFile]) -> tuple[ChangedFile, ...]:
         files: list[ChangedFile] = []
-        for item in self._client.pull_files(self._repo, self._number):
+        for item in items:
             added, missing = parse_patch(item.patch) if item.patch is not None else ((), False)
             omitted = item.patch is None
             changes: int | None = item.changes
