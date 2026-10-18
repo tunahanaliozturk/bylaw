@@ -99,15 +99,36 @@ class Config(BaseModel):
         return self
 
 
-def load_config(text: str | None) -> Config:
+_BASE = ".bylaw.toml on the base branch"
+_DEFAULTS = "The organisation's .bylaw.toml in its .github repository"
+
+
+def load_config(text: str | None, defaults: str | None = None) -> Config:
+    """The base branch's settings over the organisation's `defaults` (GitHub App, ADR 0017).
+
+    A key the repository sets wins. A table such as `[jira]` counts as one key and is replaced whole, so a
+    tracker site from one file never pairs with an allow list from the other.
+    """
+    org = _parse(defaults, _DEFAULTS)
+    if org:
+        _validate(org, _DEFAULTS)
+    return _validate({**org, **_parse(text, _BASE)}, _BASE)
+
+
+def _parse(text: str | None, where: str) -> dict[str, object]:
     if text is None:
-        return Config()
+        return {}
     try:
-        return Config.model_validate(tomllib.loads(text))
+        return tomllib.loads(text)
     except tomllib.TOMLDecodeError as error:
-        raise ConfigError(f".bylaw.toml on the base branch is invalid: {error}") from None
+        raise ConfigError(f"{where} is invalid: {error}") from None
+
+
+def _validate(data: dict[str, object], where: str) -> Config:
+    try:
+        return Config.model_validate(data)
     except ValidationError as error:
-        message = f".bylaw.toml on the base branch is invalid: {error}"
+        message = f"{where} is invalid: {error}"
         if any(problem["type"] == "extra_forbidden" for problem in error.errors(include_input=False)):
             # An unknown key may be a token put in the wrong place; its value is not shown, but it is public.
             message += (
