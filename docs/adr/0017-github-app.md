@@ -122,8 +122,10 @@ replaces it, even a redelivered older one, because the review reads the pull req
 starts, not the head the event named. The head the review read counts as reviewed, as does the one the
 event named, and a head already reviewed is not reviewed again. Nothing survives a restart: an event that arrives while the
 server is down, or waits in the queue when it stops, is picked up by the pull request's next push, or by
-redelivering it from the app's advanced settings. A durable queue can come later without changing the
-review.
+redelivering it from the app's advanced settings. On SIGTERM the server starts no new review and lets
+running ones finish; the container's stop timeout must be longer than a review, or the review is killed
+partway and the next run redoes it, finding the inline comments already posted by their fingerprints. A
+durable queue can come later without changing the review.
 
 ## Consequences
 
