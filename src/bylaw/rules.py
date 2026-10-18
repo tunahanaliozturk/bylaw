@@ -35,7 +35,8 @@ _JAVASCRIPT = (
 )
 
 LINTER_FILES: dict[str, tuple[str, ...]] = {
-    ".py": ("ruff.toml", ".ruff.toml", "pyproject.toml"),
+    # In Ruff's order of precedence within one directory.
+    ".py": (".ruff.toml", "ruff.toml", "pyproject.toml"),
     **dict.fromkeys((".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".vue"), _JAVASCRIPT),
     ".go": (".golangci.yml", ".golangci.yaml"),
     ".cs": (".globalconfig", "Directory.Build.props"),
@@ -53,6 +54,12 @@ _NESTED_RULE_NAMES = frozenset({*NESTED_PROSE, *(n for names in LINTER_FILES.val
 # Each directory costs one GitHub call when the base tree is too large to read at once.
 MAX_RULE_DIRECTORIES = 40
 _LISTED = 10
+
+
+def _groups(suffix: str) -> list[tuple[str, ...]]:
+    """Rule file names that compete, in precedence order: Ruff reads one configuration, the first it finds."""
+    names = LINTER_FILES.get(suffix, ())
+    return [names] if suffix == ".py" else [(name,) for name in names]
 
 
 class BaseReader(Protocol):
@@ -76,10 +83,11 @@ def collect_rules(
     ]
     live = [f.path for f in changed if f.status != "removed"]
     suffixes = sorted({PurePosixPath(path).suffix for path in live})
-    linter_paths = dict.fromkeys(path for suffix in suffixes for path in LINTER_FILES.get(suffix, ()))
-    for path in linter_paths:
-        if (text := _usable(path, base.read_base(path))) is not None:
-            sources.append(RuleSource(path=path, kind=RuleKind.LINTER, text=text))
+    for group in dict.fromkeys(group for suffix in suffixes for group in _groups(suffix)):
+        for path in group:
+            if (text := _usable(path, base.read_base(path))) is not None:
+                sources.append(RuleSource(path=path, kind=RuleKind.LINTER, text=text))
+                break
     for path in PROSE_FILES:
         text = base.read_base(path)
         if text is not None:
@@ -104,23 +112,18 @@ def collect_rules(
 
 
 def _nested(paths: Sequence[str], base: BaseReader) -> tuple[list[RuleSource], tuple[str, ...]]:
-    """For each changed file and each rule file name, the nearest directory above it that has one."""
+    """For each changed file and each rule file name, the nearest directory above it that has one.
+
+    Competing Ruff files count as one name: the nearest directory with any of them, its first by precedence.
+    """
     directories = sorted({d for path in paths for d in _ancestors(path)}, key=lambda d: (d.count("/"), d))
     listed = {d: base.list_base(d) for d in directories[:MAX_RULE_DIRECTORIES]}
     texts: dict[str, str | None] = {}
     found: dict[str, RuleSource] = {}
     for path in paths:
-        for name in (*NESTED_PROSE, *LINTER_FILES.get(PurePosixPath(path).suffix, ())):
-            for directory in _ancestors(path):
-                rule_path = f"{directory}/{name}"
-                if name not in listed.get(directory, frozenset()):
-                    continue
-                if rule_path not in texts:
-                    texts[rule_path] = _usable(name, base.read_base(rule_path))
-                if (text := texts[rule_path]) is not None:
-                    kind = RuleKind.PROSE if name in NESTED_PROSE else RuleKind.LINTER
-                    found[rule_path] = RuleSource(path=rule_path, kind=kind, text=text, directory=directory)
-                    break
+        for group in [(name,) for name in NESTED_PROSE] + _groups(PurePosixPath(path).suffix):
+            if (hit := _nearest(path, group, listed, texts, base)) is not None:
+                found[hit.path] = hit
     rules = sorted(found.values(), key=lambda r: (r.directory.count("/"), r.directory, r.path))
     if len(directories) <= MAX_RULE_DIRECTORIES:
         return rules, ()
@@ -133,6 +136,26 @@ def _nested(paths: Sequence[str], base: BaseReader) -> tuple[list[RuleSource], t
         f"hold changed files, the ones nearest the root; {shown} were not read."
     )
     return rules, (note,)
+
+
+def _nearest(
+    path: str,
+    group: tuple[str, ...],
+    listed: dict[str, frozenset[str]],
+    texts: dict[str, str | None],
+    base: BaseReader,
+) -> RuleSource | None:
+    for directory in _ancestors(path):
+        for name in group:
+            rule_path = f"{directory}/{name}"
+            if name not in listed.get(directory, frozenset()):
+                continue
+            if rule_path not in texts:
+                texts[rule_path] = _usable(name, base.read_base(rule_path))
+            if (text := texts[rule_path]) is not None:
+                kind = RuleKind.PROSE if name in NESTED_PROSE else RuleKind.LINTER
+                return RuleSource(path=rule_path, kind=kind, text=text, directory=directory)
+    return None
 
 
 def _usable(path: str, text: str | None) -> str | None:

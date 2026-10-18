@@ -117,13 +117,30 @@ def test_a_package_linter_config_is_read_for_the_languages_changed_under_it() ->
     )
 
     python, _ = collect_rules(_changed("packages/api/app.py"), source, [])
+    worker, _ = collect_rules(_changed("packages/worker/app.py"), source, [])
     docs, _ = collect_rules(_changed("packages/api/README.md"), source, [])
 
-    assert [(r.path, r.kind) for r in python] == [
-        ("packages/pyproject.toml", RuleKind.LINTER),
-        ("packages/api/ruff.toml", RuleKind.LINTER),
-    ]
+    # Ruff reads only the nearest configuration, so the farther pyproject.toml is left out for the API.
+    assert [(r.path, r.kind) for r in python] == [("packages/api/ruff.toml", RuleKind.LINTER)]
+    assert [r.path for r in worker] == ["packages/pyproject.toml"]
     assert docs == ()
+
+
+def test_ruff_configs_in_one_directory_follow_ruffs_precedence_and_the_losers_stay_out() -> None:
+    ruff = "[lint]\nselect = ['S']\n"
+    source = FakeSource(
+        base={
+            ".ruff.toml": ruff,
+            "ruff.toml": ruff,
+            "pyproject.toml": "[tool.ruff]\n",
+            "pkg/ruff.toml": ruff,
+            "pkg/pyproject.toml": "[tool.ruff]\n",
+        }
+    )
+
+    rules, _ = collect_rules(_changed("app.py", "pkg/app.py"), source, [])
+
+    assert [r.path for r in rules] == [".ruff.toml", "pkg/ruff.toml"]
 
 
 def test_only_directories_that_hold_changed_files_are_listed() -> None:
