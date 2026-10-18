@@ -37,7 +37,7 @@ class Job:
 
 class Outcome(StrEnum):
     QUEUED = "queued"
-    # A newer head replaced an older one that had not started yet.
+    # Another head replaced one that had not started yet; the review reads whatever the head is then.
     SUPERSEDED = "superseded"
     # This head is queued, under review or already reviewed.
     DUPLICATE = "duplicate"
@@ -48,7 +48,8 @@ class Outcome(StrEnum):
 class ReviewQueue:
     def __init__(
         self,
-        run: Callable[[Job], None],
+        # Reviews a job and returns the head commit it read, which may be newer than the job's.
+        run: Callable[[Job], str | None],
         *,
         workers: int = 2,
         max_pending: int = 100,
@@ -73,7 +74,8 @@ class ReviewQueue:
         if (queued := self._pending.get(key)) is not None:
             if queued.head_sha == job.head_sha:
                 return Outcome.DUPLICATE
-            # The review reads the pull request as it is when it starts, so the newest event is all it needs.
+            # The review reads the pull request as it is when it starts, so one waiting job is enough, even
+            # when a redelivered older event replaces a newer one: the head the review reads is remembered.
             self._pending[key] = job
             return Outcome.SUPERSEDED
         if len(self._pending) >= self._max_pending:
@@ -110,7 +112,7 @@ class ReviewQueue:
                 job = self._pending.pop(key)
                 self._running[key] = job
                 try:
-                    await asyncio.to_thread(self._run, job)
+                    read = await asyncio.to_thread(self._run, job)
                 except Exception as error:  # one failed review must not stop the worker
                     # Not remembered, so a redelivery of the same event retries it.
                     log.error(
@@ -122,7 +124,10 @@ class ReviewQueue:
                         flat(str(error)),
                     )
                 else:
+                    # The head the review read is reviewed too, whatever older head the event named.
                     self._remember((key, job.head_sha))
+                    if read is not None:
+                        self._remember((key, read))
                 finally:
                     del self._running[key]
                     if key in self._pending:

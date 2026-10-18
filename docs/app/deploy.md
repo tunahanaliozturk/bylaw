@@ -170,8 +170,10 @@ and they are never written to the log.
 - The log has one line per delivery (queued, duplicate, superseded or busy) and the review's notes, with
   pull request text flattened to one line. A failed review is logged with its reason; configuration
   errors land here too, since the app has no failing check run to show them.
-- Deliveries are answered within milliseconds and reviewed in the background. A head already reviewed or
-  waiting is not reviewed again, and a newer push replaces an older one still waiting.
+- Deliveries are answered within milliseconds and reviewed in the background. A pull request has at most
+  one review waiting, and the review reads the pull request as it is when it starts, so a burst of
+  pushes costs one review of the latest head. The head it read counts as reviewed: a delivery for a head
+  already reviewed or waiting does nothing.
 - The queue lives in memory. After a restart, a missed or lost review runs on the pull request's next
   push, or redeliver the event from the app's **Advanced** settings, which also retries a review that
   failed.
