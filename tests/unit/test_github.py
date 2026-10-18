@@ -561,9 +561,9 @@ def test_a_review_comment_is_read_with_the_commit_it_was_made_on(client: GitHubC
 
 
 @respx.mock
-def test_the_licence_comes_with_its_spdx_id_file_name_and_text(client: GitHubClient) -> None:
+def test_the_licence_is_read_at_a_commit_with_its_spdx_id_file_name_and_text(client: GitHubClient) -> None:
     text = "MIT License\n\nCopyright (c) Octo\n"
-    respx.get(f"{API}/repos/octo/app/license").mock(
+    respx.get(f"{API}/repos/octo/app/license", params={"ref": "m0"}).mock(
         return_value=httpx.Response(
             200,
             json={
@@ -575,4 +575,4 @@ def test_the_licence_comes_with_its_spdx_id_file_name_and_text(client: GitHubCli
         )
     )
 
-    assert client.licence("octo/app") == ("MIT", "LICENSE.txt", text)
+    assert client.licence("octo/app", "m0") == ("MIT", "LICENSE.txt", text)

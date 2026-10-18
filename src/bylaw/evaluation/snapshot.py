@@ -139,21 +139,27 @@ def snapshot_pull_request(
             lines=(comment.original_start_line or line, line),
             body=comment.body,
         )
-    spdx, name, text = client.licence(repo)
+    source = PullRequestAt(client, repo, number, commit)
+    # The licence of the commit the files are copied from: a project can relicense later.
+    spdx, name, text = client.licence(repo, source.info().base_sha)
     if spdx not in LICENCES:
         raise ValueError(
-            f"{repo} is licensed {spdx or 'unknown'}; only {', '.join(sorted(LICENCES))} may be copied"
+            f"{repo} is licensed {spdx or 'unknown'} at the base commit; only "
+            f"{', '.join(sorted(LICENCES))} may be copied"
         )
-    source = PullRequestAt(client, repo, number, commit)
-    # Apache-2.0 asks that a NOTICE file travel with copies of the work.
-    notice = source.read_base("NOTICE") if spdx == "Apache-2.0" else None
+    # Apache-2.0 asks that NOTICE files travel with copies of the work; they cost nothing elsewhere.
+    notices = {
+        n: t
+        for n in sorted(source.list_base(""))
+        if n.upper().startswith("NOTICE") and (t := source.read_base(n)) is not None
+    }
     return freeze(
         source,
         out,
         url=f"https://github.com/{repo}/pull/{number}",
         number=number,
         licence=(spdx, name, text),
-        notice=notice,
+        notices=notices,
         evidence=evidence,
     )
 
@@ -165,7 +171,7 @@ def freeze(  # noqa: PLR0913 - what GitHub said about the pull request, all keyw
     url: str,
     number: int,
     licence: tuple[str, str, str],
-    notice: str | None = None,
+    notices: dict[str, str] | None = None,
     evidence: ReviewEvidence | None = None,
 ) -> Snapshot:
     """Write the case directory: what bylaw reads at the base and the head, the issues, the licence."""
@@ -181,6 +187,7 @@ def freeze(  # noqa: PLR0913 - what GitHub said about the pull request, all keyw
     base = {path: text for path, text in recorder.base.items() if text is not None}
     head = {path: text for path, text in recorder.head.items() if text is not None and path in touched}
     _check_texts(files, base, head)
+    _check_file_licences(files, base, head, licence[0])
     # A spec read at the head that the change does not touch is the same at the base.
     base |= {p: t for p, t in recorder.head.items() if t is not None and p not in touched}
     spdx, licence_name, licence_text = licence
@@ -214,7 +221,7 @@ def freeze(  # noqa: PLR0913 - what GitHub said about the pull request, all keyw
         left_out=left_out,
         evidence=evidence,
     )
-    upstream = {licence_name: licence_text} | ({"NOTICE": notice} if notice is not None else {})
+    upstream = {licence_name: licence_text} | (notices or {})
     written = {"base": base, "head": head, ".": upstream}
     for contents in written.values():
         for path in contents:
@@ -257,6 +264,25 @@ def _check_changes(recorder: _Recorder, files: list[ChangedFile]) -> list[str]:
         if file.status != "removed" and recorder.read_head(file.path) is None:
             raise ValueError(f"{file.path} is missing at the reviewed commit")
     return remove
+
+
+_SPDX = re.compile(r"SPDX-License-Identifier:\s*([^\s*/]+)")
+_COPYLEFT = re.compile(
+    r"GNU\s+(Lesser\s+|Library\s+|Affero\s+)?General\s+Public|Mozilla\s+Public\s+Licen[cs]e", re.I
+)
+_HEADER_LINES = 50
+
+
+def _check_file_licences(
+    files: list[ChangedFile], base: dict[str, str], head: dict[str, str], spdx: str
+) -> None:
+    """A permissive project can still vendor a file under another licence; its header says so."""
+    for path in {f.path for f in files} | {f.previous_path for f in files if f.previous_path}:
+        for side in (base.get(path), head.get(path)):
+            header = "\n".join((side or "").splitlines()[:_HEADER_LINES])
+            named = _SPDX.search(header)
+            if (named and named[1] != spdx) or _COPYLEFT.search(header):
+                raise ValueError(f"{path} carries its own licence, not {spdx}; it cannot be copied")
 
 
 def _check_texts(files: list[ChangedFile], base: dict[str, str], head: dict[str, str]) -> None:

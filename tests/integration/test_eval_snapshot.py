@@ -79,7 +79,8 @@ def github() -> Iterator[respx.MockRouter]:
         )
         router.post(f"{API}/graphql").mock(side_effect=_graphql)
         licence = base64.b64encode(b"MIT License\n\nCopyright (c) Octo\n").decode()
-        router.get(f"{API}/repos/octo/app/license").respond(
+        # The licence of the copied commit, not of today's default branch.
+        router.get(f"{API}/repos/octo/app/license", params={"ref": "m0"}).respond(
             json={"path": "LICENSE", "content": licence, "license": {"spdx_id": "MIT"}}
         )
         yield router
@@ -138,8 +139,48 @@ def test_without_a_comment_the_snapshot_is_the_merged_head(github: respx.MockRou
     assert (pull.head_sha, pull.evidence) == ("h9", None)
 
 
+def test_notice_files_travel_with_the_snapshot(github: respx.MockRouter, tmp_path: Path) -> None:
+    tree = [{"path": p, "type": "blob", "sha": "x"} for p in ("retry.py", "NOTICE.txt", "docs/NOTICE")]
+    github.get(url__startswith=f"{API}/repos/octo/app/git/trees/m0").respond(json={"tree": tree})
+    FILES[("NOTICE.txt", "m0")] = "Octo App\nCopyright Octo\n"
+    try:
+        _snapshot(tmp_path)
+    finally:
+        del FILES[("NOTICE.txt", "m0")]
+
+    case = tmp_path / "cases/octo-app-7"
+    assert (case / "NOTICE.txt").read_bytes() == b"Octo App\nCopyright Octo\n"
+    assert not (case / "base/NOTICE.txt").exists()
+
+
+@pytest.mark.parametrize(
+    "header",
+    [
+        "// SPDX-License-Identifier: GPL-2.0-only\n",
+        "# This file is part of Foo, under the GNU General Public License v3.\n",
+        "/* Subject to the terms of the Mozilla Public License, v. 2.0. */\n",
+        "// Licensed under the GNU Lesser General Public License.\n",
+    ],
+)
+def test_a_touched_file_under_another_licence_is_refused(tmp_path: Path, header: str) -> None:
+    with pytest.raises(ValueError, match="licence"):
+        freeze(_added("a.py", header + "x = 1\n"), tmp_path / "cases/c", url="u", number=1, licence=MIT)
+
+
+def test_a_file_that_names_the_projects_own_licence_is_kept(tmp_path: Path) -> None:
+    freeze(
+        _added("a.ts", "// SPDX-License-Identifier: MIT\nx\n"),
+        tmp_path / "cases/c",
+        url="u",
+        number=1,
+        licence=MIT,
+    )
+
+    assert (tmp_path / "cases/c/head/a.ts").is_file()
+
+
 def test_a_project_without_a_permissive_licence_is_refused(github: respx.MockRouter, tmp_path: Path) -> None:
-    github.get(f"{API}/repos/octo/app/license").respond(
+    github.get(f"{API}/repos/octo/app/license", params={"ref": "m0"}).respond(
         json={"path": "COPYING", "content": "", "license": {"spdx_id": "GPL-3.0"}}
     )
 
