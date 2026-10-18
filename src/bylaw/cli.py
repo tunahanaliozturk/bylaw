@@ -85,6 +85,9 @@ def _parser() -> argparse.ArgumentParser:
         help="a directory whose repositories local reviews may read; repeat for more (default: the "
         "working directory)",
     )
+    serve.add_argument(
+        "--allow-post", action="store_true", help="also offer the post tool, which publishes to pull requests"
+    )
     return parser
 
 
@@ -223,7 +226,7 @@ def _mcp(args: argparse.Namespace) -> int:
         _say('bylaw mcp needs the mcp extra: uvx --from "bylaw[mcp]" bylaw mcp')
         return 2
     roots = [Path(root) for root in args.root] if args.root else [Path.cwd()]
-    make_server(roots).run("stdio")
+    make_server(roots, allow_post=args.allow_post).run("stdio")
     return 0
 
 

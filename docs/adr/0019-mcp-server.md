@@ -51,6 +51,15 @@ people see. And tool results go into the agent's context window, which is the sc
 - **Arguments are checked where they enter.** A `repo` must look like a GitHub `owner/name` before it goes
   into an API path. A `base` that starts with `-` is refused in `LocalGitSource` itself, so neither the
   server nor the CLI can pass git an option where it expects a ref.
+- **Posting is a start-up choice.** `bylaw mcp --allow-post` adds a `post` tool; without the flag the
+  tool is not registered at all, so it is neither listed nor callable, and an agent reading a pull request
+  that asks it to post cannot. The choice belongs to the person who starts the server, not to the agent
+  or the pull request, so it is a flag and not a tool argument. `post` takes `repo`, `pr` and the result,
+  validates it against the kept context, reads `.bylaw.toml` from the base branch again, as `bylaw post`
+  does, and publishes through the same code. It is marked not read-only, not destructive (it adds
+  comments and edits or resolves only bylaw's own) and idempotent (a rerun repeats nothing), so clients
+  that ask before a writing tool will ask. With posting on, the server's instructions add that the agent
+  posts only when the user asks.
 - **No secrets in results.** The GitHub token comes from the server's environment (`GITHUB_TOKEN` or
   `GH_TOKEN`), never from an argument. bylaw's own errors become tool errors with their message, and
   those messages never carry the token (a test sets a sentinel token and checks a failed call); anything
@@ -81,6 +90,11 @@ people see. And tool results go into the agent's context window, which is the sc
 - **MCP roots instead of `--root`.** The protocol lets a client tell the server which directories it may
   use. Lost for now because client support varies and the policy would then belong to whatever client
   connects, not to the user who started the server. It would win once every client sends roots.
+- **An environment variable to allow posting.** Lost because a flag shows in the client's configuration
+  next to the command, where a reader sees it, while a variable can be inherited from a shell without
+  anyone noticing. One switch is enough.
+- **Always list `post` and refuse it unless allowed.** Lost because an agent that sees a tool tends to try
+  it, and a refusal at call time is one more thing a hostile pull request can ask for.
 - **The low-level `Server` API.** Lost because `MCPServer` already turns typed functions into tool
   schemas, annotations and structured output, and bylaw has nothing to tune below that.
 - **Streamable HTTP.** Lost because a local reviewer needs no network listener, and stdio needs no port,

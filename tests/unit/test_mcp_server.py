@@ -109,4 +109,3 @@ def test_a_github_failure_is_reported_without_the_token(
 def test_a_root_that_is_not_a_directory_is_refused_at_start(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="not a directory"):
         make_server([tmp_path / "missing"])
-

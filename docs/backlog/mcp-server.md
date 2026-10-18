@@ -9,7 +9,7 @@ Let any agent that speaks MCP ask for a bylaw review.
 ## Items
 
 - [x] **MCP-1** (M) `bylaw mcp` stdio server with the read-only tools. Done when: client fake tests.
-- [ ] **MCP-2** (S) Post tool behind an explicit setting. Done when: test.
+- [x] **MCP-2** (S) Post tool behind an explicit setting. Done when: test.
 - [ ] **MCP-3** (S) Setup docs for common MCP clients. Done when: docs page.
 
 ## Notes
