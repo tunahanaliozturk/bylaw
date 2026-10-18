@@ -12,7 +12,7 @@ Read which rules a team's linters enforce, so findings cite a rule id (`ruff:S60
 - [x] **LNT-2** (M) ESLint JSON and YAML configs; flat configs in JavaScript stay prose. Done when: rules listed for JSON and YAML.
 - [x] **LNT-3** (S) golangci-lint: enabled linters from `.golangci.yml`. Done when: parsed list.
 - [x] **LNT-4** (M) .NET analyzers: `dotnet_diagnostic` severities in `.editorconfig` and the analysis level. Done when: parsed list.
-- [ ] **LNT-5** (M) Findings cite `<tool>:<rule id>`; validation drops ids the configuration does not enable. Done when: validate tests.
+- [x] **LNT-5** (M) Findings cite `<tool>:<rule id>`; validation drops ids the configuration does not enable. Done when: validate tests.
 - [ ] **LNT-6** (S) Evaluation cases that need a rule id citation. Done when: cases in the set.
 
 ## Notes

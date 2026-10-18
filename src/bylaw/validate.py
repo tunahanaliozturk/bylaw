@@ -3,6 +3,7 @@
 import re
 from dataclasses import dataclass
 
+from bylaw import linters
 from bylaw.model import Category, CriterionResult, Finding, Location, ReviewContext, ReviewResult, ScopeCreep
 
 _NEEDS_EVIDENCE = frozenset({Category.RULE, Category.REQUIREMENT})
@@ -113,6 +114,9 @@ class _Checker:
     def _evidence_problem(self, evidence: str, file: str) -> str | None:
         if evidence in self.criteria:
             return None
+        tool, separator, rule_id = evidence.partition(":")
+        if separator and tool in linters.TOOLS and rule_id and not rule_id.isdigit():
+            return self._rule_id_problem(evidence, tool, linters.normalise(tool, rule_id), file)
         path, separator, line = evidence.rpartition(":")
         rule = self._rules.get(path)
         if (
@@ -126,3 +130,24 @@ class _Checker:
             # A package's rules are its own (ADR 0013): another package may well require the opposite.
             return f"evidence {evidence} is a rule of {rule.directory}, not of this file"
         return None
+
+    def _rule_id_problem(self, evidence: str, tool: str, rule_id: str, file: str) -> str | None:
+        """A `<tool>:<id>` citation must name an id the configuration that covers the file turns on."""
+        covering = [
+            (rule.path, rule.directory, rule.linter)
+            for rule in self._rules.values()
+            if rule.linter is not None
+            and rule.linter.tool == tool
+            and (not rule.directory or file.startswith(f"{rule.directory}/"))
+        ]
+        if not covering:
+            return f"evidence {evidence} cites no {tool} configuration bylaw read"
+        # Nearest first. The first configuration that says anything about the id decides; for Ruff, which
+        # reads only the nearest one, that is always the nearest.
+        covering.sort(key=lambda entry: entry[1].count("/") + 1 if entry[1] else 0, reverse=True)
+        for path, directory, rules in covering:
+            relative = file.removeprefix(f"{directory}/") if directory else file
+            decision = linters.enables(rules, rule_id, relative)
+            if decision is not None:
+                return None if decision else f"evidence {evidence} is not enabled for this file by {path}"
+        return f"evidence {evidence} is not enabled for this file by {covering[0][0]}"

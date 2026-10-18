@@ -4,6 +4,7 @@ from bylaw.model import (
     ChangedFile,
     Criterion,
     Finding,
+    LinterRules,
     Requirement,
     ReviewContext,
     RuleKind,
@@ -133,6 +134,27 @@ def test_rules_of_a_repository_without_packages_are_not_grouped() -> None:
     text, _ = render_input(CONTEXT, nonce="feedc0de")
 
     assert "Rules for" not in text
+
+
+def test_a_linter_config_is_followed_by_the_rule_ids_a_finding_may_cite() -> None:
+    ruff = RuleSource(
+        path="ruff.toml",
+        kind=RuleKind.LINTER,
+        text="[lint]\nselect = ['S']\n",
+        linter=LinterRules(tool="ruff", select=("S",)),
+    )
+    context = CONTEXT.model_copy(update={"rules": (ruff,)})
+
+    text, _ = render_input(context, nonce="feedc0de")
+
+    assert (
+        "   2| select = ['S']\nRule ids a finding may cite as evidence, written ruff:<id>:\n- enabled: S"
+        in text
+    )
+
+
+def test_the_system_prompt_explains_how_to_cite_a_linter_rule_id() -> None:
+    assert "ruff:S608" in system_prompt()
 
 
 def test_the_system_prompt_explains_which_rules_apply_to_a_file() -> None:

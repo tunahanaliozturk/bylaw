@@ -4,6 +4,7 @@ import secrets
 from importlib.resources import files
 
 from bylaw.diff import numbered_patch
+from bylaw.linters import describe
 from bylaw.model import ChangedFile, Finding, Requirement, ReviewContext, RuleSource
 
 # ponytail: the budget is in tokens (`input_token_budget`), estimated at 3 characters per token. Code
@@ -107,7 +108,8 @@ def _rules(context: ReviewContext) -> str:
 
 def _rule(rule: RuleSource) -> str:
     lines = "\n".join(f"{n:>4}| {line}" for n, line in enumerate(rule.text.splitlines(), start=1))
-    return f"{rule.path} ({rule.kind}):\n{lines}"
+    ids = f"\n{describe(rule.linter)}" if rule.linter is not None else ""
+    return f"{rule.path} ({rule.kind}):\n{lines}{ids}"
 
 
 def _requirement(requirement: Requirement) -> str:

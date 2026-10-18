@@ -5,7 +5,9 @@ from bylaw.model import (
     Criterion,
     CriterionResult,
     CriterionStatus,
+    FileRules,
     Finding,
+    LinterRules,
     Location,
     Requirement,
     ReviewContext,
@@ -281,3 +283,89 @@ def test_a_finding_that_cites_another_packages_rule_is_dropped() -> None:
         "packages/api/app.py:3 rule: evidence packages/worker/AGENTS.md:1 is a rule of packages/worker, "
         "not of this file",
     )
+
+
+def _linted(*rules: RuleSource) -> ReviewContext:
+    files = ("app.py", "packages/api/db.py", "packages/api/tests/test_db.py", "packages/web/app.ts")
+    return CONTEXT.model_copy(
+        update={
+            "files": tuple(
+                ChangedFile(path=path, status="modified", added_lines=(AddedLine(number=3, text="x"),))
+                for path in files
+            ),
+            "rules": rules,
+        }
+    )
+
+
+ROOT_RUFF = RuleSource(
+    path="ruff.toml", kind=RuleKind.LINTER, text="", linter=LinterRules(tool="ruff", select=("E",))
+)
+API_RUFF = RuleSource(
+    path="packages/api/ruff.toml",
+    kind=RuleKind.LINTER,
+    text="",
+    directory="packages/api",
+    linter=LinterRules(
+        tool="ruff", select=("S",), per_file=(FileRules(pattern="tests/**", ignore=("S101",)),)
+    ),
+)
+
+
+def _cites(context: ReviewContext, file: str, evidence: str) -> tuple[str, ...]:
+    return validate(context, ReviewResult(findings=(_finding(file, evidence=evidence),))).dropped
+
+
+def test_a_finding_may_cite_a_rule_id_its_linter_configuration_enables() -> None:
+    context = _linted(ROOT_RUFF, API_RUFF)
+
+    assert _cites(context, "packages/api/db.py", "ruff:S608") == ()
+    assert _cites(context, "packages/api/db.py", "ruff:s608") == ()
+    assert _cites(context, "app.py", "ruff:E711") == ()
+
+
+def test_a_cited_rule_id_the_configuration_does_not_enable_is_dropped() -> None:
+    dropped = _cites(_linted(ROOT_RUFF, API_RUFF), "app.py", "ruff:S608")
+
+    assert dropped == ("app.py:3 security: evidence ruff:S608 is not enabled for this file by ruff.toml",)
+
+
+def test_the_nearest_ruff_configuration_alone_decides() -> None:
+    dropped = _cites(_linted(ROOT_RUFF, API_RUFF), "packages/api/db.py", "ruff:E711")
+
+    assert dropped == (
+        "packages/api/db.py:3 security: evidence ruff:E711 is not enabled for this file by "
+        "packages/api/ruff.toml",
+    )
+
+
+def test_a_rule_id_switched_off_for_the_file_is_dropped() -> None:
+    assert _cites(_linted(API_RUFF), "packages/api/tests/test_db.py", "ruff:S101") != ()
+    assert _cites(_linted(API_RUFF), "packages/api/db.py", "ruff:S101") == ()
+
+
+def test_a_rule_id_of_a_linter_with_no_configuration_for_the_file_is_dropped() -> None:
+    dropped = _cites(_linted(API_RUFF), "app.py", "ruff:S608")
+
+    assert dropped == ("app.py:3 security: evidence ruff:S608 cites no ruff configuration bylaw read",)
+
+
+def test_an_eslint_package_config_that_is_silent_on_a_rule_leaves_it_to_the_root_config() -> None:
+    root = RuleSource(
+        path=".eslintrc.json",
+        kind=RuleKind.LINTER,
+        text="",
+        linter=LinterRules(tool="eslint", select=("eqeqeq",), ignore=("no-alert",)),
+    )
+    web = RuleSource(
+        path="packages/web/.eslintrc.yml",
+        kind=RuleKind.LINTER,
+        text="",
+        directory="packages/web",
+        linter=LinterRules(tool="eslint", select=("no-alert",)),
+    )
+    context = _linted(root, web)
+
+    assert _cites(context, "packages/web/app.ts", "eslint:eqeqeq") == ()
+    assert _cites(context, "packages/web/app.ts", "eslint:no-alert") == ()
+    assert _cites(context, "packages/web/app.ts", "eslint:no-console") != ()
