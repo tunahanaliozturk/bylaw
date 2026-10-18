@@ -1,0 +1,28 @@
+# bylaw on GitLab merge requests. Add this job to your .gitlab-ci.yml.
+#
+# Two CI/CD variables (Settings > CI/CD > Variables), both masked:
+#
+#   GITLAB_TOKEN       A project access token with the Developer role and the `api` scope. bylaw reads
+#                      the merge request, posts as the token's bot user, and trusts its review memory only
+#                      in notes that user wrote. CI_JOB_TOKEN will not do: it can read a merge request but
+#                      not its diff, and it cannot post a note.
+#                      Leave "Protect variable" off. Merge request pipelines run on the source branch,
+#                      which is usually unprotected, and a protected variable never reaches them.
+#   ANTHROPIC_API_KEY  Optional. Without it bylaw still runs its own checks; with it a model reviews too.
+#
+# Merge requests from forks run their pipeline in the fork, without these variables, so bylaw prints a
+# note and exits cleanly. Read "Merge requests from forks" in docs/hosts.md before you run a fork's
+# pipeline in this project: that pipeline gets the token, and its job definition comes from the fork.
+bylaw:
+  stage: test
+  image: ghcr.io/astral-sh/uv:python3.13-bookworm-slim
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  # A newer push makes this run pointless, and GitLab can cancel it when the project allows that.
+  interruptible: true
+  variables:
+    # The first release with GitLab support; pin it so an update is a change you review.
+    BYLAW_VERSION: "0.6.0"
+  script:
+    # Add --fail-on high to fail the pipeline while a high or critical finding is open.
+    - uvx "bylaw@${BYLAW_VERSION}" review --gitlab-mr "$CI_MERGE_REQUEST_IID" --project "$CI_MERGE_REQUEST_PROJECT_ID" --post
