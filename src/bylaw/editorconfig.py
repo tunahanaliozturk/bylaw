@@ -121,9 +121,16 @@ def _directories(path: str) -> list[str]:
     return ["" if str(parent) == "." else str(parent) for parent in PurePosixPath(path).parents]
 
 
-def _parse(path: str, directory: str, text: str) -> _File:
-    root = False
-    raw: list[tuple[str, list[tuple[str, str, int]]]] = []
+type _Properties = list[tuple[str, str, int]]
+
+
+def read_sections(text: str) -> tuple[_Properties, list[tuple[str, _Properties]]]:
+    """The properties before the first section, then each section's glob and properties, keys lowercased.
+
+    Each property is (key, value, line). Shared with the .NET analyzer settings, which use the same format.
+    """
+    preamble: _Properties = []
+    raw: list[tuple[str, _Properties]] = []
     # Visual Studio saves .editorconfig with a byte order mark, which would hide the first line.
     for number, line in enumerate(text.removeprefix("﻿").splitlines(), start=1):
         stripped = line.strip()
@@ -138,10 +145,19 @@ def _parse(path: str, directory: str, text: str) -> _File:
         key, value = key.strip().lower(), value.strip()
         if key in _KNOWN:
             value = value.lower()
-        if raw:
-            raw[-1][1].append((key, value, number))
-        elif key == "root":
-            root = value == "true"
+        (raw[-1][1] if raw else preamble).append((key, value, number))
+    return preamble, raw
+
+
+def glob_matches(glob: str, relative_path: str) -> bool:
+    """Whether an .editorconfig style glob matches a path relative to the directory the glob belongs to."""
+    section = _Section.from_glob(glob, ())
+    return section is not None and section.matches(relative_path)
+
+
+def _parse(path: str, directory: str, text: str) -> _File:
+    preamble, raw = read_sections(text)
+    root = any(key == "root" and value == "true" for key, value, _ in preamble)
     built = [(glob, _Section.from_glob(glob, tuple(properties))) for glob, properties in raw]
     sections = tuple(section for _, section in built if section is not None)
     invalid = tuple(glob for glob, section in built if section is None)

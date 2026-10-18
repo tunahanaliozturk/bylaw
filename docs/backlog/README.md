@@ -12,7 +12,7 @@ One file per roadmap feature. Each item has an id, a size and what "done" means,
 | [Incremental review](incremental-review.md) | Q1 | v0.2 | 7 | 7 |
 | [Spending limits](budget.md) | Q1 | v0.2 | 5 | 4 |
 | [Hardening: known gaps from reviews](hardening.md) | Q1, then ongoing | patch releases | 36 | 35 |
-| [Linter configuration as structured rules](linter-rules.md) | Q2 | v0.3 | 6 | 0 |
+| [Linter configuration as structured rules](linter-rules.md) | Q2 | v0.3 | 6 | 4 |
 | [Nested instructions in monorepos](nested-instructions.md) | Q2 | v0.3 | 4 | 3 |
 | [ADR conformance](adr-conformance.md) | Q2 | v0.4 | 4 | 0 |
 | [Jira, Linear and Azure DevOps as requirement sources](tracker-sources.md) | Q2 | v0.4 | 6 | 0 |

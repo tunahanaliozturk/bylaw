@@ -4,6 +4,7 @@ from collections.abc import Sequence
 from pathlib import PurePosixPath
 from typing import Protocol
 
+from bylaw import linters
 from bylaw.model import ChangedFile, RuleKind, RuleSource
 
 PROSE_FILES = (
@@ -84,7 +85,18 @@ def collect_rules(
         if text is not None:
             sources.append(RuleSource(path=path, kind=RuleKind.PROSE, text=text))
     nested, notes = _nested(live, base)
-    return (*sources, *nested), notes
+    read: list[RuleSource] = []
+    problems: list[str] = []
+    for rule in (*sources, *nested):
+        if rule.kind == RuleKind.PROSE:
+            read.append(rule)
+            continue
+        try:
+            read.append(rule.model_copy(update={"linter": linters.parse(rule.path, rule.text)}))
+        except ValueError as error:
+            read.append(rule)
+            problems.append(f"{rule.path}: {error}; a finding cannot cite its rule ids.")
+    return tuple(read), (*notes, *problems)
 
 
 def _nested(paths: Sequence[str], base: BaseReader) -> tuple[list[RuleSource], tuple[str, ...]]:
