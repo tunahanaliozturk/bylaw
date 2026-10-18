@@ -14,7 +14,7 @@ from bylaw.model import ReviewResult
 
 class OpenAIReviewer:
     def __init__(
-        self, *, client: openai.OpenAI, model: str, effort: str | None, service: str = "OpenAI API"
+        self, *, client: openai.OpenAI, model: str, effort: str | None, service: str = "the OpenAI API"
     ) -> None:
         self._client = client
         self._model = model
@@ -47,7 +47,7 @@ class OpenAIReviewer:
                 f"{self._service} returned {error.status_code} ({error.code or 'unknown error'})"
             ) from error
         except openai.APIConnectionError as error:
-            raise ReviewError(f"could not reach the {self._service}") from error
+            raise ReviewError(f"could not reach {self._service}") from error
         except ValidationError as error:
             # A truncated answer is not valid JSON; the SDK validates it before returning.
             raise ReviewError("the model returned output that is not a valid review") from error

@@ -2,14 +2,18 @@
 
 import json
 from collections.abc import Callable, Iterator
+from pathlib import Path
 
+import anthropic
 import httpx2
 import openai
 import pytest
 
+from bylaw import engine_anthropic
 from bylaw.engine import ReviewError, Usage, can_review, make_reviewer
+from bylaw.engine_anthropic import AnthropicReviewer
 from bylaw.engine_openai import ChatReviewer
-from tests.unit.test_engine import REVIEW, SECRET
+from tests.unit.test_engine import REVIEW, SECRET, _message, _streamed
 
 Handler = Callable[[httpx2.Request], httpx2.Response]
 LOCAL = "http://localhost:11434/v1"
@@ -228,3 +232,124 @@ def test_the_effort_goes_to_a_local_server_as_reasoning_effort() -> None:
 def test_a_local_server_needs_no_key_to_review() -> None:
     assert can_review("openai-compatible")
     assert not can_review("openai")
+
+
+def _claude(handler: Handler, provider: str, model: str | None = None) -> AnthropicReviewer:
+    http = anthropic.DefaultHttpxClient(transport=httpx2.MockTransport(_streamed(handler)))
+    reviewer = make_reviewer(provider, model, None, None, http_client=http)
+    assert isinstance(reviewer, AnthropicReviewer)
+    return reviewer
+
+
+def _claude_replies(*texts: str) -> tuple[Handler, list[httpx2.Request]]:
+    return _replies(*(httpx2.Response(200, json=_message(text)) for text in texts))
+
+
+@pytest.fixture
+def aws(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Fake AWS credentials in the environment, and no AWS files of the machine running the tests."""
+    monkeypatch.setenv("AWS_CONFIG_FILE", str(tmp_path / "no-config"))
+    monkeypatch.setenv("AWS_SHARED_CREDENTIALS_FILE", str(tmp_path / "no-credentials"))
+    monkeypatch.setenv("AWS_ACCESS_KEY_ID", "AKIDEXAMPLE")
+    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY")
+    monkeypatch.setenv("AWS_REGION", "eu-west-1")
+
+
+@pytest.mark.usefixtures("aws")
+def test_bedrock_signs_with_the_aws_credential_chain_and_asks_for_json() -> None:
+    handler, sent = _claude_replies(json.dumps(REVIEW))
+
+    result = _claude(handler, "bedrock").review("system text", "user text")
+
+    assert result.criteria[0].criterion == "issue#1/AC-1"
+    request = sent[0]
+    assert (request.url.host, request.url.path) == (
+        "bedrock-mantle.eu-west-1.api.aws",
+        "/anthropic/v1/messages",
+    )
+    signature = request.headers["authorization"]
+    assert signature.startswith("AWS4-HMAC-SHA256 Credential=AKIDEXAMPLE/")
+    assert "/eu-west-1/bedrock-mantle/aws4_request" in signature
+    body = json.loads(request.content)
+    assert body["model"] == "anthropic.claude-opus-5-5"
+    assert body["thinking"] == {"type": "adaptive"}
+    assert body["output_config"] == {"effort": "high"}
+    assert "fallbacks" not in body
+    assert "server-side-fallback" not in request.headers.get("anthropic-beta", "")
+    assert body["system"][0]["text"].startswith("system text")
+    assert '"scope_creep"' in body["system"][0]["text"]
+    assert body["system"][0]["cache_control"] == {"type": "ephemeral"}
+
+
+@pytest.mark.usefixtures("aws")
+def test_bedrock_asks_again_once_when_the_answer_is_not_a_review() -> None:
+    handler, sent = _claude_replies("The change looks fine to me.", json.dumps(REVIEW))
+
+    reviewer = _claude(handler, "bedrock")
+    result = reviewer.review("s", "u")
+
+    assert [f.evidence for f in result.findings] == ["CONTRIBUTING.md:3"]
+    messages = json.loads(sent[1].content)["messages"]
+    assert [m["role"] for m in messages] == ["user", "assistant", "user"]
+    assert messages[1]["content"] == "The change looks fine to me."
+    assert "not a valid review" in messages[2]["content"]
+    assert reviewer.last_usage == Usage(input_tokens=20, output_tokens=10)
+
+
+@pytest.mark.usefixtures("aws")
+def test_a_bedrock_answer_that_is_invalid_twice_is_a_review_error() -> None:
+    handler, _ = _claude_replies("{}", "{}")
+
+    with pytest.raises(ReviewError, match="not a valid review after one retry"):
+        _claude(handler, "bedrock").review("s", "u")
+
+
+def test_bedrock_sends_a_bedrock_api_key_as_a_bearer_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("AWS_BEARER_TOKEN_BEDROCK", "bedrock-api-key")
+    monkeypatch.setenv("AWS_REGION", "us-east-1")
+    handler, sent = _claude_replies(json.dumps(REVIEW))
+
+    _claude(handler, "bedrock", "anthropic.claude-sonnet-5-5").review("s", "u")
+
+    assert sent[0].headers["authorization"] == "Bearer bedrock-api-key"
+    assert json.loads(sent[0].content)["model"] == "anthropic.claude-sonnet-5-5"
+
+
+def test_bedrock_without_a_region_is_a_clear_review_error(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("AWS_CONFIG_FILE", str(tmp_path / "no-config"))
+    monkeypatch.setenv("AWS_BEARER_TOKEN_BEDROCK", "bedrock-api-key")
+
+    with pytest.raises(ReviewError, match="AWS_REGION"):
+        make_reviewer("bedrock", None, None, None)
+
+
+@pytest.mark.usefixtures("aws")
+def test_signing_for_bedrock_without_the_extra_names_the_extra(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(engine_anthropic, "find_spec", lambda name: None if name == "botocore" else name)
+
+    with pytest.raises(ReviewError, match=r"bylaw\[bedrock\]"):
+        make_reviewer("bedrock", None, None, None)
+
+
+@pytest.mark.usefixtures("aws")
+def test_a_bedrock_error_names_bedrock_and_the_status_only() -> None:
+    denied = {"type": "error", "error": {"type": "permission_error", "message": f"denied for {SECRET}"}}
+    handler, _ = _replies(httpx2.Response(403, json=denied))
+
+    with pytest.raises(ReviewError) as error:
+        _claude(handler, "bedrock").review("s", "u")
+
+    assert str(error.value) == "Amazon Bedrock returned 403 (permission_error)"
+
+
+@pytest.mark.usefixtures("aws")
+def test_keys_for_other_providers_never_reach_bedrock(monkeypatch: pytest.MonkeyPatch) -> None:
+    for name in ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "BYLAW_API_KEY"):
+        monkeypatch.setenv(name, SECRET)
+    handler, sent = _claude_replies(json.dumps(REVIEW))
+
+    _claude(handler, "bedrock").review("s", "u")
+
+    assert SECRET not in str(sent[0].headers)
