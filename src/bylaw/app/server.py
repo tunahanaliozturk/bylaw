@@ -101,8 +101,8 @@ def _count(environ: Mapping[str, str], name: str, default: int) -> int:
 def create_app(settings: Settings, reviewer: ReviewerFactory = make_reviewer) -> Starlette:
     login: list[str] = []  # the app's bot login, read once at startup
 
-    def run(job: Job) -> None:
-        review(settings, job, login[0], reviewer)
+    def run(job: Job) -> str:
+        return review(settings, job, login[0], reviewer)
 
     queue = ReviewQueue(run, workers=settings.workers, max_pending=settings.max_pending)
 
@@ -145,8 +145,9 @@ def create_app(settings: Settings, reviewer: ReviewerFactory = make_reviewer) ->
     return app
 
 
-def review(settings: Settings, job: Job, bot_login: str, reviewer: ReviewerFactory = make_reviewer) -> None:
-    """The same review as `bylaw review --pr N --post`, with a token for this one repository."""
+def review(settings: Settings, job: Job, bot_login: str, reviewer: ReviewerFactory = make_reviewer) -> str:
+    """The same review as `bylaw review --pr N --post`, with a token for this one repository. Returns the
+    head commit it read."""
     owner, _, name = job.repo.partition("/")
     with GitHubClient(app_jwt(settings.client_id, settings.private_key), settings.api_url) as app:
         token = app.installation_token(job.installation_id, [name], REVIEW_PERMISSIONS)
@@ -161,9 +162,10 @@ def review(settings: Settings, job: Job, bot_login: str, reviewer: ReviewerFacto
         log.info("%s#%d: %s", job.repo, job.number, flat(text))
 
     with GitHubClient(token, settings.api_url, settings.graphql_url, bot_login=bot_login) as client:
-        review_pull_request(
+        done = review_pull_request(
             client, job.repo, job.number, make=make, post=True, say=say, defaults=defaults, env=secrets
         )
+    return done.head_sha
 
 
 def _org_defaults(app: GitHubClient, settings: Settings, installation_id: int, owner: str) -> str | None:

@@ -108,8 +108,10 @@ is not installed on `.github`, the review runs without defaults.
 - *Logs.* Keys, tokens and the webhook secret are never logged and the settings hide them in their repr.
   Text from a pull request or the model is flattened to one line, so it cannot forge log lines.
 
-**Queue limits.** The queue is in process. A newer head replaces an older one still waiting, and a head
-already reviewed is not reviewed again. Nothing survives a restart: an event that arrives while the
+**Queue limits.** The queue is in process. A pull request has at most one job waiting: a later delivery
+replaces it, even a redelivered older one, because the review reads the pull request as it is when it
+starts, not the head the event named. The head the review read counts as reviewed, as does the one the
+event named, and a head already reviewed is not reviewed again. Nothing survives a restart: an event that arrives while the
 server is down, or waits in the queue when it stops, is picked up by the pull request's next push, or by
 redelivering it from the app's advanced settings. A durable queue can come later without changing the
 review.

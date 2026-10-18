@@ -22,8 +22,10 @@ class Recorder:
         self.concurrent = 0
         self.most_concurrent = 0
         self._lock = threading.Lock()
+        # The head the pull request is at when a review reads it, by the head the event named.
+        self.live: dict[str, str] = {}
 
-    def __call__(self, job: Job) -> None:
+    def __call__(self, job: Job) -> str:
         with self._lock:
             self.concurrent += 1
             self.most_concurrent = max(self.most_concurrent, self.concurrent)
@@ -34,6 +36,7 @@ class Recorder:
         self.ran.append(f"{job.number}@{job.head_sha}")
         if job.head_sha in self.fail:
             raise RuntimeError("GitHub was down")
+        return self.live.get(job.head_sha, job.head_sha)
 
 
 async def _wait_started(recorder: Recorder) -> None:
@@ -215,3 +218,42 @@ def test_an_error_message_from_a_repository_is_logged_on_one_line(caplog: pytest
     [record] = [r for r in caplog.records if "failed" in r.getMessage()]
     assert "\n" not in record.getMessage()
     assert "forged line" in record.getMessage()
+
+
+def test_the_head_a_review_read_counts_as_reviewed_even_when_the_event_named_an_older_one() -> None:
+    async def scenario() -> tuple[Outcome, list[str]]:
+        recorder = Recorder()
+        recorder.live = {"a": "b"}  # pushed again before the review started
+        queue = ReviewQueue(recorder)
+        async with queue.running():
+            queue.offer(_job("a"))
+            await queue.join()
+            newer = queue.offer(_job("b"))
+            await queue.join()
+        return newer, recorder.ran
+
+    newer, ran = asyncio.run(scenario())
+
+    assert (newer, ran) == (Outcome.DUPLICATE, ["5@a"])
+
+
+def test_a_redelivered_older_event_that_replaced_a_newer_one_still_reviews_the_newer_head() -> None:
+    async def scenario() -> tuple[list[Outcome], list[str]]:
+        recorder = Recorder()
+        recorder.release.clear()
+        queue = ReviewQueue(recorder, workers=1)
+        async with queue.running():
+            queue.offer(_job("x", number=9))  # keeps the only worker busy
+            await _wait_started(recorder)
+            outcomes = [queue.offer(_job("b")), queue.offer(_job("a"))]  # a redelivery of an older push
+            recorder.live = {"a": "b"}  # the pull request is at b whatever the event said
+            recorder.release.set()
+            await queue.join()
+            outcomes.append(queue.offer(_job("b")))
+            await queue.join()
+        return outcomes, recorder.ran
+
+    outcomes, ran = asyncio.run(scenario())
+
+    assert outcomes == [Outcome.QUEUED, Outcome.SUPERSEDED, Outcome.DUPLICATE]
+    assert ran == ["9@x", "5@a"]
