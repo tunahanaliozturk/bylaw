@@ -150,7 +150,7 @@ def review(settings: Settings, job: Job, bot_login: str, reviewer: ReviewerFacto
     head commit it read."""
     owner, _, name = job.repo.partition("/")
     with GitHubClient(app_jwt(settings.client_id, settings.private_key), settings.api_url) as app:
-        token = app.installation_token(job.installation_id, [name], REVIEW_PERMISSIONS)
+        token = _scoped_token(app, job.installation_id, owner, name, REVIEW_PERMISSIONS)
         defaults = _org_defaults(app, settings, job.installation_id, owner)
     secrets = settings.secrets.secrets(job.installation_id)
     key = api_key_for(settings.provider, secrets)
@@ -172,13 +172,25 @@ def _org_defaults(app: GitHubClient, settings: Settings, installation_id: int, o
     """The `.bylaw.toml` on the default branch of the owner's `.github` repository, read with a token
     that can read nothing else; None when there is none or the app is not installed there."""
     try:
-        token = app.installation_token(installation_id, [".github"], DEFAULTS_PERMISSIONS)
+        token = _scoped_token(app, installation_id, owner, ".github", DEFAULTS_PERMISSIONS)
     except GitHubError as error:
         if error.status not in _NOT_INSTALLED:
             raise
         return None
     with GitHubClient(token, settings.api_url) as client:
         return client.file_text(f"{owner}/.github", ".bylaw.toml", None)
+
+
+def _scoped_token(
+    app: GitHubClient, installation_id: int, owner: str, name: str, permissions: Mapping[str, str]
+) -> str:
+    """A token for exactly `owner/name`. GitHub's answer must name that repository, so a mix-up between
+    installations or a changed API never sends one repository's review through another's token."""
+    granted = app.installation_token(installation_id, [name], permissions)
+    expected = f"{owner}/{name}".lower()
+    if granted.repositories != {expected}:
+        raise GitHubError(f"the installation token GitHub returned is not for {expected}")
+    return granted.token
 
 
 def _app_login(settings: Settings) -> str:

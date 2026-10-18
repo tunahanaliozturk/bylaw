@@ -35,6 +35,8 @@ class FakeGitHub:
     org_defaults: str | None = None
     # Whether the installation covers the organisation's .github repository.
     org_installed: bool = True
+    # The repository the token answer names, when it should differ from the one asked for.
+    granted_repository: str | None = None
     comments: list[dict[str, Any]] = field(default_factory=list)
     reviews: list[dict[str, Any]] = field(default_factory=list)
     calls: list[Call] = field(default_factory=list)
@@ -60,7 +62,9 @@ class FakeGitHub:
             repositories = body["repositories"]
             if repositories == [".github"] and not self.org_installed:
                 return httpx.Response(422, json={"message": "not accessible to the installation"})
-            return httpx.Response(201, json={"token": f"ghs_{match.group(1)}_{'_'.join(repositories)}"})
+            named = [{"full_name": self.granted_repository or f"{OWNER}/{name}"} for name in repositories]
+            token = f"ghs_{match.group(1)}_{'_'.join(repositories)}"
+            return httpx.Response(201, json={"token": token, "repositories": named})
         if method == "GET" and path == f"/repos/{OWNER}/.github/contents/.bylaw.toml":
             if self.org_defaults is None:
                 return httpx.Response(404, json={"message": "Not Found"})

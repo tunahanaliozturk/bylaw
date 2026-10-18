@@ -52,5 +52,7 @@ over HTTPS, and a test repository with a `.editorconfig` that trims trailing whi
 - [ ] A delivery with a wrong secret (change it in the app settings) is answered `401`.
 - [ ] `docker ps` shows the container `healthy`, and a restart during a review loses at most that review,
   which the next push or a redelivery brings back.
+- [ ] The access token answer lists `repositories` with each `full_name` when the request names them;
+  the app refuses a token whose answer does not name exactly the job's repository.
 - [ ] An installation token minted in the new stateless `ghs_` format works (GitHub began rolling it out in
   April 2026; bylaw treats tokens as opaque strings).
