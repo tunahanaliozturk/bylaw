@@ -9,13 +9,14 @@ import json
 import re
 import tomllib
 from collections.abc import Callable, Mapping
+from functools import lru_cache
 from io import StringIO
 from pathlib import PurePosixPath
 
 from ruamel.yaml import YAML
 from ruamel.yaml.error import YAMLError
 
-from bylaw.editorconfig import glob_matches, read_sections
+from bylaw.editorconfig import glob_matches, glob_regex, read_sections
 from bylaw.model import FileRules, LinterRules
 
 TOOLS = frozenset({"ruff", "eslint", "golangci-lint", "dotnet"})
@@ -55,15 +56,41 @@ def enables(rules: LinterRules, rule_id: str, path: str) -> bool | None:
         # Ruff uses the nearest configuration alone, so it always decides.
         on = _ruff_best(rules.select, rule_id) > _ruff_best(rules.ignore, rule_id)
         ignored = any(
-            _ruff_best(f.ignore, rule_id) >= 0 for f in rules.per_file if glob_matches(f.pattern, path)
+            _ruff_best(f.ignore, rule_id) >= 0 for f in rules.per_file if _ruff_pattern(f.pattern, path)
         )
         return on and not ignored
+    # .NET sections are .editorconfig globs; ESLint overrides are globs where `**/` may be no directory.
+    matches = glob_matches if rules.tool == "dotnet" else _linter_glob
     decision = _exact(rules.select, rules.ignore, rule_id)
     for override in rules.per_file:
         said = _exact(override.select, override.ignore, rule_id)
-        if said is not None and glob_matches(override.pattern, path):
+        if said is not None and matches(override.pattern, path):
             decision = said
     return decision
+
+
+def _ruff_pattern(pattern: str, path: str) -> bool:
+    # A leading "!" makes a Ruff per-file pattern apply to every file it does not match.
+    if pattern.startswith("!"):
+        return not _linter_glob(pattern[1:], path)
+    return _linter_glob(pattern, path)
+
+
+def _linter_glob(pattern: str, path: str) -> bool:
+    return _linter_regex(pattern).fullmatch(path) is not None
+
+
+@lru_cache(maxsize=256)
+def _linter_regex(pattern: str) -> re.Pattern[str]:
+    """A glob as Ruff and ESLint read it: `**/` is zero or more directories, no slash matches any depth."""
+    pattern = pattern.removeprefix("./").removeprefix("/")
+    regex = "(?:.*/)?".join(glob_regex(piece) for piece in pattern.split("**/"))
+    if "/" not in pattern:
+        regex = f"(?:.*/)?{regex}"
+    try:
+        return re.compile(regex)
+    except re.error:
+        return re.compile(r"(?!)")  # a pattern no tool could use matches nothing
 
 
 def describe(rules: LinterRules) -> str:

@@ -155,6 +155,11 @@ def glob_matches(glob: str, relative_path: str) -> bool:
     return section is not None and section.matches(relative_path)
 
 
+def glob_regex(glob: str) -> str:
+    """The regular expression for a glob in .editorconfig syntax, without anchoring or numeric ranges."""
+    return _translate(glob)[0]
+
+
 def _parse(path: str, directory: str, text: str) -> _File:
     preamble, raw = read_sections(text)
     root = any(key == "root" and value == "true" for key, value, _ in preamble)
