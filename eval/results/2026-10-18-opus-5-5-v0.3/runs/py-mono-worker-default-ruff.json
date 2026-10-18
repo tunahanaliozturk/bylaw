@@ -1,0 +1,28 @@
+{
+  "case_id": "py-mono-worker-default-ruff",
+  "result": {
+    "findings": [
+      {
+        "file": "packages/worker/worker/jobs.py",
+        "line_start": 21,
+        "line_end": 24,
+        "category": "rule",
+        "severity": "high",
+        "message": "The default `pending: list[int] = []` is created once and shared by every call. Receipts from earlier calls pile up in it and leak into later, unrelated calls, so receipts can be sent twice or for the wrong orders.",
+        "suggestion": "def queue_receipt(order_id: int, pending: list[int] | None = None) -> list[int]:\n    \"\"\"Add an order to the receipts still to send and return them.\"\"\"\n    if pending is None:\n        pending = []\n    pending.append(order_id)\n    return pending",
+        "evidence": "ruff:B006"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": 5.886958800023422,
+  "input_tokens": 4060,
+  "output_tokens": 503,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "d4d203a5ebe2a3174346b19c9f044042902b2605d9dc238396474a6888ad15af",
+  "dropped_findings": 0
+}

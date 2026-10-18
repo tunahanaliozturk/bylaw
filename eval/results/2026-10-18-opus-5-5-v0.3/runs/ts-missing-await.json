@@ -1,0 +1,48 @@
+{
+  "case_id": "ts-missing-await",
+  "result": {
+    "findings": [
+      {
+        "file": "src/server.ts",
+        "line_start": 34,
+        "line_end": 34,
+        "category": "rule",
+        "severity": "high",
+        "message": "`saveOrder(order)` is not awaited, so the handler returns 201 before the order is persisted. A failed save becomes an unhandled rejection, and the client is told an order exists that may never have been stored.",
+        "suggestion": "  await saveOrder(order);",
+        "evidence": "CONTRIBUTING.md:11"
+      },
+      {
+        "file": "src/server.ts",
+        "line_start": 33,
+        "line_end": 33,
+        "category": "security",
+        "severity": "high",
+        "message": "The express order is created without reference to the signed-in user, so it is not tied to any account. Any unauthenticated caller can create orders, and later ownership checks on this order cannot work.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:10"
+      },
+      {
+        "file": "src/server.ts",
+        "line_start": 32,
+        "line_end": 32,
+        "category": "bug",
+        "severity": "medium",
+        "message": "`req.body` is cast to `Cart` with no validation. A malformed or hostile body passes straight into `orderFromCart`, which can crash the handler or produce a corrupt order (for example, client-supplied prices or quantities).",
+        "suggestion": null,
+        "evidence": null
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 3,
+  "seconds": 10.634947900020052,
+  "input_tokens": 3811,
+  "output_tokens": 949,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "e9507e5f3308c9bc82c6c45df97f2ddb55359f3a352f7650521c363c26d65cb5",
+  "dropped_findings": 0
+}

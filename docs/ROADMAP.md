@@ -77,7 +77,7 @@ every claim in the README stays measured. Dates are targets, not promises; the o
 - Close the [hardening](backlog/hardening.md) items that users are most likely to meet.
 - Measure: installs, stars, cost per pull request, false alarms on the clean evaluation cases.
 
-### Q2, February to April 2027: deeper rules and requirements (v0.3, v0.4)
+### Q2, February to April 2027: deeper rules and requirements (v0.3, v0.4; v0.3 released 2026-10-18)
 
 - Linter configuration as structured rules: read the enabled rule ids from Ruff, ESLint, golangci-lint and
   .NET analyzers configs, so findings cite the rule id, not only the file line.

@@ -1,0 +1,38 @@
+{
+  "case_id": "py-page-off-by-one",
+  "result": {
+    "findings": [
+      {
+        "file": "app/users.py",
+        "line_start": 34,
+        "line_end": 34,
+        "category": "bug",
+        "severity": "high",
+        "message": "The slice end `start + size + 1` returns `size + 1` users per page, so each page also includes the first user of the next page and that user appears twice across pages.",
+        "suggestion": "    return [User(r[\"id\"], r[\"email\"], r[\"name\"]) for r in rows[start : start + size]]",
+        "evidence": null
+      },
+      {
+        "file": "app/users.py",
+        "line_start": 32,
+        "line_end": 32,
+        "category": "bug",
+        "severity": "medium",
+        "message": "Every call now loads the whole `users` table into memory just to return one page. On a large table this makes paging slow and memory-hungry. The previous `LIMIT ? OFFSET ?` query let SQLite return only the requested rows.",
+        "suggestion": null,
+        "evidence": null
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 2,
+  "seconds": 6.42548859998351,
+  "input_tokens": 3968,
+  "output_tokens": 635,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "08791fbd4b6e58b1b668974059b9f613bda08ad083b883f25cfba573d823b735",
+  "dropped_findings": 0
+}

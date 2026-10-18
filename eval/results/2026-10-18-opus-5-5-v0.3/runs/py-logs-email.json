@@ -1,0 +1,38 @@
+{
+  "case_id": "py-logs-email",
+  "result": {
+    "findings": [
+      {
+        "file": "app/users.py",
+        "line_start": 41,
+        "line_end": 41,
+        "category": "rule",
+        "severity": "medium",
+        "message": "The new log message writes the user's email address to the log. The repository rules forbid logging personal data. Log the user id instead.",
+        "suggestion": "    logger.info(\"deactivated user %s\", user.id)",
+        "evidence": "CONTRIBUTING.md:9"
+      },
+      {
+        "file": "app/users.py",
+        "line_start": 38,
+        "line_end": 38,
+        "category": "rule",
+        "severity": "low",
+        "message": "The new `deactivate` function changes behaviour but the change adds no test. The contributing guide requires a test for every change in behaviour.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:15"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 2,
+  "seconds": 5.4895379999652505,
+  "input_tokens": 3904,
+  "output_tokens": 481,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "4b2a44b662324ed45c4ddd82c8b7f08a40717fabd39780e3a87dbf3f4c8934ed",
+  "dropped_findings": 0
+}

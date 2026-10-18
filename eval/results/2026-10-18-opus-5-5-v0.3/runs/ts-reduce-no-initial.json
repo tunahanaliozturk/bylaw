@@ -1,0 +1,28 @@
+{
+  "case_id": "ts-reduce-no-initial",
+  "result": {
+    "findings": [
+      {
+        "file": "src/cart.ts",
+        "line_start": 28,
+        "line_end": 28,
+        "category": "bug",
+        "severity": "high",
+        "message": "`reduce` is called without an initial value, so it throws a TypeError when the cart has no items. An empty cart is the most common state for a count badge, so this would crash rendering.",
+        "suggestion": "  return cart.items.reduce((sum, item) => sum + item.quantity, 0);",
+        "evidence": null
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": 3.9919094999786466,
+  "input_tokens": 3776,
+  "output_tokens": 342,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "e7631099d7e249e70b81c0860b98fe1d882dc6e478f49269b6b176a09ed0ac06",
+  "dropped_findings": 0
+}

@@ -1,0 +1,48 @@
+{
+  "case_id": "py-pickle-cookie",
+  "result": {
+    "findings": [
+      {
+        "file": "app/web.py",
+        "line_start": 37,
+        "line_end": 37,
+        "category": "security",
+        "severity": "critical",
+        "message": "The `prefs` cookie is fully controlled by the client, and `pickle.loads` on it lets anyone run arbitrary code on the server with a crafted payload. This is remote code execution.",
+        "suggestion": null,
+        "evidence": null
+      },
+      {
+        "file": "app/web.py",
+        "line_start": 37,
+        "line_end": 37,
+        "category": "bug",
+        "severity": "medium",
+        "message": "With no `prefs` cookie, the default `\"\"` decodes to `b\"\"` and `pickle.loads(b\"\")` raises `EOFError`, so first-time visitors get a 500. Malformed base64 or a payload that is not a dict also crashes the handler instead of falling back to `light`.",
+        "suggestion": null,
+        "evidence": null
+      },
+      {
+        "file": "app/web.py",
+        "line_start": 35,
+        "line_end": 35,
+        "category": "rule",
+        "severity": "low",
+        "message": "The new `preferences` handler adds behaviour but the change has no test for it. The repository requires a test for every change in behaviour.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:15"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 3,
+  "seconds": 8.242335599963553,
+  "input_tokens": 3917,
+  "output_tokens": 726,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "5e0f0fa01c01c5614e978d46637e1b8949029c74f94acbf7b59a37a3c8f83180",
+  "dropped_findings": 0
+}

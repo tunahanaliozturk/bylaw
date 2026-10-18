@@ -1,0 +1,48 @@
+{
+  "case_id": "go-ignored-unmarshal",
+  "result": {
+    "findings": [
+      {
+        "file": "handlers.go",
+        "line_start": 65,
+        "line_end": 65,
+        "category": "bug",
+        "severity": "high",
+        "message": "The error from json.Unmarshal is ignored, so a malformed or wrongly shaped body (for example an object instead of an array) imports nothing and still returns 204 No Content. Clients get no signal that their import was rejected.",
+        "suggestion": "\tif err := json.Unmarshal(body, &names); err != nil {\n\t\thttp.Error(w, \"invalid JSON body\", http.StatusBadRequest)\n\t\treturn\n\t}",
+        "evidence": null
+      },
+      {
+        "file": "handlers.go",
+        "line_start": 59,
+        "line_end": 59,
+        "category": "security",
+        "severity": "medium",
+        "message": "io.ReadAll reads the entire request body with no size limit. A client can exhaust server memory with one large request.",
+        "suggestion": "\tbody, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 1<<20))",
+        "evidence": null
+      },
+      {
+        "file": "handlers.go",
+        "line_start": 66,
+        "line_end": 71,
+        "category": "bug",
+        "severity": "medium",
+        "message": "Widgets are created one by one with no transaction. If one Create fails partway through, the earlier widgets stay persisted while the client gets a 500. A retry then creates duplicates.",
+        "suggestion": null,
+        "evidence": null
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 3,
+  "seconds": 7.949443899968173,
+  "input_tokens": 4059,
+  "output_tokens": 765,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "101be86d98ecaf2c4353e909d8eb7ce83220f51cbc19cff1d4fcee176f6ba7a4",
+  "dropped_findings": 0
+}

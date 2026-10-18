@@ -1,0 +1,58 @@
+{
+  "case_id": "go-req-not-found",
+  "result": {
+    "findings": [
+      {
+        "file": "handlers.go",
+        "line_start": 71,
+        "line_end": 74,
+        "category": "requirement",
+        "severity": "high",
+        "message": "Every error from `s.store.Rename` becomes a 500, so renaming an unknown id returns 500 instead of the required 404. For an unknown id, the UPDATE matches no rows and the follow-up `s.Widget` lookup fails with a not-found error, which this branch does not tell apart from real failures.",
+        "suggestion": null,
+        "evidence": "docs/specs/rename.md/AC-2"
+      }
+    ],
+    "criteria": [
+      {
+        "criterion": "docs/specs/rename.md/AC-1",
+        "status": "met",
+        "text": null,
+        "code": [
+          {
+            "file": "main.go",
+            "line": 19
+          },
+          {
+            "file": "handlers.go",
+            "line": 57
+          },
+          {
+            "file": "store.go",
+            "line": 45
+          }
+        ],
+        "tests": [],
+        "note": "Implemented, but no test covers the rename endpoint."
+      },
+      {
+        "criterion": "docs/specs/rename.md/AC-2",
+        "status": "missing",
+        "text": null,
+        "code": [],
+        "tests": [],
+        "note": "An unknown id produces a 500 rather than a 404. Use the RowsAffected count or the not-found error from `s.Widget` to return 404."
+      }
+    ],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": 7.402502799988724,
+  "input_tokens": 4870,
+  "output_tokens": 748,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "4d7ec543d3b53b584256756613a74412975d079b2ce5ce4928c0c07069953198",
+  "dropped_findings": 0
+}
