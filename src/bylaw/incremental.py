@@ -12,7 +12,7 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from importlib.metadata import version
 
-from bylaw.engine import Reviewer, ReviewError, Usage
+from bylaw.engine import Budgeted, Reviewer, ReviewError, Usage
 from bylaw.github import SummaryComment
 from bylaw.model import (
     ChangedFile,
@@ -119,6 +119,9 @@ def run_model_review(  # noqa: PLR0913 - every argument is a distinct input
     reviewer: Reviewer | None = None
     try:
         reviewer = make_reviewer()
+        if isinstance(reviewer, Budgeted):
+            # The JSON fallback's retry is a second call; it is skipped when it would pass what is left.
+            reviewer.token_budget = None if budget is None else budget - spent
         answer = reviewer.review(system_prompt(), text)
     except ReviewError as error:
         # A failed call can still be billed, so it counts against the budget.

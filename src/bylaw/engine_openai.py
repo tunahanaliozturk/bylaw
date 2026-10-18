@@ -122,10 +122,15 @@ class ChatReviewer:
         self._effort = effort
         self._strict = True
         self.last_usage: Usage | None = None
+        self.token_budget: int | None = None
 
     def review(self, system: str, user: str) -> ReviewResult:
         self.last_usage = None
-        return review_with_retry(lambda retry: self._ask(system + json_instructions(), user, retry))
+        return review_with_retry(
+            lambda retry: self._ask(system + json_instructions(), user, retry),
+            budget=self.token_budget,
+            used=lambda: self.last_usage,
+        )
 
     def _ask(self, system: str, user: str, retry: Retry | None) -> str:
         messages: list[ChatCompletionMessageParam] = [

@@ -419,3 +419,26 @@ def test_a_changed_decision_means_a_full_review() -> None:
     )
 
     assert inputs_key(decided) != inputs_key(context)
+
+
+class RetryingReviewer(FakeReviewer):
+    """A reviewer that may call the model twice, as the JSON fallback does."""
+
+    token_budget: int | None = None
+
+
+def test_a_reviewer_that_may_retry_is_told_what_is_left_of_the_token_budget() -> None:
+    context = _context(OLD, NEW)
+    reviewer = RetryingReviewer()
+
+    run_model_review(context, lambda: reviewer, _memory(context), incremental=True, budget=12_000)
+
+    assert reviewer.token_budget == 7_000
+
+
+def test_without_a_token_budget_a_reviewer_is_told_none() -> None:
+    reviewer = RetryingReviewer()
+
+    run_model_review(_context(NEW), lambda: reviewer, None, incremental=True, budget=None)
+
+    assert reviewer.token_budget is None

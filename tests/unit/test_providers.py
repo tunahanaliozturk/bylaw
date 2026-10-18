@@ -815,3 +815,51 @@ def test_a_key_variable_set_but_empty_is_refused_rather_than_sent(
 
     with pytest.raises(ReviewError, match=f"{variable} is set but empty"):
         make_reviewer(provider, "m", None, None)
+
+
+def _invalid_then_valid() -> tuple[Handler, list[httpx2.Request]]:
+    return _replies(_ok('{"findings": []}', (100, 20)), _ok(json.dumps(REVIEW), (100, 20)))
+
+
+def test_the_retry_runs_when_another_input_still_fits_the_token_budget() -> None:
+    handler, sent = _invalid_then_valid()
+    reviewer = _local(handler)
+    reviewer.token_budget = 220  # 100 in and 20 out so far, and about 100 more for the retry's input
+
+    reviewer.review("s", "u")
+
+    assert len(sent) == 2
+
+
+def test_the_retry_is_skipped_when_it_would_pass_the_token_budget() -> None:
+    handler, sent = _invalid_then_valid()
+    reviewer = _local(handler)
+    reviewer.token_budget = 219
+
+    with pytest.raises(ReviewError, match="token budget"):
+        reviewer.review("s", "u")
+
+    assert len(sent) == 1
+    assert reviewer.last_usage == Usage(input_tokens=100, output_tokens=20)
+
+
+@pytest.mark.usefixtures("aws")
+def test_bedrock_marks_the_brief_for_the_prompt_cache_so_a_retry_reads_it_from_there() -> None:
+    handler, sent = _claude_replies("{}", json.dumps(REVIEW))
+
+    _claude(handler, "bedrock").review("s", "the brief")
+
+    for request in sent:
+        first = json.loads(request.content)["messages"][0]
+        assert first["content"] == [
+            {"type": "text", "text": "the brief", "cache_control": {"type": "ephemeral"}}
+        ]
+
+
+@pytest.mark.usefixtures("gcp")
+def test_with_structured_output_the_brief_is_not_cached_because_it_is_read_once() -> None:
+    handler, sent = _claude_replies(json.dumps(REVIEW))
+
+    _claude(handler, "vertex").review("s", "the brief")
+
+    assert json.loads(sent[0].content)["messages"][0]["content"] == "the brief"

@@ -62,11 +62,16 @@ class AnthropicReviewer:
         self._fallback = not cloud and model in _FALLBACK_MODELS
         self._chain_errors = credential_errors() if cloud else ()
         self.last_usage: Usage | None = None
+        self.token_budget: int | None = None
 
     def review(self, system: str, user: str) -> ReviewResult:
         self.last_usage = None
         if not self._structured:
-            return review_with_retry(lambda retry: self._ask(system + json_instructions(), user, retry))
+            return review_with_retry(
+                lambda retry: self._ask(system + json_instructions(), user, retry),
+                budget=self.token_budget,
+                used=lambda: self.last_usage,
+            )
         text = self._ask(system, user, None)
         try:
             return OutReview.model_validate_json(text).to_result()
@@ -78,6 +83,15 @@ class AnthropicReviewer:
             {"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}
         ]
         messages: list[BetaMessageParam] = [{"role": "user", "content": user}]
+        if not self._structured:
+            # The JSON fallback may send the brief twice; cached, the retry reads it at the cache price.
+            # Claude in Amazon Bedrock supports prompt caching. With structured output it is read once.
+            messages = [
+                {
+                    "role": "user",
+                    "content": [{"type": "text", "text": user, "cache_control": {"type": "ephemeral"}}],
+                }
+            ]
         if retry:
             messages += [{"role": "assistant", "content": retry[0]}, {"role": "user", "content": retry[1]}]
         # effort is a free string on the CLI; the API rejects an unknown level with a clear 400.

@@ -6,7 +6,7 @@ import os
 import re
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 from urllib.parse import urlsplit
 
 import httpx2
@@ -313,12 +313,28 @@ def _where(loc: tuple[int | str, ...]) -> str:
     return ".".join(parts) or "the answer"
 
 
-def review_with_retry(ask: Callable[[Retry | None], str]) -> ReviewResult:
-    """Ask, check the answer, and ask once more with what was wrong; then give up with a clear error."""
+@runtime_checkable
+class Budgeted(Protocol):
+    """A reviewer that may call the model twice, told the tokens left of `[budget] pr_tokens`."""
+
+    token_budget: int | None
+
+
+def review_with_retry(
+    ask: Callable[[Retry | None], str], *, budget: int | None, used: Callable[[], Usage | None]
+) -> ReviewResult:
+    """Ask, check the answer, and ask once more with what was wrong; then give up with a clear error. The
+    retry is skipped when what was used plus another input of the same size would pass the budget."""
     answer = _some_text(ask(None))
     try:
         return read_review(answer).to_result()
     except InvalidReviewError as first:
+        spent = used()
+        if budget is not None and spent and 2 * spent.input_tokens + spent.output_tokens > budget:
+            raise ReviewError(
+                "the model returned output that is not a valid review, and a retry would pass the token "
+                f"budget (`[budget] pr_tokens`): {first}"
+            ) from first
         note = (
             f"That answer is not a valid review: {first}. Answer again with only the corrected JSON object."
         )
