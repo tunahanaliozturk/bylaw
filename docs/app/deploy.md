@@ -60,7 +60,7 @@ With Docker, from the repository root:
 
 ```
 docker build -t bylaw-app .
-docker run -d --name bylaw-app --restart unless-stopped -p 127.0.0.1:8000:8000 \
+docker run -d --name bylaw-app --restart unless-stopped --stop-timeout 120 -p 127.0.0.1:8000:8000 \
   -v /srv/bylaw/secrets:/run/secrets:ro \
   -e BYLAW_APP_CLIENT_ID=Iv23liExample \
   -e BYLAW_APP_PRIVATE_KEY_FILE=/run/secrets/app.pem \
@@ -185,6 +185,16 @@ and they are never written to the log.
 - The queue lives in memory. After a restart, a missed or lost review runs on the pull request's next
   push, or redeliver the event from the app's **Advanced** settings, which also retries a review that
   failed.
+- On `docker stop` (SIGTERM) the server stops taking deliveries, starts no new review, and lets the
+  reviews already running finish before it exits; reviews still waiting are dropped. Docker kills the
+  container after 10 seconds by default, which can cut a review off between its inline comments and its
+  summary, so give it longer than a review takes: `--stop-timeout 120` above, or
+  `terminationGracePeriodSeconds: 120` in Kubernetes. A review that was cut off is redone by the next push
+  or a redelivery: the inline comments it posted carry their fingerprints, so they are not posted again,
+  and the summary is written then. The model tokens the cut-off run spent are not counted against
+  `[budget] pr_tokens`. Checked on 18 October 2026: with a 60 second stop timeout the running review
+  posted its summary and the container exited after 6 seconds; with 2 seconds it was killed before the
+  summary.
 
 ## 7. Check it locally
 
