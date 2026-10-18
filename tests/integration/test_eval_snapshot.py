@@ -171,13 +171,56 @@ def test_a_snapshot_that_does_not_reproduce_the_diff_is_refused(tmp_path: Path) 
         freeze(source, tmp_path / "cases/c", url="u", number=1, licence=("MIT", "LICENSE", "MIT License\n"))
 
 
-def test_a_path_that_leaves_the_case_directory_is_refused(tmp_path: Path) -> None:
-    escape = ChangedFile(path="../evil.py", status="added", added_lines=(AddedLine(number=1, text="x"),))
-    source = FakeSource(files=(escape,), head={"../evil.py": "x\n"})
+MIT = ("MIT", "LICENSE", "MIT License\n")
 
-    with pytest.raises(ValueError, match="evil"):
-        freeze(source, tmp_path / "cases/c", url="u", number=1, licence=("MIT", "LICENSE", "MIT License\n"))
-    assert not (tmp_path / "cases/evil.py").exists()
+
+def _added(path: str, text: str = "x\n") -> FakeSource:
+    lines = tuple(AddedLine(number=i, text=t) for i, t in enumerate(text.splitlines(), start=1))
+    return FakeSource(files=(ChangedFile(path=path, status="added", added_lines=lines),), head={path: text})
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "../evil.py",
+        "a\\..\\..\\..\\evil.py",  # a legal file name in a git tree, a way out on Windows
+        "src/con.py",
+        "src/NUL",
+        "src/lpt1.txt",
+        "src/evil.py.",
+        "src/evil.py ",
+        "src/e\x00vil.py",
+        "C:/evil.py",
+    ],
+)
+def test_a_path_that_leaves_the_case_directory_or_cannot_exist_on_windows_is_refused(
+    tmp_path: Path, path: str
+) -> None:
+    with pytest.raises(ValueError, match="refusing to write"):
+        freeze(_added(path), tmp_path / "cases/c", url="u", number=1, licence=MIT)
+    assert [p for p in tmp_path.rglob("*") if "evil" in p.name.lower()] == []
+
+
+@pytest.mark.parametrize("case_id", [".", "..", "Upper", "-dash", "a b", ""])
+def test_a_case_id_that_is_not_a_plain_name_is_refused(tmp_path: Path, case_id: str) -> None:
+    (tmp_path / "cases/keep").mkdir(parents=True)
+
+    with pytest.raises(ValueError, match="case id"):
+        freeze(_added("a.py"), tmp_path / "cases" / case_id, url="u", number=1, licence=MIT)
+    assert (tmp_path / "cases/keep").is_dir()
+
+
+def test_a_failed_freeze_keeps_the_previous_snapshot(tmp_path: Path) -> None:
+    out = tmp_path / "cases/c"
+    freeze(_added("a.py"), out, url="u", number=1, licence=MIT)
+    broken = ChangedFile(path="a.py", status="added", added_lines=(AddedLine(number=5, text="x"),))
+
+    with pytest.raises(ValueError, match="does not reproduce"):
+        freeze(FakeSource(files=(broken,), head={"a.py": "y\n"}), out, url="u", number=1, licence=MIT)
+
+    assert (out / "head/a.py").read_bytes() == b"x\n"
+    assert (out / "snapshot.json").is_file()
+    assert sorted(p.name for p in out.parent.iterdir()) == ["c"]
 
 
 @pytest.mark.usefixtures("github")
