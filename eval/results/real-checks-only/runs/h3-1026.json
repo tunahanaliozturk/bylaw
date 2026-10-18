@@ -1,0 +1,17 @@
+{
+  "case_id": "h3-1026",
+  "result": {
+    "findings": [],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 0,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "no-model",
+  "case_digest": "76e3bb4e9d4da8b3c9bd4d25f9c24afa7d0e4954856c3b564a36bdffdd5364de",
+  "dropped_findings": 0
+}

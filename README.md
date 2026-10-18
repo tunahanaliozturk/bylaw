@@ -141,7 +141,7 @@ Both inline comments on clean changes are the same remark on the same case (`py-
 
 The Action's run for v0.3 on 18 October 2026, on 55 cases including five monorepo cases that need a package's own rules or a linter rule id, found all 34 planted defects, cited the right rule in 11 of 11 rule findings, judged all 21 criteria correctly and left no inline comment on the 10 clean pull requests ([report](https://github.com/tunahanaliozturk/bylaw/blob/main/eval/results/2026-10-18-opus-5-5-v0.3/report.md)). The v0.2 run the same day had inline comments on 2 of 9 clean pull requests ([report](https://github.com/tunahanaliozturk/bylaw/blob/main/eval/results/2026-10-18-opus-5-5/report.md)); the same model varies from run to run, so read single runs with that in mind.
 
-These are small, planted changes; real pull requests are larger and messier ([ADR 0010](https://github.com/tunahanaliozturk/bylaw/blob/main/docs/adr/0010-evaluation-on-planted-cases.md)), so treat the numbers as an upper bound on what the model catches.
+These are small, planted changes; real pull requests are larger and messier ([ADR 0010](https://github.com/tunahanaliozturk/bylaw/blob/main/docs/adr/0010-evaluation-on-planted-cases.md)), so treat the numbers as an upper bound on what the model catches. A second set of 25 real pull requests from permissively licensed projects is frozen in `eval/real/` and reported apart ([ADR 0015](https://github.com/tunahanaliozturk/bylaw/blob/main/docs/adr/0015-real-pull-request-set.md)); its labels are a first draft until two people have checked them, so it has no numbers to quote yet.
 
 ## Costs
 
