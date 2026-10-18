@@ -694,3 +694,15 @@ def test_a_missing_linear_issue_and_one_in_an_unlisted_team_get_the_same_note() 
     _, moved = read_work_items(["ENG-7"], config, LINEAR_ENV)
 
     assert missing == moved == (HIDDEN.format(key="ENG-7", tracker="Linear"),)
+
+
+def test_only_ascii_digits_make_a_key() -> None:
+    arabic_indic = "1" + chr(0x0662)
+
+    assert parse_work_item_refs([f"PROJ-{arabic_indic} and AB#{arabic_indic}"], load_config(TRACKERS)) == ()
+
+
+def test_keys_inside_html_comments_of_a_pull_request_template_are_not_references() -> None:
+    body = "<!-- Name your issue, for example PROJ-1 or AB#2 -->\nImplements ENG-7\n<!-- unclosed PROJ-3"
+
+    assert parse_work_item_refs([body], load_config(TRACKERS)) == (WorkItemRef("linear", "ENG-7"),)
