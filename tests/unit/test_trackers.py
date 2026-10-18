@@ -501,3 +501,15 @@ def test_linear_is_not_called_without_an_api_key() -> None:
 
     assert (requirements, route.called) == ((), False)
     assert notes == ("LINEAR_API_KEY is not set, so ENG-7 was not read from Linear.",)
+
+
+@pytest.mark.parametrize(("setting", "quoted"), [("", True), ("quote_trackers = false\n", False)])
+@respx.mock
+def test_quote_trackers_decides_whether_work_item_text_may_be_quoted(setting: str, quoted: bool) -> None:
+    respx.post(LINEAR).mock(return_value=httpx.Response(200, json=_linear_issue()))
+
+    [requirement], _ = read_work_items(["ENG-7"], load_config(setting + LINEAR_CONFIG), LINEAR_ENV)
+
+    assert requirement.quoted is quoted
+    # The reviewer still reads the text: only the public summary leaves it out.
+    assert requirement.text == "- [ ] Sends a welcome email"

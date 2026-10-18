@@ -1,6 +1,6 @@
 # 0003: GitHub issues and repository Markdown as requirement sources
 
-Status: Accepted, 2026-10-15
+Status: Accepted, 2026-10-15. Amended by 0014: Jira, Azure Boards and Linear work items are read too.
 
 ## Context
 

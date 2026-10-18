@@ -96,6 +96,8 @@ class Requirement(_Frozen):
     comments: tuple[str, ...] = ()
     # A reviewer may add inferred criteria (ADR 0011): issues with no checklist or with maintainer comments.
     inferable: bool = False
+    # False keeps the text out of public comments: the summary shows criterion keys and status (ADR 0014).
+    quoted: bool = True
 
 
 class Finding(_Frozen):
