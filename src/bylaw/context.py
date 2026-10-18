@@ -8,7 +8,7 @@ from bylaw.editorconfig import EditorConfigResolver
 from bylaw.editorconfig_checks import check
 from bylaw.model import ChangedFile, Finding, ReviewContext
 from bylaw.requirements import collect_requirements
-from bylaw.rules import RULE_PATHS, collect_rules
+from bylaw.rules import collect_rules, is_rule_file
 from bylaw.source import RepoSource
 
 LOCKFILES = frozenset(
@@ -97,15 +97,15 @@ def build_context(source: RepoSource) -> ReviewContext:
         findings.extend(check(file, resolver.properties(file.path)))
     notes.extend(resolver.problems)
 
-    changed_rules = sorted(
-        f.path for f in files if f.path in RULE_PATHS or PurePosixPath(f.path).name == ".editorconfig"
-    )
+    changed_rules = sorted(f.path for f in files if is_rule_file(f.path))
     if changed_rules:
         notes.append(
             f"This change edits {', '.join(changed_rules)}; it is reviewed against the base branch "
             "versions (ADR 0004)."
         )
 
+    rules, rule_notes = collect_rules(files, source, resolver.files_read)
+    notes.extend(rule_notes)
     requirements, requirement_notes = collect_requirements(
         source, info, files, config.spec_globs, config.issue_repos
     )
@@ -114,7 +114,7 @@ def build_context(source: RepoSource) -> ReviewContext:
         head_sha=info.head_sha,
         title=info.title,
         files=files,
-        rules=collect_rules(files, source.read_base, resolver.files_read),
+        rules=rules,
         requirements=requirements,
         findings=tuple(findings),
         notes=(*notes, *requirement_notes),
