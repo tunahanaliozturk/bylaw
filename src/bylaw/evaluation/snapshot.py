@@ -34,32 +34,32 @@ class PullRequestAt(GitHubSource):
     def _comparison(self) -> Comparison:
         return self._client.compare(self._repo, self._pull.base.sha, self._commit or self._pull.head.sha)
 
-    @cached_property
-    def _merge_base_tree(self) -> dict[str, str] | None:
-        return self._client.tree_shas(self._repo, self._comparison.merge_base_commit.sha)
+    @property
+    def _base_sha(self) -> str:
+        return self._comparison.merge_base_commit.sha
+
+    @property
+    def _head_sha(self) -> str:
+        return self._commit or self._pull.head.sha
 
     def info(self) -> ChangeInfo:
-        pull, comparison = self._pull, self._comparison
         return ChangeInfo(
-            comparison.merge_base_commit.sha,
-            self._commit or pull.head.sha,
-            pull.title,
-            pull.body or "",
-            tuple(c.commit.message for c in comparison.commits),
+            self._base_sha,
+            self._head_sha,
+            self._pull.title,
+            self._pull.body or "",
+            tuple(c.commit.message for c in self._comparison.commits),
         )
 
     def changed_files(self) -> tuple[ChangedFile, ...]:
         return self._changed(self._comparison.files)
 
     def read_base(self, path: str) -> str | None:
-        # bylaw looks for a dozen rule files most projects lack; one tree read answers all of them.
-        tree = self._merge_base_tree
+        # bylaw looks for a dozen rule files most projects lack; the one tree read answers all of them.
+        tree = self._tree()
         if tree is not None and path not in tree:
             return None
-        return self._client.file_text(self._repo, path, self._comparison.merge_base_commit.sha)
-
-    def read_head(self, path: str) -> str | None:
-        return self._client.file_text(self._repo, path, self._commit or self._pull.head.sha)
+        return super().read_base(path)
 
 
 class _Recorder:
@@ -88,6 +88,10 @@ class _Recorder:
 
     def changed_files(self) -> tuple[ChangedFile, ...]:
         return self._files
+
+    def list_base(self, directory: str) -> frozenset[str]:
+        # Not recorded: a replay lists the snapshot's own base, which holds every file bylaw read.
+        return self._source.list_base(directory)
 
     def read_base(self, path: str) -> str | None:
         if path not in self.base:
@@ -220,8 +224,7 @@ def freeze(  # noqa: PLR0913 - what GitHub said about the pull request, all keyw
     for contents in written.values():
         for path in contents:
             _inside(path)
-    if out.exists():
-        shutil.rmtree(out)
+    _clear(out)
     try:
         for part, contents in written.items():
             for path, text in contents.items():
@@ -232,9 +235,24 @@ def freeze(  # noqa: PLR0913 - what GitHub said about the pull request, all keyw
         (out / "snapshot.json").write_bytes(pull.model_dump_json(indent=2).encode("utf-8") + b"\n")
         _check_replay(out, pull, files)
     except BaseException:
-        shutil.rmtree(out, ignore_errors=True)
+        _clear(out)
         raise
     return pull
+
+
+def _clear(out: Path) -> None:
+    """Remove what the tool wrote before; the labels in case.toml belong to people and stay."""
+    if not out.is_dir():
+        return
+    for entry in out.iterdir():
+        if entry.name == "case.toml":
+            continue
+        if entry.is_dir():
+            shutil.rmtree(entry)
+        else:
+            entry.unlink()
+    if not any(out.iterdir()):
+        out.rmdir()
 
 
 def _inside(path: str) -> None:

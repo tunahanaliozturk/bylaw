@@ -825,10 +825,18 @@ class GitHubSource:
             )
         return tuple(files)
 
+    @property
+    def _base_sha(self) -> str:
+        return self._pull.base.sha
+
+    @property
+    def _head_sha(self) -> str:
+        return self._pull.head.sha
+
     def _tree(self) -> dict[str, str] | None:
         """The base tree, read once; None when GitHub truncated it."""
         if self._base_tree is None:
-            self._base_tree = self._client.tree_shas(self._repo, self._pull.base.sha) or {}
+            self._base_tree = self._client.tree_shas(self._repo, self._base_sha) or {}
             self._tree_complete = bool(self._base_tree)
         return self._base_tree if self._tree_complete else None
 
@@ -836,12 +844,12 @@ class GitHubSource:
         # One tree read covers every moved file; per-file reads only when GitHub truncates the tree.
         if (tree := self._tree()) is not None:
             return tree.get(path)
-        return self._client.blob_sha(self._repo, path, self._pull.base.sha)
+        return self._client.blob_sha(self._repo, path, self._base_sha)
 
     def list_base(self, directory: str) -> frozenset[str]:
         # The same tree read serves every directory; a truncated tree costs one listing per directory.
         if (tree := self._tree()) is None:
-            return self._client.directory_files(self._repo, directory, self._pull.base.sha)
+            return self._client.directory_files(self._repo, directory, self._base_sha)
         prefix = f"{directory}/" if directory else ""
         return frozenset(
             path.removeprefix(prefix)
@@ -862,10 +870,10 @@ class GitHubSource:
         return self._client.files_text(self._repo, self._pull.base.sha, paths)
 
     def read_base(self, path: str) -> str | None:
-        return self._client.file_text(self._repo, path, self._pull.base.sha)
+        return self._client.file_text(self._repo, path, self._base_sha)
 
     def read_head(self, path: str) -> str | None:
-        return self._client.file_text(self._repo, path, self._pull.head.sha)
+        return self._client.file_text(self._repo, path, self._head_sha)
 
     def closing_issue_refs(self) -> tuple[IssueRef, ...]:
         return self._client.closing_issue_refs(self._repo, self._number)
