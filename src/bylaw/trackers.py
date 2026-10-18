@@ -111,7 +111,17 @@ def read_work_items(
                 f"from {_NAMES[tracker]}."
             )
             continue
-        with client(secrets) as http:
+        try:
+            http = client(secrets)
+        except ValueError:
+            # A header holds only ASCII; a pasted curly quote in a token fails here. The token stays out.
+            notes.extend(
+                f"Could not read {key} from {_NAMES[tracker]} (the token has characters an HTTP header "
+                "cannot carry); it is left out of the requirement check."
+                for key in keys
+            )
+            continue
+        with http:
             for key in keys:
                 try:
                     item = reader(http, key)
@@ -177,6 +187,9 @@ def _fetch(http: httpx.Client, key: str, tracker: Tracker, request: httpx.Reques
     except httpx.HTTPError:
         # The exception text is left out: the note does not need it, and it may name more than it should.
         raise _UnreadableError(f"{where} (network error); {after}") from None
+    except ValueError:
+        # Such as a credential that cannot be encoded; its text would name the credential.
+        raise _UnreadableError(f"{where} (the request could not be built); {after}") from None
     if response.is_redirect:
         raise _UnreadableError(f"{where} (a redirect, which bylaw does not follow with credentials); {after}")
     if response.status_code != httpx.codes.OK:
