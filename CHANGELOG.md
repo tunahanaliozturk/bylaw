@@ -20,6 +20,9 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 - A work item that does not exist and one outside the allow list get the same note, so notes do not reveal which keys exist elsewhere. A tracker token an HTTP header cannot carry is a note instead of a failed run.
 - A `.bylaw.toml` error never repeats the rejected value, so a token pasted into the file stays out of the log; the message says to rotate it.
 - Quoted prose in comments cannot mention people: a zero-width space follows every `@` in text from issues, work items, specs and the model. Code spans are left as written.
+- `bylaw eval snapshot` freezes a public pull request into a real evaluation case: the base and head of the files it touches at the commit a review comment was made on, the rule and spec files bylaw reads, the linked issue and the project's licence. Runs on a snapshot use local git only and never read GitHub (ADR 0015).
+- `bylaw eval score` reports real pull requests in their own sections, apart from the planted numbers. Real cases that two people have not labelled yet are reported as provisional.
+- The real set: 25 pull requests from 14 permissively licensed projects, frozen in `eval/real/` with first-pass labels that two people still need to replace.
 
 ## 0.3.0 - 2026-10-18
 
@@ -28,9 +31,6 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 - Linter configuration is read as rule ids, without running anything: Ruff's selected and ignored codes and per-file ignores (`ruff.toml`, `.ruff.toml`, `pyproject.toml`), following `extend` on the base branch, ESLint rules and overrides from `.eslintrc.json` and `.eslintrc.yml`, golangci-lint's enabled linters (v1 and v2 files), and .NET `dotnet_diagnostic` severities from `.editorconfig` and `.globalconfig`. What names no ids, such as an ESLint `extends`, a golangci-lint preset, a .NET category severity or the analysis level, is noted in the brief. ESLint configs written in JavaScript stay text. A file that does not parse is noted in the summary. YAML is read with `ruamel.yaml`'s safe loader, a new dependency.
 - A finding can cite a linter rule id as evidence, written `<tool>:<id>` (`ruff:S608`, `eslint:no-console`, `golangci-lint:gosec`, `dotnet:CA2100`). The brief lists the ids each configuration enables. Validation drops a finding whose id the configuration governing its file turns off, or does not turn on when bylaw read all of that configuration; under an `extends` or another setting bylaw could not read, an unlisted id is kept. Only configurations for the file's language count, and for Ruff only the nearest one.
 - The evaluation set has 55 cases: five new ones in `py-mono`, a monorepo whose two packages have conflicting `AGENTS.md` rules and their own Ruff configurations, two of them labelled with a rule id citation.
-- `bylaw eval snapshot` freezes a public pull request into a real evaluation case: the base and head of the files it touches at the commit a review comment was made on, the rule and spec files bylaw reads, the linked issue and the project's licence. Runs on a snapshot use local git only and never read GitHub (ADR 0015).
-- `bylaw eval score` reports real pull requests in their own sections, apart from the planted numbers. Real cases that two people have not labelled yet are reported as provisional.
-- The real set: 25 pull requests from 14 permissively licensed projects, frozen in `eval/real/` with first-pass labels that two people still need to replace.
 
 ## 0.2.0 - 2026-10-18
 
