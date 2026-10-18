@@ -46,6 +46,8 @@ app = [
 bedrock = ["anthropic[bedrock]>=1.14.0"]
 vertex = ["anthropic[vertex]>=1.14.0"]
 azure = ["azure-identity>=1.26.0"]
+# An MCP server for any agent (docs/mcp.md); the Action and the CLI never import it.
+mcp = ["mcp>=2.3.0"]
 
 [dependency-groups]
 # The extras are in the development environment so their tests run and the licence audit sees them.
@@ -55,7 +57,7 @@ dev = [
     "respx>=0.23.1",
     "ruff>=0.17.0",
     "mypy>=2.4.0",
-    "bylaw[app,azure,bedrock,vertex]",
+    "bylaw[app,azure,bedrock,mcp,vertex]",
 ]
 
 [build-system]

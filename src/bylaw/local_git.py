@@ -13,6 +13,9 @@ class LocalGitSource:
     """Committed changes from merge-base(base, HEAD) to HEAD. Uncommitted work is not included."""
 
     def __init__(self, repo_dir: Path, base: str, repo: str | None = None) -> None:
+        if base.startswith("-"):
+            # git would read it as an option; through the MCP server the base comes from an agent.
+            raise SourceError(f"base {base!r} is not a ref: it starts with '-'")
         self._dir = repo_dir
         self._repo = repo.lower() if repo else None
         self._head = self._git("rev-parse", "HEAD").strip()
