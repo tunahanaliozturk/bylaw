@@ -39,6 +39,10 @@ Params = Mapping[str, str | int]
 class GitHubError(Exception):
     """A GitHub API call failed. The message never contains the token."""
 
+    def __init__(self, message: str, status: int | None = None) -> None:
+        super().__init__(message)
+        self.status = status
+
 
 class _GraphQLError(GitHubError):
     """GitHub answered a GraphQL query with errors in the body."""
@@ -312,8 +316,15 @@ class ReviewComment:
 
 class GitHubClient:
     def __init__(
-        self, token: str, api_url: str = "https://api.github.com", graphql_url: str | None = None
+        self,
+        token: str,
+        api_url: str = "https://api.github.com",
+        graphql_url: str | None = None,
+        bot_login: str | None = None,
     ) -> None:
+        """`bot_login` is bylaw's own account when it is known, as for the GitHub App: then only that bot
+        carries bylaw's state, instead of any bot (ADR 0017)."""
+        self._bot = _login(bot_login) if bot_login else None
         self._api_url = api_url.rstrip("/")
         self._graphql_url = graphql_url or f"{self._api_url}/graphql"
         self._http = httpx.Client(
@@ -359,9 +370,12 @@ class GitHubClient:
                 break
         return messages
 
-    def file_text(self, repo: str, path: str, ref: str) -> str | None:
+    def file_text(self, repo: str, path: str, ref: str | None) -> str | None:
+        """The file at `ref`, or on the default branch when `ref` is None; None when it is missing."""
         response = self._get_optional(
-            f"/repos/{repo}/contents/{quote(path)}", {"ref": ref}, accept="application/vnd.github.raw+json"
+            f"/repos/{repo}/contents/{quote(path)}",
+            {"ref": ref} if ref else None,
+            accept="application/vnd.github.raw+json",
         )
         return None if response is None else response.content.decode("utf-8", errors="replace")
 
@@ -533,7 +547,7 @@ class GitHubClient:
                 comments = tuple(
                     ThreadComment(
                         body=c.body,
-                        trusted=_trusted(c.author.typename if c.author else "", c.author_association),
+                        trusted=self._trusted(c.author, c.author_association),
                         by_pr_author=c.author is not None and c.author.login == pr_author,
                     )
                     for c in read
@@ -594,10 +608,13 @@ class GitHubClient:
             )
             for comment in batch:
                 kind = comment.user.kind if comment.user else ""
-                if not comment.body.startswith(SUMMARY_MARKER) or not _trusted(
-                    kind, comment.author_association
+                author = _GqlAuthor(__typename=kind, login=comment.user.login if comment.user else "")
+                if not comment.body.startswith(SUMMARY_MARKER) or not self._trusted(
+                    author, comment.author_association
                 ):
                     continue
+                if self._bot is not None and not self._is_own(author):
+                    continue  # with a fixed identity, the summary is bylaw's own comment and nobody else's
                 if kind == "Bot":
                     return SummaryComment(id=comment.id, body=comment.body, bot=True)
                 fallback = fallback or SummaryComment(id=comment.id, body=comment.body)
@@ -627,6 +644,43 @@ class GitHubClient:
 
     def set_thread_resolved(self, thread_id: str, *, resolved: bool) -> None:
         self._graphql(_RESOLVE if resolved else _UNRESOLVE, {"id": thread_id})
+
+    def installation_token(
+        self, installation_id: int, repositories: Sequence[str], permissions: Mapping[str, str]
+    ) -> str:
+        """A GitHub App installation token for only these repositories and permissions. It lasts an hour.
+
+        The client must hold the app's JWT.
+        """
+        url = f"{self._api_url}/app/installations/{installation_id}/access_tokens"
+        body = {"repositories": list(repositories), "permissions": dict(permissions)}
+        response = self._send("POST", url, json=body)
+        _raise_for_status(response)
+        token = response.json().get("token")
+        if not isinstance(token, str) or not token:
+            raise GitHubError(f"GitHub returned no installation token for installation {installation_id}")
+        return token
+
+    def app_login(self) -> str:
+        """The GitHub App's own bot login, `<slug>[bot]`. The client must hold the app's JWT."""
+        slug = self._get("/app").json().get("slug")
+        if not isinstance(slug, str) or not slug:
+            raise GitHubError("GitHub returned no slug for the app")
+        return f"{slug}[bot]"
+
+    def _trusted(self, author: "_GqlAuthor | None", association: str) -> bool:
+        """ADR 0008: only bots and people with write access can carry bylaw's state or mute a finding.
+
+        With a fixed identity (ADR 0017) the bot must be bylaw's own one.
+        """
+        if association in TRUSTED_ASSOCIATIONS:
+            return True
+        if author is None or author.typename != "Bot":
+            return False
+        return self._bot is None or self._is_own(author)
+
+    def _is_own(self, author: "_GqlAuthor") -> bool:
+        return author.typename == "Bot" and _login(author.login) == self._bot
 
     def _graphql(self, query: str, variables: Mapping[str, object]) -> object:
         response = self._send("POST", self._graphql_url, json={"query": query, "variables": variables})
@@ -679,7 +733,8 @@ def _raise_for_status(response: httpx.Response) -> None:
         message = f"rate limit exceeded, resets at Unix time {reset}"
     request = response.request
     raise GitHubError(
-        f"GitHub returned {response.status_code} for {request.method} {request.url.path}: {message}"
+        f"GitHub returned {response.status_code} for {request.method} {request.url.path}: {message}",
+        response.status_code,
     )
 
 
@@ -717,9 +772,9 @@ def _first_and_recent(thread: _GqlThread) -> list[_GqlComment]:
     return [*thread.comments.nodes, *(c for c in thread.recent.nodes if not c.id or c.id not in seen)]
 
 
-def _trusted(kind: str, association: str) -> bool:
-    """ADR 0008: only bots and people with write access can carry bylaw's state or mute a finding."""
-    return kind == "Bot" or association in TRUSTED_ASSOCIATIONS
+def _login(login: str) -> str:
+    # The REST API names a bot `slug[bot]`, GraphQL names it `slug`; logins ignore case.
+    return login.removesuffix("[bot]").lower()
 
 
 class GitHubSource:
