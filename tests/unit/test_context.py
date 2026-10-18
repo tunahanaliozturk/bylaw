@@ -178,6 +178,38 @@ def test_a_change_to_a_package_rule_file_is_noted_as_reviewed_against_the_base()
     assert any("packages/api/AGENTS.md" in note and "base branch" in note for note in context.notes)
 
 
+def test_an_added_adr_is_noted_as_not_yet_a_decision_and_an_adr_readme_is_not_noted() -> None:
+    source = FakeSource(
+        head={"docs/adr/0002-new.md": "# 2. New\n\nStatus: Accepted\n\n## Decision\n\nNew.\n"},
+        files=(
+            ChangedFile(
+                path="docs/adr/0002-new.md", status="added", added_lines=(AddedLine(number=1, text="x"),)
+            ),
+            _file("docs/adr/README.md", "An index."),
+        ),
+    )
+
+    notes = build_context(source).notes
+
+    assert [note for note in notes if "docs/adr" in note] == [
+        "This change adds docs/adr/0002-new.md. An ADR is a decision once it is on the base branch, so the "
+        "change is not checked against it yet."
+    ]
+
+
+def test_a_linked_adr_that_is_not_an_accepted_decision_is_noted() -> None:
+    proposal = "# 1. Maybe\n\nStatus: Proposed\n\n## Decision\n\nMaybe.\n"
+    source = FakeSource(
+        base={"docs/adr/0001-maybe.md": proposal},
+        files=(_file("app.py", "x = 1"),),
+        body="Follows [the ADR](docs/adr/0001-maybe.md).",
+    )
+
+    notes = build_context(source).notes
+
+    assert any("docs/adr/0001-maybe.md" in note and "not checked against it" in note for note in notes)
+
+
 def test_accepted_adrs_are_decisions_from_the_base_branch_and_never_requirements_too() -> None:
     adr = "# 1. Money\n\nStatus: Accepted\n\n## Decision\n\n- [ ] Amounts are integer cents.\n"
     source = FakeSource(

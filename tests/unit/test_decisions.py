@@ -348,3 +348,24 @@ def test_a_package_adr_applies_only_under_its_package_and_is_read_only_when_the_
         ("packages/api/docs/adr/0002-api.md", "packages/api"),
         ("docs/adr/0001-root.md", ""),
     ]
+
+
+def test_adrs_bylaw_cannot_read_are_named_in_one_note_with_the_reason() -> None:
+    source = FakeSource(
+        base={
+            "docs/adr/0001-none.md": "# 1. None\n\n## Decision\n\nX.\n",
+            "docs/adr/0002-odd.md": _adr("Status: Ratified"),
+            "docs/adr/0003-prose.md": "# 3. Prose\n\nStatus: Accepted\n\nWe do X.\n",
+            "docs/adr/0004-proposal.md": _adr("Status: Proposed"),
+            "docs/adr/0005-old.md": _adr("Status: Superseded by 0006"),
+        }
+    )
+
+    decisions, notes = collect_decisions(source, GLOBS)
+
+    assert decisions == ()
+    assert notes == (
+        "These ADRs were left out because bylaw could not read them: docs/adr/0003-prose.md (no Decision "
+        'section), docs/adr/0002-odd.md (status "Ratified" not recognised), '
+        "docs/adr/0001-none.md (no status).",
+    )
