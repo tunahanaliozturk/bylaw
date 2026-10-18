@@ -362,3 +362,40 @@ def test_findings_validation_dropped_are_not_remembered() -> None:
 
     assert kept is not None and kept.findings == ()
     assert keep_valid(None, ()) is None
+
+
+def _private(context: ReviewContext) -> ReviewContext:
+    item = Requirement(source="PROJ-1", title="Secret plan", text="Secret text", criteria=(), quoted=False)
+    return context.model_copy(update={"requirements": (*context.requirements, item)})
+
+
+PRIVATE_ANSWER = ReviewResult(
+    criteria=(
+        CriterionResult(
+            criterion="PROJ-1/IC-1", status=CriterionStatus.MET, text="Secret rule", note="Secret"
+        ),
+        CriterionResult(criterion="#1/AC-1", status=CriterionStatus.PARTIAL, note="Public note"),
+    )
+)
+
+
+def test_the_memory_keeps_no_text_or_note_of_a_work_item_kept_out_of_quotes() -> None:
+    context = _private(_context(OLD, NEW, head="h1"))
+
+    run = run_model_review(context, lambda: FakeReviewer(PRIVATE_ANSWER), None, incremental=True, budget=None)
+
+    assert run.memory is not None
+    remembered = {c.criterion: c for c in run.memory.criteria}
+    assert (remembered["PROJ-1/IC-1"].text, remembered["PROJ-1/IC-1"].note) == (None, "")
+    assert remembered["#1/AC-1"].note == "Public note"
+    assert "Secret" not in run.memory.model_dump_json()
+
+
+def test_an_earlier_memory_loses_the_text_of_a_work_item_now_kept_out_of_quotes() -> None:
+    context = _private(_context(OLD, NEW))
+    earlier = _memory(context, criteria=PRIVATE_ANSWER.criteria)
+
+    run = run_model_review(context, None, earlier, incremental=True, budget=None)
+
+    assert run.memory is not None
+    assert "Secret" not in run.memory.model_dump_json()
