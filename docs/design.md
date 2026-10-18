@@ -31,7 +31,8 @@ bylaw/
   context/     collects the diff, rule sources and requirements (no LLM)
   model.py     ReviewContext and Finding schemas (pydantic): the contract between parts
   prompts/     shared Markdown prompts: rules, security, requirements
-  engine/      LLM call, used only in Action and CLI mode (Anthropic and OpenAI, structured output)
+  engine/      LLM call, used only in Action and CLI mode: Claude (API, Bedrock, Vertex AI, Foundry),
+               OpenAI and Azure OpenAI, local servers; structured output or the JSON fallback (ADR 0018)
   validate.py  deterministic filter applied to every finding, whoever produced it
   publish/     GitHub review and summary comment
   cli.py       bylaw context | bylaw review | bylaw validate | bylaw post | bylaw prompts
@@ -171,7 +172,8 @@ cannot drift apart.
 - **GitHub Action.** Composite `action.yml` at the repository root: `astral-sh/setup-uv`, then
   `uv run --project "$GITHUB_ACTION_PATH" --locked --no-dev bylaw review --post`, so a tag runs its own
   code with its own lock file ([ADR 0009](adr/0009-action-runs-from-its-own-source.md)). Inputs:
-  `api-key`, `provider`, `model`, `effort`, `fail-on`, `github-token`. Without a key it runs the
+  `api-key`, `provider`, `model`, `effort`, `base-url`, `fail-on`, `github-token`; a cloud provider's
+  extra is installed from `provider` ([providers.md](providers.md)). Without a key it runs the
   deterministic checks only. Listed on the GitHub Marketplace and versioned by tags (`v1`, `v1.2.0`).
 - **Claude Code plugin.** The plugin lives in `plugin/`, apart from the source, so the plugin directories
   scan only what users install: `plugin/.claude-plugin/plugin.json`, `plugin/skills/bylaw-review/SKILL.md`

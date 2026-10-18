@@ -62,7 +62,7 @@ jobs:
           api-key: ${{ secrets.ANTHROPIC_API_KEY }}
 ```
 
-Without a key it still runs the deterministic checks. OpenAI works too (`provider: openai`, `model: ...`). Fork pull requests need [the `pull_request_target` recipe](https://github.com/tunahanaliozturk/bylaw/blob/main/docs/recipes/pull-request-target.yml); read the warning at its top first.
+Without a key it still runs the deterministic checks. OpenAI works too (`provider: openai`, `model: ...`), and so do Amazon Bedrock, Google Vertex AI, Microsoft Foundry, Azure OpenAI and local models through Ollama, vLLM or LM Studio, for teams whose code may not go to a public API: [docs/providers.md](https://github.com/tunahanaliozturk/bylaw/blob/main/docs/providers.md) lists what leaves the machine with each and which variables it reads. Fork pull requests need [the `pull_request_target` recipe](https://github.com/tunahanaliozturk/bylaw/blob/main/docs/recipes/pull-request-target.yml); read the warning at its top first.
 
 **Claude Code or Codex.** The host's own model reviews, so no API key is needed:
 
@@ -154,7 +154,7 @@ A review is one model call. On the evaluation above it used about 3,900 input an
 ## Contributing and security
 
 Contributions are welcome: [CONTRIBUTING.md](https://github.com/tunahanaliozturk/bylaw/blob/main/CONTRIBUTING.md). Please report vulnerabilities privately as described in [SECURITY.md](https://github.com/tunahanaliozturk/bylaw/blob/main/SECURITY.md), not in a public issue.
-bylaw has no server and collects no data; what it sends where is in [docs/privacy.md](https://github.com/tunahanaliozturk/bylaw/blob/main/docs/privacy.md).
+bylaw has no server and collects no data; what it sends where is in [docs/privacy.md](https://github.com/tunahanaliozturk/bylaw/blob/main/docs/privacy.md), and per model provider in [docs/providers.md](https://github.com/tunahanaliozturk/bylaw/blob/main/docs/providers.md).
 
 ## Licence
 
