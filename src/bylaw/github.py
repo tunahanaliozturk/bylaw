@@ -434,9 +434,9 @@ class GitHubClient:
     def pull_comment(self, repo: str, comment_id: int) -> PullComment:
         return PullComment.model_validate(self._get(f"/repos/{repo}/pulls/comments/{comment_id}").json())
 
-    def licence(self, repo: str) -> tuple[str | None, str, str]:
-        """The SPDX id GitHub detected, the licence file's name and its text."""
-        data = _Licence.model_validate(self._get(f"/repos/{repo}/license").json())
+    def licence(self, repo: str, ref: str) -> tuple[str | None, str, str]:
+        """The SPDX id GitHub detected at a commit, the licence file's name and its text."""
+        data = _Licence.model_validate(self._get(f"/repos/{repo}/license", {"ref": ref}).json())
         text = base64.b64decode(data.content).decode("utf-8", errors="replace")
         return (data.license.spdx_id if data.license else None), data.path, text
 
