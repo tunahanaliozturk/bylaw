@@ -8,6 +8,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 - Azure Boards work items as requirements. `AB#123` in a pull request's title, body or commits brings in that work item's title, description and Acceptance Criteria field. It needs an `[azure_boards]` table in `.bylaw.toml` with the organisation and the allowed projects, and `AZURE_DEVOPS_TOKEN` (the Action's `azure-devops-token` input). A work item in a project that is not listed is left out.
 - Linear issues as requirements. An identifier such as `ENG-42` from a team listed under `[linear] teams` brings in that issue's title and Markdown description, with `LINEAR_API_KEY` in the environment (the Action's `linear-api-key` input). Only keys of listed projects and teams count as references, so `UTF-8` or `SHA-256` in a description never does.
 - `quote_trackers = false` in `.bylaw.toml` keeps work item text out of the summary comment: for Jira, Azure Boards and Linear requirements it shows only the criterion keys, their status and where they are met, so a public pull request does not quote a private tracker (ADR 0014).
+- Setup for each tracker, the Action inputs and what a left-out work item's note means: [docs/trackers.md](docs/trackers.md).
 
 ## 0.2.0 - 2026-10-18
 

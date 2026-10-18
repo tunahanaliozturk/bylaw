@@ -94,7 +94,8 @@ Read from the base branch, never from the pull request head
 
 ## Requirement sources
 
-GitHub issues and Markdown files in the repository ([ADR 0003](adr/0003-requirement-sources.md)).
+GitHub issues and Markdown files in the repository ([ADR 0003](adr/0003-requirement-sources.md)), and
+since v0.4 work items in Jira, Azure Boards and Linear.
 
 - **Issues:** closing keywords (`Closes`, `Fixes`, `Resolves`, with `#n` or `owner/repo#n`) in the PR
   body and commit messages, plus GraphQL `closingIssuesReferences`. Issue body only; comments are left
@@ -102,6 +103,11 @@ GitHub issues and Markdown files in the repository ([ADR 0003](adr/0003-requirem
   ([ADR 0007](adr/0007-issue-references-stay-in-the-repository.md)).
 - **Spec files:** Markdown files linked from the PR body, plus changed files matching the spec glob
   (default `docs/specs/**`, `docs/adr/**`, `**/REQUIREMENTS.md`).
+- **Tracker work items:** Jira (`PROJ-123`), Azure Boards (`AB#123`) and Linear (`ENG-123`) keys in the
+  PR title, body and commit messages, for trackers configured in `.bylaw.toml` with an allow list of
+  projects or teams and a token in the environment. Rich text is turned into Markdown before criteria
+  are extracted, and `quote_trackers = false` keeps their text out of the summary
+  ([ADR 0014](adr/0014-tracker-requirements.md), setup in [trackers.md](trackers.md)).
 
 Acceptance criteria are extracted deterministically first: task list items, items under headings named
 "Acceptance criteria" or "Requirements", and Given/When/Then blocks. They are numbered `AC-1`, `AC-2` and
@@ -195,5 +201,6 @@ terminal output), an architecture diagram, a logo and a social preview card. The
 
 - A hosted service or GitHub App.
 - A static analysis engine of our own: linter configuration is a rule source, linters are not re-run.
-- Jira, Azure DevOps, Confluence and Notion as requirement sources.
+- Confluence and Notion as requirement sources. Jira, Azure Boards and Linear arrived in v0.4
+  ([ADR 0014](adr/0014-tracker-requirements.md)).
 - An MCP server; it can wrap the CLI later.

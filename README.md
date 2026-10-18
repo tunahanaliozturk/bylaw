@@ -88,7 +88,7 @@ bylaw review --context context.json   # prints the findings as JSON; set ANTHROP
   <img src="https://raw.githubusercontent.com/tunahanaliozturk/bylaw/main/docs/images/flow-light.png" alt="Pull request, then context, then deterministic checks and the reviewer, then validation, then comments on the pull request" width="100%">
 </picture>
 
-1. **Context.** bylaw reads the diff, the rule files and `.bylaw.toml` from the **base** branch (so a change cannot loosen its own review), and the issues and specs the change links.
+1. **Context.** bylaw reads the diff, the rule files and `.bylaw.toml` from the **base** branch (so a change cannot loosen its own review), and the issues, specs and tracker work items the change links.
 2. **Review.** A model reviews with a fixed brief and a strict output schema. Text from the pull request, its issues and specs is treated as data, never as instructions.
 3. **Validate.** Every finding must sit on a line the change adds, and every rule citation must point at a real line. Anything else is dropped before it can be posted.
 4. **Post.** Inline comments for findings at or above the threshold, one summary comment with the requirement checklist. State lives in that summary, so there is no server and no database.
@@ -109,7 +109,13 @@ incremental = true              # on a new push, send the model only the files w
 
 [budget]
 pr_tokens = 500000              # optional: model tokens one pull request may use across all runs
+
+[jira]                          # optional: Jira issues a pull request names, such as PROJ-123
+url = "https://acme.atlassian.net"
+projects = ["PROJ"]
 ```
+
+Requirements can also come from Jira, Azure Boards (`AB#123`) and Linear. Each is an opt-in with an allow list and a token in the environment; setup, and `quote_trackers = false` for private trackers, are in [docs/trackers.md](https://github.com/tunahanaliozturk/bylaw/blob/main/docs/trackers.md).
 
 ## Evaluation
 
