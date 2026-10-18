@@ -68,6 +68,17 @@ class BaseReader(Protocol):
     def list_base(self, directory: str) -> frozenset[str]: ...
 
 
+_DOTNET_SUFFIXES = (".cs", ".vb")
+
+
+def governs(config_path: str, file: str) -> bool:
+    """Whether a linter configuration speaks for a file's language; ruff.toml says nothing on a .ts file."""
+    name, suffix = PurePosixPath(config_path).name, PurePosixPath(file).suffix
+    if name == ".editorconfig":
+        return suffix in _DOTNET_SUFFIXES
+    return name in LINTER_FILES.get(suffix, ())
+
+
 def is_rule_file(path: str) -> bool:
     name = PurePosixPath(path).name
     return path in RULE_PATHS or name == ".editorconfig" or name in _NESTED_RULE_NAMES
