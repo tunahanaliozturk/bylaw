@@ -625,3 +625,18 @@ def test_lines_inside_a_code_fence_of_a_criteria_field_are_not_criteria() -> Non
     field = "Refuses an expired token\n```\nexample: curl -X POST\nanother line\n```\nLogs every refusal"
 
     assert _criteria_of(with_criteria("", field)) == ["Refuses an expired token", "Logs every refusal"]
+
+
+@respx.mock
+def test_a_token_an_http_header_cannot_carry_is_a_note_not_a_crash() -> None:
+    route = respx.post(LINEAR)
+    env = {"LINEAR_API_KEY": "lin_api_secret\u2019"}  # a curly quote pasted with the key
+
+    requirements, notes = read_work_items(["ENG-7"], load_config(LINEAR_CONFIG), env)
+
+    assert (requirements, route.called) == ((), False)
+    assert notes == (
+        "Could not read ENG-7 from Linear (the token has characters an HTTP header cannot carry); "
+        "it is left out of the requirement check.",
+    )
+    assert not _notes_leak(notes, env)
