@@ -9,6 +9,8 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 - In the app, model keys and tracker tokens are per installation, from `BYLAW_INSTALLATION_<id>_<NAME>` variables or a mounted directory with one file per secret. A server-wide key is never used for an installation.
 - In the app, only the app's own bot login carries bylaw's state: a summary or a fingerprint marker from any other bot, or a summary written by a person, is ignored and never edited (ADR 0017, the alternative ADR 0008 named).
 - `docs/app/manifest.json` registers the app with four permissions, pull requests write and contents, issues and metadata read, and the `pull_request` event only; `docs/app/register.html` sends it to GitHub from a local page. A test keeps the manifest equal to the permissions the server's tokens ask for.
+- A container image for the app (`Dockerfile`): slim, non-root, built from the lock file, with a health check written in Python because the slim image has no curl or wget. [docs/app/deploy.md](docs/app/deploy.md) covers registration, running, installing, organisation defaults and keys. `tools/app_smoke.py` runs the app end to end against a fake GitHub, as a process or as the image, and checks that Docker reports it healthy.
+
 
 
 ## 0.4.0 - 2026-10-18

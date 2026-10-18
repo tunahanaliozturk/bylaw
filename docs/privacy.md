@@ -1,6 +1,6 @@
 # Privacy
 
-bylaw is a command-line tool and a GitHub Action that runs in your environment: your terminal, your Claude Code or Codex session, or your GitHub Actions runner. It has no server and collects nothing. There is no telemetry.
+bylaw is a command-line tool, a GitHub Action and a self-hosted GitHub App that run in your environment: your terminal, your Claude Code or Codex session, your GitHub Actions runner, or a server you run. bylaw's authors run no server for it and collect nothing. There is no telemetry.
 
 What leaves your machine or runner, and where it goes:
 
@@ -9,6 +9,8 @@ What leaves your machine or runner, and where it goes:
 - **The model provider you choose.** With an API key (the Action, `bylaw review`), the pull request title, the diff with its file paths, the rule files, the decision sections of accepted ADRs and the requirement text go to that provider (Anthropic or OpenAI) under your account and its terms. bylaw asks OpenAI not to store the response (`store: false`). With Claude Code or Codex, the host's own model reads them as part of your session.
 - **Nothing else.** bylaw sends no data to its authors or to any third party.
 
-Keys and tokens are read from the environment, never written to files, logs or comments.
+- **The GitHub App, if you run it.** GitHub sends pull request events to your server, which reads and writes through the API with tokens it mints for itself and sends to the model provider what the Action sends. It keeps no database: its queue and the list of heads it reviewed live in memory and are gone on restart ([ADR 0017](adr/0017-github-app.md)).
+
+Keys and tokens are read from the environment or, for the app, from files you mount, never written to files, logs or comments.
 
 Questions or concerns: open an issue, or for anything sensitive use the private report described in [SECURITY.md](../SECURITY.md).
