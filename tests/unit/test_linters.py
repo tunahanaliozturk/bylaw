@@ -319,3 +319,11 @@ def test_a_negated_ruff_per_file_pattern_applies_to_the_files_it_does_not_match(
 
     assert enables(rules, "S101", "src/app.py") is True
     assert enables(rules, "S101", "scripts/seed.py") is False
+
+
+def test_eslint_severities_are_read_whatever_their_case() -> None:
+    rules = _parsed(
+        ".eslintrc.json", '{"rules": {"no-console": "Error", "eqeqeq": ["WARN"], "no-var": "OFF"}}'
+    )
+
+    assert (rules.select, rules.ignore) == (("no-console", "eqeqeq"), ("no-var",))
