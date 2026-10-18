@@ -19,6 +19,7 @@ from bylaw.engine import (
     credential_errors,
     entra_token_provider,
     json_instructions,
+    refuse_header_list,
     review_with_retry,
 )
 from bylaw.model import ReviewResult
@@ -202,6 +203,7 @@ def foundry_reviewer(
     """Claude in Microsoft Foundry, with structured outputs but no server-side fallback (ADR 0018). The key is
     ANTHROPIC_FOUNDRY_API_KEY; without one, Microsoft Entra ID. The resource is ANTHROPIC_FOUNDRY_RESOURCE or
     ANTHROPIC_FOUNDRY_BASE_URL."""
+    refuse_header_list("ANTHROPIC_CUSTOM_HEADERS", "Microsoft Foundry")
     has_key = bool(os.environ.get("ANTHROPIC_FOUNDRY_API_KEY"))
     tokens = None if has_key else entra_token_provider("ANTHROPIC_FOUNDRY_API_KEY")
     try:

@@ -17,7 +17,7 @@ import pytest
 from anthropic.lib.aws import _auth as aws_auth
 
 from bylaw import engine_anthropic
-from bylaw.engine import ReviewError, Usage, can_review, make_reviewer
+from bylaw.engine import ReviewError, Usage, api_key_for, can_review, make_reviewer
 from bylaw.engine_anthropic import AnthropicReviewer
 from bylaw.engine_openai import ChatReviewer, OpenAIReviewer
 from tests.unit.test_engine import REVIEW, SECRET, _message, _response, _streamed
@@ -35,6 +35,12 @@ FOREIGN_KEYS = (
     "ANTHROPIC_FOUNDRY_API_KEY",
     "AZURE_OPENAI_API_KEY",
     "AZURE_OPENAI_AD_TOKEN",
+    "BYLAW_BASE_URL_KEY",
+    # Header lists the SDKs read; an Authorization line in one would travel like a key.
+    "OPENAI_CUSTOM_HEADERS",
+    "ANTHROPIC_CUSTOM_HEADERS",
+    "OPENAI_ORG_ID",
+    "OPENAI_PROJECT_ID",
 )
 
 
@@ -61,6 +67,11 @@ def clean_env(monkeypatch: pytest.MonkeyPatch) -> None:
     # The SDK keeps one boto3 session per set of arguments for the life of the process, with the
     # credentials it found; each test starts without one so its own environment is what gets read.
     cast(Any, aws_auth._get_session).cache_clear()
+
+
+def _headers(request: httpx2.Request) -> str:
+    """Every header with its value; the repr of headers hides Authorization, so a test must not rely on it."""
+    return "\n".join(f"{name}: {value}" for name, value in request.headers.items())
 
 
 def _chat(text: str | None, finish: str = "stop", tokens: tuple[int, int] = (10, 5)) -> dict[str, object]:
@@ -203,24 +214,94 @@ def test_a_base_url_is_only_for_the_openai_compatible_provider() -> None:
         make_reviewer("openai", "gpt-test", None, SECRET, LOCAL)
 
 
-def test_openai_compatible_sends_only_its_own_key_and_never_the_openai_one(
-    monkeypatch: pytest.MonkeyPatch,
+@pytest.mark.parametrize("name", ["OPENAI_API_KEY", "BYLAW_API_KEY", "OPENAI_ORG_ID", "OPENAI_PROJECT_ID"])
+def test_a_local_server_gets_no_key_or_id_meant_for_another_provider(
+    monkeypatch: pytest.MonkeyPatch, name: str
 ) -> None:
-    monkeypatch.setenv("OPENAI_API_KEY", SECRET)
-    handler, sent = _replies(_ok(json.dumps(REVIEW)), _ok(json.dumps(REVIEW)))
+    monkeypatch.setenv(name, SECRET)
+    handler, sent = _replies(_ok(json.dumps(REVIEW)))
 
-    _local(handler).review("s", "u")
     make_reviewer(
         "openai-compatible",
         "m",
         None,
-        "local-key",
+        api_key_for("openai-compatible"),
         LOCAL,
         http_client=openai.DefaultHttpxClient(transport=httpx2.MockTransport(handler)),
     ).review("s", "u")
 
-    assert SECRET not in sent[0].headers.get("authorization", "")
-    assert sent[1].headers["authorization"] == "Bearer local-key"
+    assert SECRET not in _headers(sent[0])
+
+
+def test_a_local_server_gets_the_key_of_its_own_variable(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("BYLAW_BASE_URL_KEY", "local-key")
+    monkeypatch.setenv("BYLAW_API_KEY", SECRET)
+    handler, sent = _replies(_ok(json.dumps(REVIEW)))
+
+    make_reviewer(
+        "openai-compatible",
+        "m",
+        None,
+        api_key_for("openai-compatible"),
+        LOCAL,
+        http_client=openai.DefaultHttpxClient(transport=httpx2.MockTransport(handler)),
+    ).review("s", "u")
+
+    assert sent[0].headers["authorization"] == "Bearer local-key"
+
+
+@pytest.mark.parametrize(
+    "url",
+    ["http://ollama.internal:11434/v1", "http://192.168.1.20:8000/v1", "http://localhost.evil.example/v1"],
+)
+def test_plain_http_to_another_machine_is_refused(url: str) -> None:
+    with pytest.raises(ReviewError, match="https"):
+        make_reviewer("openai-compatible", "m", None, None, url)
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://localhost:11434/v1",
+        "http://127.0.0.1:8000/v1",
+        "http://[::1]:1234/v1",
+        "https://vllm.internal/v1",
+    ],
+)
+def test_plain_http_on_this_machine_and_https_anywhere_are_allowed(url: str) -> None:
+    assert isinstance(make_reviewer("openai-compatible", "m", None, None, url), ChatReviewer)
+
+
+@pytest.mark.usefixtures("azure_openai", "foundry", "entra")
+@pytest.mark.parametrize(
+    ("provider", "variable"),
+    [
+        ("openai-compatible", "OPENAI_CUSTOM_HEADERS"),
+        ("azure-openai", "OPENAI_CUSTOM_HEADERS"),
+        ("foundry", "ANTHROPIC_CUSTOM_HEADERS"),
+    ],
+)
+def test_sdk_header_lists_meant_for_another_provider_are_refused(
+    monkeypatch: pytest.MonkeyPatch, provider: str, variable: str
+) -> None:
+    monkeypatch.setenv(variable, f"Authorization: Bearer {SECRET}")
+
+    with pytest.raises(ReviewError, match=variable) as error:
+        make_reviewer(provider, "m", None, None, LOCAL if provider == "openai-compatible" else None)
+
+    assert SECRET not in str(error.value)
+
+
+@pytest.mark.usefixtures("azure_openai")
+def test_azure_openai_gets_no_openai_organization_or_project(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("AZURE_OPENAI_API_KEY", "azure-key")
+    monkeypatch.setenv("OPENAI_ORG_ID", SECRET)
+    monkeypatch.setenv("OPENAI_PROJECT_ID", SECRET)
+    handler, sent = _replies(httpx2.Response(200, json=_response(json.dumps(REVIEW))))
+
+    _azure(handler).review("s", "u")
+
+    assert SECRET not in _headers(sent[0])
 
 
 def test_the_effort_goes_to_a_local_server_as_reasoning_effort() -> None:
@@ -363,7 +444,7 @@ def test_keys_for_other_providers_never_reach_bedrock(monkeypatch: pytest.Monkey
 
     _claude(handler, "bedrock").review("s", "u")
 
-    assert SECRET not in str(sent[0].headers)
+    assert SECRET not in _headers(sent[0])
 
 
 def test_bedrock_with_no_aws_credentials_is_a_review_error(
@@ -473,7 +554,7 @@ def test_keys_for_other_providers_never_reach_vertex(monkeypatch: pytest.MonkeyP
 
     _claude(handler, "vertex").review("s", "u")
 
-    assert SECRET not in str(sent[0].headers)
+    assert SECRET not in _headers(sent[0])
 
 
 @pytest.fixture
@@ -625,7 +706,7 @@ def test_keys_for_other_providers_never_reach_azure(monkeypatch: pytest.MonkeyPa
         make_reviewer(provider, "review-deployment", None, None, http_client=http).review("s", "u")
 
     assert sent
-    assert SECRET not in str(sent[0].headers)
+    assert SECRET not in _headers(sent[0])
 
 
 def _broken(*_args: object, **_kwargs: object) -> None:

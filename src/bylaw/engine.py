@@ -1,11 +1,13 @@
 """The model-facing review schema and the provider-neutral reviewer interface (ADR 0001)."""
 
+import ipaddress
 import json
 import os
 import re
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Protocol
+from urllib.parse import urlsplit
 
 import httpx2
 from pydantic import BaseModel, ConfigDict, ValidationError
@@ -13,7 +15,14 @@ from pydantic import BaseModel, ConfigDict, ValidationError
 from bylaw.model import Category, CriterionStatus, ReviewResult, Severity
 
 PROVIDERS = ("anthropic", "openai", "bedrock", "vertex", "foundry", "azure-openai", "openai-compatible")
-_KEY_VARIABLES = {"anthropic": "ANTHROPIC_API_KEY", "openai": "OPENAI_API_KEY"}
+_KEY_VARIABLES = {
+    "anthropic": "ANTHROPIC_API_KEY",
+    "openai": "OPENAI_API_KEY",
+    "openai-compatible": "BYLAW_BASE_URL_KEY",
+}
+# BYLAW_API_KEY, the Action's api-key input, is for these two only: a server at any base URL, or a cloud,
+# must never get a key that was meant for Anthropic or OpenAI.
+_SHARED_KEY = frozenset({"anthropic", "openai"})
 # A local server needs no key, and a cloud provider authenticates through its own credential chain (an AWS
 # profile or role, for one), which bylaw cannot see without calling it. Neither stops the model review.
 _NO_KEY_NEEDED = frozenset({"bedrock", "vertex", "foundry", "azure-openai", "openai-compatible"})
@@ -88,7 +97,10 @@ def api_key_for(provider: str, env: Mapping[str, str] | None = None) -> str | No
     installation's secrets so a server-wide key never reviews for an installation (ADR 0017)."""
     source = os.environ if env is None else env
     # The provider's own variable wins, so a key meant for one provider is never sent to another.
-    return source.get(_KEY_VARIABLES.get(provider, "")) or source.get("BYLAW_API_KEY") or None
+    own = source.get(_KEY_VARIABLES.get(provider, ""))
+    if own or provider not in _SHARED_KEY:
+        return own or None
+    return source.get("BYLAW_API_KEY") or None
 
 
 def key_variable(provider: str) -> str:
@@ -145,10 +157,15 @@ def make_reviewer(  # noqa: PLR0911, PLR0913 - a branch per provider; the base U
     if provider == "openai-compatible":
         if not base_url:
             raise ReviewError("--base-url is required with the openai-compatible provider")
+        if _plain_http_off_machine(base_url):
+            # The brief is the pull request's code; across a network it goes encrypted or not at all.
+            raise ReviewError("--base-url must use https unless the server is on this machine (localhost)")
+        refuse_header_list("OPENAI_CUSTOM_HEADERS", provider)
         # Always a key of its own: left empty, the SDK would read OPENAI_API_KEY and send it to this server.
         local = openai.OpenAI(
             api_key=api_key or "unused", base_url=base_url, http_client=http_client, max_retries=1
         )
+        without_openai_ids(local)
         return ChatReviewer(client=local, model=_named(model, provider), effort=effort)
     raise ReviewError(f"unknown provider {provider!r}; use one of {', '.join(PROVIDERS)}")
 
@@ -189,6 +206,32 @@ def credential_errors() -> tuple[type[Exception], ...]:
     except ImportError:
         pass
     return tuple(errors)
+
+
+def refuse_header_list(variable: str, provider: str) -> None:
+    """The SDKs add the headers listed in OPENAI_CUSTOM_HEADERS or ANTHROPIC_CUSTOM_HEADERS to every request,
+    an Authorization line included; set for the OpenAI or Claude API, they must not reach another provider."""
+    if os.environ.get(variable) is not None:
+        raise ReviewError(f"{variable} is set; it would send its headers to {provider}, so unset it")
+
+
+def without_openai_ids(client: object) -> None:
+    """The OpenAI client fills these from OPENAI_ORG_ID and OPENAI_PROJECT_ID, which belong to OpenAI."""
+    client.organization = None  # type: ignore[attr-defined]
+    client.project = None  # type: ignore[attr-defined]
+
+
+def _plain_http_off_machine(url: str) -> bool:
+    parts = urlsplit(url)
+    if parts.scheme != "http":
+        return False
+    host = parts.hostname or ""
+    if host == "localhost":
+        return False
+    try:
+        return not ipaddress.ip_address(host).is_loopback
+    except ValueError:  # a name other than localhost
+        return True
 
 
 def _named(model: str | None, provider: str) -> str:
