@@ -178,3 +178,16 @@ def test_a_path_that_leaves_the_case_directory_is_refused(tmp_path: Path) -> Non
     with pytest.raises(ValueError, match="evil"):
         freeze(source, tmp_path / "cases/c", url="u", number=1, licence=("MIT", "LICENSE", "MIT License\n"))
     assert not (tmp_path / "cases/evil.py").exists()
+
+
+@pytest.mark.usefixtures("github")
+def test_freezing_again_keeps_the_labels(tmp_path: Path) -> None:
+    _snapshot(tmp_path)
+    labels = tmp_path / "cases/octo-app-7/case.toml"
+    labels.write_bytes(b'kind = "bug"\nlabellers = ["ada"]\n')
+    (tmp_path / "cases/octo-app-7/head/stale.py").write_bytes(b"old\n")
+
+    _snapshot(tmp_path)
+
+    assert labels.read_bytes() == b'kind = "bug"\nlabellers = ["ada"]\n'
+    assert not (tmp_path / "cases/octo-app-7/head/stale.py").exists()
