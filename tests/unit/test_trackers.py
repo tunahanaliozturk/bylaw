@@ -640,3 +640,20 @@ def test_a_token_an_http_header_cannot_carry_is_a_note_not_a_crash() -> None:
         "it is left out of the requirement check.",
     )
     assert not _notes_leak(notes, env)
+
+
+def test_a_token_put_in_the_config_is_not_echoed_and_must_be_rotated() -> None:
+    text = f'[jira]\nurl = "{JIRA}"\nprojects = ["PROJ"]\napi_token = "SECRET123"\n'
+
+    with pytest.raises(ConfigError) as caught:
+        load_config(text)
+
+    assert "SECRET123" not in str(caught.value)
+    assert "rotate" in str(caught.value)
+
+
+def test_no_config_error_echoes_the_value_it_rejects() -> None:
+    with pytest.raises(ConfigError) as caught:
+        load_config('max_comments = "SECRET123"\n')
+
+    assert "SECRET123" not in str(caught.value)

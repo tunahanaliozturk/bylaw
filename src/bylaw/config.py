@@ -12,12 +12,16 @@ from bylaw.model import Severity
 TrackerKey = Annotated[str, Field(pattern=r"^[A-Z][A-Z0-9_]*$")]
 
 
+# Values are left out of validation errors: a token pasted into the file must not reach the Actions log.
+_SETTINGS = ConfigDict(frozen=True, extra="forbid", hide_input_in_errors=True)
+
+
 class ConfigError(Exception):
     """The configuration file is invalid. The message is safe to print."""
 
 
 class Budget(BaseModel):
-    model_config = ConfigDict(frozen=True, extra="forbid")
+    model_config = _SETTINGS
 
     # Model tokens, input plus output, one pull request may use across all its runs; none means no cap.
     pr_tokens: int | None = Field(default=None, ge=1_000)
@@ -26,7 +30,7 @@ class Budget(BaseModel):
 class Jira(BaseModel):
     """Jira Cloud. Credentials come from JIRA_EMAIL and JIRA_API_TOKEN, never from this file (ADR 0014)."""
 
-    model_config = ConfigDict(frozen=True, extra="forbid")
+    model_config = _SETTINGS
 
     url: str
     projects: tuple[TrackerKey, ...] = Field(min_length=1)
@@ -47,7 +51,7 @@ class Jira(BaseModel):
 class AzureBoards(BaseModel):
     """Azure DevOps Services. The token comes from AZURE_DEVOPS_TOKEN (ADR 0014)."""
 
-    model_config = ConfigDict(frozen=True, extra="forbid")
+    model_config = _SETTINGS
 
     organization: str = Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9-]*$")
     # AB#123 names no project, so the project a work item belongs to is checked after it is read.
@@ -57,13 +61,13 @@ class AzureBoards(BaseModel):
 class Linear(BaseModel):
     """Linear. The key comes from LINEAR_API_KEY (ADR 0014)."""
 
-    model_config = ConfigDict(frozen=True, extra="forbid")
+    model_config = _SETTINGS
 
     teams: tuple[TrackerKey, ...] = Field(min_length=1)
 
 
 class Config(BaseModel):
-    model_config = ConfigDict(frozen=True, extra="forbid")
+    model_config = _SETTINGS
 
     spec_globs: tuple[str, ...] = ("docs/specs/**", "docs/adr/**", "**/REQUIREMENTS.md")
     severity_threshold: Severity = Severity.MEDIUM
@@ -98,5 +102,14 @@ def load_config(text: str | None) -> Config:
         return Config()
     try:
         return Config.model_validate(tomllib.loads(text))
-    except (tomllib.TOMLDecodeError, ValidationError) as error:
-        raise ConfigError(f".bylaw.toml on the base branch is invalid: {error}") from error
+    except tomllib.TOMLDecodeError as error:
+        raise ConfigError(f".bylaw.toml on the base branch is invalid: {error}") from None
+    except ValidationError as error:
+        message = f".bylaw.toml on the base branch is invalid: {error}"
+        if any(problem["type"] == "extra_forbidden" for problem in error.errors(include_input=False)):
+            # An unknown key may be a token put in the wrong place; its value is not shown, but it is public.
+            message += (
+                " If an unknown setting holds a token or key, remove it and rotate that token: tracker "
+                "tokens are read from the environment only."
+            )
+        raise ConfigError(message) from None
