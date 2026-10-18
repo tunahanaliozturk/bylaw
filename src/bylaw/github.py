@@ -387,7 +387,8 @@ class GitHubClient:
         return frozenset(
             e["name"]
             for e in entries
-            if isinstance(e, dict) and e.get("type") == "file" and isinstance(e.get("name"), str)
+            # A symlink is a blob in the tree too, and the contents API reads it as its target.
+            if isinstance(e, dict) and e.get("type") in ("file", "symlink") and isinstance(e.get("name"), str)
         )
 
     def blob_sha(self, repo: str, path: str, ref: str) -> str | None:

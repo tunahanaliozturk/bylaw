@@ -403,6 +403,7 @@ def test_a_truncated_tree_lists_a_directory_through_the_contents_api(client: Git
     )
     listing = [
         {"name": "AGENTS.md", "type": "file", "path": "packages/api/AGENTS.md"},
+        {"name": "CLAUDE.md", "type": "symlink", "path": "packages/api/CLAUDE.md"},
         {"name": "src", "type": "dir", "path": "packages/api/src"},
     ]
     route = respx.get(f"{API}/repos/octo/app/contents/packages/api").mock(
@@ -412,7 +413,8 @@ def test_a_truncated_tree_lists_a_directory_through_the_contents_api(client: Git
 
     source = GitHubSource(client, "octo/app", 5)
 
-    assert source.list_base("packages/api") == {"AGENTS.md"}
+    # A symlink (CLAUDE.md -> AGENTS.md) counts, as it does in the tree, whatever the repository's size.
+    assert source.list_base("packages/api") == {"AGENTS.md", "CLAUDE.md"}
     assert route.calls[0].request.url.params["ref"] == "b1"
     assert source.list_base("gone") == frozenset()
 
