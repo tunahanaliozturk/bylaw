@@ -1,0 +1,48 @@
+{
+  "case_id": "py-trailing-space",
+  "result": {
+    "findings": [
+      {
+        "file": "app/auth.py",
+        "line_start": 34,
+        "line_end": 34,
+        "category": "rule",
+        "severity": "low",
+        "message": "Trailing whitespace on line 34.",
+        "suggestion": null,
+        "evidence": ".editorconfig:5"
+      },
+      {
+        "file": "app/auth.py",
+        "line_start": 34,
+        "line_end": 36,
+        "category": "rule",
+        "severity": "low",
+        "message": "The new `token_hint` function adds behaviour, but the change includes no test for it. The contributing guide requires a test with every change in behaviour.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:15"
+      },
+      {
+        "file": "app/auth.py",
+        "line_start": 36,
+        "line_end": 36,
+        "category": "security",
+        "severity": "low",
+        "message": "For tokens of four characters or fewer, `token[-4:]` returns the whole reset token, so the hint shown to support would expose the full secret. For longer tokens it still reveals part of a live reset credential.",
+        "suggestion": "    return \"...\" + token[-4:] if len(token) > 8 else \"...\"",
+        "evidence": null
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 2,
+  "seconds": 6.792439599987119,
+  "input_tokens": 4200,
+  "output_tokens": 662,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "b4faa4e8c9ae7ceca7eae9120ae5aa15bae10e77a2808f4357a3382ab9587d06",
+  "dropped_findings": 0
+}

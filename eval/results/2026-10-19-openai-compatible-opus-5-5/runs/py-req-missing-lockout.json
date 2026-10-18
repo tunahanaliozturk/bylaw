@@ -1,0 +1,83 @@
+{
+  "case_id": "py-req-missing-lockout",
+  "result": {
+    "findings": [
+      {
+        "file": "app/login.py",
+        "line_start": 14,
+        "line_end": 15,
+        "category": "requirement",
+        "severity": "high",
+        "message": "There is no failed-attempt counter or account lock, so a client can guess passwords without limit and the account is never locked after five failures in a row.",
+        "suggestion": null,
+        "evidence": "docs/specs/login.md/AC-3"
+      },
+      {
+        "file": "app/login.py",
+        "line_start": 9,
+        "line_end": 9,
+        "category": "rule",
+        "severity": "medium",
+        "message": "This new behaviour ships without any test. The contributing guide requires a test with every change in behaviour.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:15"
+      },
+      {
+        "file": "app/login.py",
+        "line_start": 14,
+        "line_end": 14,
+        "category": "bug",
+        "severity": "medium",
+        "message": "`row[\"salt\"]` only works when the connection's row_factory is `sqlite3.Row`. With a default connection, rows are tuples and string indexing raises TypeError.",
+        "suggestion": null,
+        "evidence": null
+      }
+    ],
+    "criteria": [
+      {
+        "criterion": "docs/specs/login.md/AC-1",
+        "status": "partial",
+        "text": null,
+        "code": [
+          {
+            "file": "app/login.py",
+            "line": 16
+          }
+        ],
+        "tests": [],
+        "note": "The code is implemented, but no test covers it."
+      },
+      {
+        "criterion": "docs/specs/login.md/AC-2",
+        "status": "partial",
+        "text": null,
+        "code": [
+          {
+            "file": "app/login.py",
+            "line": 14
+          }
+        ],
+        "tests": [],
+        "note": "The code is implemented, but no test covers it."
+      },
+      {
+        "criterion": "docs/specs/login.md/AC-3",
+        "status": "missing",
+        "text": null,
+        "code": [],
+        "tests": [],
+        "note": "Neither failed-attempt tracking nor account locking is implemented."
+      }
+    ],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 3,
+  "seconds": 6.164869699976407,
+  "input_tokens": 5783,
+  "output_tokens": 579,
+  "error": null,
+  "reviewer": "openai-compatible:claude-opus-5-5:default effort@https://api.anthropic.com/v1/",
+  "case_digest": "df275cadac25bedd70c6fc7bb7246a76033728ed6e5021c9dbe01c8a98402feb",
+  "dropped_findings": 0
+}

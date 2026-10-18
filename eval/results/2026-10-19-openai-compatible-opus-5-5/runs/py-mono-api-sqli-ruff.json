@@ -1,0 +1,38 @@
+{
+  "case_id": "py-mono-api-sqli-ruff",
+  "result": {
+    "findings": [
+      {
+        "file": "packages/api/api/handlers.py",
+        "line_start": 24,
+        "line_end": 24,
+        "category": "security",
+        "severity": "critical",
+        "message": "The status value is interpolated straight into the SQL string, so a crafted status such as `x' OR '1'='1` changes the query (SQL injection). Use a parameterised query instead.",
+        "suggestion": "    rows = connection.execute(\"SELECT id FROM orders WHERE status = ?\", (status,)).fetchall()",
+        "evidence": "ruff:S608"
+      },
+      {
+        "file": "packages/api/api/handlers.py",
+        "line_start": 24,
+        "line_end": 24,
+        "category": "rule",
+        "severity": "medium",
+        "message": "A database error from `execute` propagates to the caller, but API handlers must never raise; failures have to come back as `Result(ok=False, error=...)`.",
+        "suggestion": null,
+        "evidence": "packages/api/AGENTS.md:3"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 2,
+  "seconds": 3.5998922999715433,
+  "input_tokens": 5590,
+  "output_tokens": 320,
+  "error": null,
+  "reviewer": "openai-compatible:claude-opus-5-5:default effort@https://api.anthropic.com/v1/",
+  "case_digest": "05d79034fe1a5ea110e7bedea587d0fea23259a74977e54a0f756e4c8f362227",
+  "dropped_findings": 0
+}

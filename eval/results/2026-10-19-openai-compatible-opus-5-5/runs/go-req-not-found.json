@@ -1,0 +1,58 @@
+{
+  "case_id": "go-req-not-found",
+  "result": {
+    "findings": [
+      {
+        "file": "handlers.go",
+        "line_start": 71,
+        "line_end": 75,
+        "category": "requirement",
+        "severity": "high",
+        "message": "Every error from `Rename` becomes a 500, including the not-found error that `s.Widget` returns for an id with no row. An unknown id therefore returns 500 instead of the required 404.",
+        "suggestion": null,
+        "evidence": "docs/specs/rename.md/AC-2"
+      }
+    ],
+    "criteria": [
+      {
+        "criterion": "docs/specs/rename.md/AC-1",
+        "status": "met",
+        "text": null,
+        "code": [
+          {
+            "file": "main.go",
+            "line": 19
+          },
+          {
+            "file": "handlers.go",
+            "line": 57
+          },
+          {
+            "file": "store.go",
+            "line": 45
+          }
+        ],
+        "tests": [],
+        "note": "Implemented, but no test covers the rename endpoint."
+      },
+      {
+        "criterion": "docs/specs/rename.md/AC-2",
+        "status": "missing",
+        "text": null,
+        "code": [],
+        "tests": [],
+        "note": "The UPDATE affects zero rows for an unknown id, and the follow-up lookup error is mapped to 500. Nothing returns 404, and no test covers this case."
+      }
+    ],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": 6.639444399974309,
+  "input_tokens": 6281,
+  "output_tokens": 594,
+  "error": null,
+  "reviewer": "openai-compatible:claude-opus-5-5:default effort@https://api.anthropic.com/v1/",
+  "case_digest": "4d7ec543d3b53b584256756613a74412975d079b2ce5ce4928c0c07069953198",
+  "dropped_findings": 0
+}

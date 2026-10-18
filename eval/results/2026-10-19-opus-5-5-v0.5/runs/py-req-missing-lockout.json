@@ -1,0 +1,73 @@
+{
+  "case_id": "py-req-missing-lockout",
+  "result": {
+    "findings": [
+      {
+        "file": "app/login.py",
+        "line_start": 14,
+        "line_end": 15,
+        "category": "requirement",
+        "severity": "high",
+        "message": "There is no lockout: failed attempts are never counted, so an account is never locked after five failures in a row and the right password always succeeds. This also leaves the login open to unlimited password guessing.",
+        "suggestion": null,
+        "evidence": "docs/specs/login.md/AC-3"
+      },
+      {
+        "file": "app/login.py",
+        "line_start": 9,
+        "line_end": 9,
+        "category": "rule",
+        "severity": "medium",
+        "message": "The new `login` behaviour comes with no tests, but the contributing guide requires a test for every change in behaviour.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:15"
+      }
+    ],
+    "criteria": [
+      {
+        "criterion": "docs/specs/login.md/AC-1",
+        "status": "met",
+        "text": null,
+        "code": [
+          {
+            "file": "app/login.py",
+            "line": 16
+          }
+        ],
+        "tests": [],
+        "note": "Implemented, but no test proves it."
+      },
+      {
+        "criterion": "docs/specs/login.md/AC-2",
+        "status": "met",
+        "text": null,
+        "code": [
+          {
+            "file": "app/login.py",
+            "line": 14
+          }
+        ],
+        "tests": [],
+        "note": "Implemented, but no test proves it."
+      },
+      {
+        "criterion": "docs/specs/login.md/AC-3",
+        "status": "missing",
+        "text": null,
+        "code": [],
+        "tests": [],
+        "note": "Failed attempts are not tracked and accounts are never locked."
+      }
+    ],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 2,
+  "seconds": 8.50550430000294,
+  "input_tokens": 4733,
+  "output_tokens": 781,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "df275cadac25bedd70c6fc7bb7246a76033728ed6e5021c9dbe01c8a98402feb",
+  "dropped_findings": 0
+}

@@ -1,0 +1,38 @@
+{
+  "case_id": "py-clean-contained-path",
+  "result": {
+    "findings": [
+      {
+        "file": "app/files.py",
+        "line_start": 23,
+        "line_end": 23,
+        "category": "bug",
+        "severity": "medium",
+        "message": "The check compares a resolved `target` against an unresolved `UPLOAD_DIR`. If `UPLOAD_DIR` is relative or passes through a symlink, `is_relative_to` is always false and every legitimate upload is refused.",
+        "suggestion": "    if not target.is_relative_to(UPLOAD_DIR.resolve()):",
+        "evidence": null
+      },
+      {
+        "file": "app/files.py",
+        "line_start": 20,
+        "line_end": 20,
+        "category": "security",
+        "severity": "medium",
+        "message": "`read_upload` takes only a file name and has no notion of the requesting user. Any client can read any file in the shared upload directory, including other users' `{user_id}.png` avatars, so users are not limited to their own uploads.",
+        "suggestion": null,
+        "evidence": null
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 2,
+  "seconds": 11.229720999952406,
+  "input_tokens": 4721,
+  "output_tokens": 1075,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "0ce913d7ea7e2bd68d521b851f70dae8249d1cd62745a20bc350dca59bcafcc4",
+  "dropped_findings": 0
+}

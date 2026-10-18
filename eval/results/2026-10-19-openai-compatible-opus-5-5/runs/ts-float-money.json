@@ -1,0 +1,38 @@
+{
+  "case_id": "ts-float-money",
+  "result": {
+    "findings": [
+      {
+        "file": "src/cart.ts",
+        "line_start": 28,
+        "line_end": 28,
+        "category": "rule",
+        "severity": "medium",
+        "message": "The total is converted to a floating-point amount in units (dividing cents by 100 and multiplying by 1.18). This breaks the rule that money stays in integer cents and introduces rounding errors.",
+        "suggestion": "  return Math.round(subtotalCents(cart) * 118 / 100);",
+        "evidence": "CONTRIBUTING.md:7"
+      },
+      {
+        "file": "src/cart.ts",
+        "line_start": 26,
+        "line_end": 26,
+        "category": "rule",
+        "severity": "low",
+        "message": "The added blank line contains trailing whitespace, which the editorconfig forbids.",
+        "suggestion": "",
+        "evidence": ".editorconfig:5"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 2,
+  "seconds": 3.4534553000703454,
+  "input_tokens": 5190,
+  "output_tokens": 274,
+  "error": null,
+  "reviewer": "openai-compatible:claude-opus-5-5:default effort@https://api.anthropic.com/v1/",
+  "case_digest": "286906407b21ff7bf4b0362b4431a089f705eca8e46356ae5e9a379fa0b814c0",
+  "dropped_findings": 0
+}

@@ -1,0 +1,48 @@
+{
+  "case_id": "go-panic-handler",
+  "result": {
+    "findings": [
+      {
+        "file": "handlers.go",
+        "line_start": 60,
+        "line_end": 60,
+        "category": "rule",
+        "severity": "medium",
+        "message": "The handler panics when the id path value is not a valid integer, so bad client input crashes the request instead of getting a 400 response. The rules forbid panicking in a handler.",
+        "suggestion": "\t\thttp.Error(w, \"invalid id\", http.StatusBadRequest)\n\t\treturn",
+        "evidence": "CONTRIBUTING.md:9"
+      },
+      {
+        "file": "handlers.go",
+        "line_start": 56,
+        "line_end": 56,
+        "category": "rule",
+        "severity": "low",
+        "message": "This added blank line contains trailing whitespace, which the editorconfig forbids.",
+        "suggestion": "",
+        "evidence": ".editorconfig:5"
+      },
+      {
+        "file": "store.go",
+        "line_start": 44,
+        "line_end": 44,
+        "category": "rule",
+        "severity": "low",
+        "message": "This added blank line contains trailing whitespace, which the editorconfig forbids.",
+        "suggestion": "",
+        "evidence": ".editorconfig:5"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 3,
+  "seconds": 3.9444940000539646,
+  "input_tokens": 5588,
+  "output_tokens": 361,
+  "error": null,
+  "reviewer": "openai-compatible:claude-opus-5-5:default effort@https://api.anthropic.com/v1/",
+  "case_digest": "2bc090b7eb1ea7e7ccfbb8051ad3042834d737b730efba9fd7636dd81bb48314",
+  "dropped_findings": 0
+}

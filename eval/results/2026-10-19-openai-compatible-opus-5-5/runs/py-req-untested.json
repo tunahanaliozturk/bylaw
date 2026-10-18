@@ -1,0 +1,74 @@
+{
+  "case_id": "py-req-untested",
+  "result": {
+    "findings": [
+      {
+        "file": "app/export.py",
+        "line_start": 13,
+        "line_end": 13,
+        "category": "bug",
+        "severity": "medium",
+        "message": "Accessing columns by name only works when the caller has set `connection.row_factory = sqlite3.Row`. With a default connection the rows are tuples, so this raises `TypeError` and the export crashes.",
+        "suggestion": "        writer.writerow([row[0], row[1], row[2]])",
+        "evidence": null
+      },
+      {
+        "file": "app/export.py",
+        "line_start": 13,
+        "line_end": 13,
+        "category": "security",
+        "severity": "medium",
+        "message": "User-controlled email and name values go into a CSV that support staff open in a spreadsheet, without neutralising leading `=`, `+`, `-` or `@`. A user can store a name that runs as a formula on a staff machine (CSV injection).",
+        "suggestion": null,
+        "evidence": null
+      }
+    ],
+    "criteria": [
+      {
+        "criterion": "docs/specs/export.md/AC-1",
+        "status": "met",
+        "text": null,
+        "code": [
+          {
+            "file": "app/export.py",
+            "line": 11
+          },
+          {
+            "file": "app/export.py",
+            "line": 13
+          }
+        ],
+        "tests": [
+          {
+            "file": "tests/test_export.py",
+            "line": 8
+          }
+        ],
+        "note": ""
+      },
+      {
+        "criterion": "docs/specs/export.md/AC-2",
+        "status": "partial",
+        "text": null,
+        "code": [
+          {
+            "file": "app/export.py",
+            "line": 11
+          }
+        ],
+        "tests": [],
+        "note": "The query orders by id, but no test proves it. The only test inserts a single user, so ordering is never checked."
+      }
+    ],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 2,
+  "seconds": 7.797636499977671,
+  "input_tokens": 6007,
+  "output_tokens": 778,
+  "error": null,
+  "reviewer": "openai-compatible:claude-opus-5-5:default effort@https://api.anthropic.com/v1/",
+  "case_digest": "39de344e2f4f40c3f09cbb0eaa1fead2fb7c135931af438e557015d12c2c1a92",
+  "dropped_findings": 0
+}

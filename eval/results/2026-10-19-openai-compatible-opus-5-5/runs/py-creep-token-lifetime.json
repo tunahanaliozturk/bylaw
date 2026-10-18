@@ -1,0 +1,58 @@
+{
+  "case_id": "py-creep-token-lifetime",
+  "result": {
+    "findings": [
+      {
+        "file": "app/auth.py",
+        "line_start": 8,
+        "line_end": 8,
+        "category": "security",
+        "severity": "medium",
+        "message": "The password reset token lifetime grows from 1 hour to 24 hours in a PR about welcome email text. A longer-lived reset token widens the window in which a leaked token can be used to take over an account.",
+        "suggestion": "RESET_TOKEN_LIFETIME = timedelta(hours=1)",
+        "evidence": null
+      },
+      {
+        "file": "app/mail.py",
+        "line_start": 6,
+        "line_end": 8,
+        "category": "rule",
+        "severity": "low",
+        "message": "The new `welcome_message` behaviour comes with no test, but the contributing rules require a test for every change in behaviour.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:15"
+      }
+    ],
+    "criteria": [
+      {
+        "criterion": "docs/specs/welcome-email.md/AC-1",
+        "status": "met",
+        "text": null,
+        "code": [
+          {
+            "file": "app/mail.py",
+            "line": 8
+          }
+        ],
+        "tests": [],
+        "note": "Implemented, but no test proves it."
+      }
+    ],
+    "scope_creep": [
+      {
+        "file": "app/auth.py",
+        "line": 8,
+        "message": "Changing the reset token lifetime is not part of the welcome email requirement."
+      }
+    ]
+  },
+  "dropped": [],
+  "model_findings": 2,
+  "seconds": 4.621322600054555,
+  "input_tokens": 5660,
+  "output_tokens": 403,
+  "error": null,
+  "reviewer": "openai-compatible:claude-opus-5-5:default effort@https://api.anthropic.com/v1/",
+  "case_digest": "32473cf27923d7a4b771597bf57806e4bf388650d45c073a7ca5e221ad525666",
+  "dropped_findings": 0
+}

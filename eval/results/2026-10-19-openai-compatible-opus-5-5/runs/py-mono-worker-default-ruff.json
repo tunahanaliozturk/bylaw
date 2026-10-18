@@ -1,0 +1,28 @@
+{
+  "case_id": "py-mono-worker-default-ruff",
+  "result": {
+    "findings": [
+      {
+        "file": "packages/worker/worker/jobs.py",
+        "line_start": 21,
+        "line_end": 21,
+        "category": "bug",
+        "severity": "high",
+        "message": "The mutable default `pending: list[int] = []` is shared across calls, so every call without an explicit list appends to the same list and receipts from earlier calls leak into later results.",
+        "suggestion": "def queue_receipt(order_id: int, pending: list[int] | None = None) -> list[int]:",
+        "evidence": "ruff:B006"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": 3.254118699929677,
+  "input_tokens": 5497,
+  "output_tokens": 183,
+  "error": null,
+  "reviewer": "openai-compatible:claude-opus-5-5:default effort@https://api.anthropic.com/v1/",
+  "case_digest": "d4d203a5ebe2a3174346b19c9f044042902b2605d9dc238396474a6888ad15af",
+  "dropped_findings": 0
+}

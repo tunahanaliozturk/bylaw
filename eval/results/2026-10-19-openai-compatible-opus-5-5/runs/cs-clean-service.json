@@ -1,0 +1,17 @@
+{
+  "case_id": "cs-clean-service",
+  "result": {
+    "findings": [],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 0,
+  "seconds": 4.073169499984942,
+  "input_tokens": 5375,
+  "output_tokens": 253,
+  "error": null,
+  "reviewer": "openai-compatible:claude-opus-5-5:default effort@https://api.anthropic.com/v1/",
+  "case_digest": "dece78fd6e6f97973aa7c6420117a1e6b6cb01f0d5343caeb32fd73792906fba",
+  "dropped_findings": 0
+}

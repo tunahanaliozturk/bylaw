@@ -1,0 +1,28 @@
+{
+  "case_id": "cs-null-after-firstordefault",
+  "result": {
+    "findings": [
+      {
+        "file": "OrderService.cs",
+        "line_start": 25,
+        "line_end": 25,
+        "category": "bug",
+        "severity": "high",
+        "message": "`FirstOrDefaultAsync` returns null when no order has the given id, so `order.Total` throws a NullReferenceException instead of reporting a missing order. Callers cannot tell a missing order apart from a crash, and so cannot map it to `NotFound()`.",
+        "suggestion": "        return order?.Total ?? throw new KeyNotFoundException($\"Order {id} not found\");",
+        "evidence": null
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": 5.320172099978663,
+  "input_tokens": 4204,
+  "output_tokens": 441,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "efd70563b2b422f8f85683ea5abb652127e2f9c0769bb43cdb833fe14f042d07",
+  "dropped_findings": 0
+}

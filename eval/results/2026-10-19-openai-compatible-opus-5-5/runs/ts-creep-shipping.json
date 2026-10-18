@@ -1,0 +1,52 @@
+{
+  "case_id": "ts-creep-shipping",
+  "result": {
+    "findings": [
+      {
+        "file": "src/orders.ts",
+        "line_start": 21,
+        "line_end": 21,
+        "category": "bug",
+        "severity": "high",
+        "message": "Every order total now gets a hard-coded 499 cents added on top of the cart subtotal. Nothing in the coupon spec asks for this, so customers would silently be overcharged on every order.",
+        "suggestion": "  return { id, userId: cart.userId, totalCents: subtotalCents(cart) };",
+        "evidence": null
+      }
+    ],
+    "criteria": [
+      {
+        "criterion": "docs/specs/coupons.md/AC-1",
+        "status": "met",
+        "text": null,
+        "code": [
+          {
+            "file": "src/cart.ts",
+            "line": 27
+          },
+          {
+            "file": "src/cart.ts",
+            "line": 28
+          }
+        ],
+        "tests": [],
+        "note": "`Math.max(0, subtotal - couponCents)` meets the criterion, but no test covers it, including the case where the coupon exceeds the subtotal."
+      }
+    ],
+    "scope_creep": [
+      {
+        "file": "src/orders.ts",
+        "line": 21,
+        "message": "Adds an unexplained 499-cent charge to every order total; no listed requirement asks for a fee."
+      }
+    ]
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": 5.857726800022647,
+  "input_tokens": 5662,
+  "output_tokens": 576,
+  "error": null,
+  "reviewer": "openai-compatible:claude-opus-5-5:default effort@https://api.anthropic.com/v1/",
+  "case_digest": "d727156e3fcf53e5c0157277c3182f8a0e65dbbbc71bfdf8185bcc7341e3e535",
+  "dropped_findings": 0
+}

@@ -1,0 +1,17 @@
+{
+  "case_id": "py-clean-docs",
+  "result": {
+    "findings": [],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 0,
+  "seconds": 2.936860999907367,
+  "input_tokens": 5444,
+  "output_tokens": 166,
+  "error": null,
+  "reviewer": "openai-compatible:claude-opus-5-5:default effort@https://api.anthropic.com/v1/",
+  "case_digest": "13789334eedaf1f92c5cd9a6f07a7e802ffd54458bcec82d0040373d05d2c99e",
+  "dropped_findings": 0
+}

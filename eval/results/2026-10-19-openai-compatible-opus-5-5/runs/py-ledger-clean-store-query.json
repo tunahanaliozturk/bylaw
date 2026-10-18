@@ -1,0 +1,17 @@
+{
+  "case_id": "py-ledger-clean-store-query",
+  "result": {
+    "findings": [],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 0,
+  "seconds": 2.112626599962823,
+  "input_tokens": 5498,
+  "output_tokens": 26,
+  "error": null,
+  "reviewer": "openai-compatible:claude-opus-5-5:default effort@https://api.anthropic.com/v1/",
+  "case_digest": "e03da3383d32a0ab71f61534b836340e9f67f7e86d3120ee78b2e1cf53ff311a",
+  "dropped_findings": 0
+}

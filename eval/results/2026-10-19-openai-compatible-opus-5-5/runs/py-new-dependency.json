@@ -1,0 +1,38 @@
+{
+  "case_id": "py-new-dependency",
+  "result": {
+    "findings": [
+      {
+        "file": "pyproject.toml",
+        "line_start": 5,
+        "line_end": 5,
+        "category": "rule",
+        "severity": "medium",
+        "message": "This change adds the third-party dependency `requests`, but there is no ADR in `docs/adr/` for it. The contributing rules require an ADR before adding a third-party dependency.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:10"
+      },
+      {
+        "file": "app/gravatar.py",
+        "line_start": 8,
+        "line_end": 13,
+        "category": "rule",
+        "severity": "low",
+        "message": "The new `gravatar` function changes behaviour but comes with no test. Every change in behaviour must include a test.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:15"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 2,
+  "seconds": 2.928591800038703,
+  "input_tokens": 5442,
+  "output_tokens": 262,
+  "error": null,
+  "reviewer": "openai-compatible:claude-opus-5-5:default effort@https://api.anthropic.com/v1/",
+  "case_digest": "99ddea3c621a9930a50618e0083454e0ed2018a702ec8632474ea70e285ce5fd",
+  "dropped_findings": 0
+}

@@ -1,0 +1,28 @@
+{
+  "case_id": "ts-xss-search",
+  "result": {
+    "findings": [
+      {
+        "file": "src/server.ts",
+        "line_start": 33,
+        "line_end": 33,
+        "category": "security",
+        "severity": "high",
+        "message": "The `q` query parameter is interpolated unescaped into an HTML response, so a crafted link like `/search?q=<script>…</script>` runs script in the victim's browser (reflected XSS). This exposes the signed-in user's session and their order actions.",
+        "suggestion": "  const escaped = term.replace(/[&<>\"']/g, (c) => ({ \"&\": \"&amp;\", \"<\": \"&lt;\", \">\": \"&gt;\", '\"': \"&quot;\", \"'\": \"&#39;\" })[c] as string);\n  res.type(\"html\").send(`<h1>Results for ${escaped}</h1>`);",
+        "evidence": null
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": 5.78848280000966,
+  "input_tokens": 4134,
+  "output_tokens": 463,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "74ed5f6ccb4669736f9888efdf3634442494d1dfd3cca23c19de4e133df354af",
+  "dropped_findings": 0
+}

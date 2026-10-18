@@ -1,0 +1,28 @@
+{
+  "case_id": "cs-null-after-firstordefault",
+  "result": {
+    "findings": [
+      {
+        "file": "OrderService.cs",
+        "line_start": 25,
+        "line_end": 25,
+        "category": "bug",
+        "severity": "high",
+        "message": "`FirstOrDefaultAsync` returns null when no order has the given id, so `order.Total` throws a NullReferenceException instead of letting callers tell a missing order apart. Controllers then cannot return `NotFound()` for it as CONTRIBUTING.md requires.",
+        "suggestion": "        return order?.Total ?? throw new KeyNotFoundException($\"Order {id} not found\");",
+        "evidence": null
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": 5.813418400008231,
+  "input_tokens": 5284,
+  "output_tokens": 451,
+  "error": null,
+  "reviewer": "openai-compatible:claude-opus-5-5:default effort@https://api.anthropic.com/v1/",
+  "case_digest": "efd70563b2b422f8f85683ea5abb652127e2f9c0769bb43cdb833fe14f042d07",
+  "dropped_findings": 0
+}

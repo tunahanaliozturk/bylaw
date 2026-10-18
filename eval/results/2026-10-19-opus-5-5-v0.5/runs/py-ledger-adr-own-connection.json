@@ -1,0 +1,28 @@
+{
+  "case_id": "py-ledger-adr-own-connection",
+  "result": {
+    "findings": [
+      {
+        "file": "ledger/reports.py",
+        "line_start": 17,
+        "line_end": 20,
+        "category": "rule",
+        "severity": "medium",
+        "message": "`reports.py` now imports `sqlite3`, opens its own connection and runs SQL directly. The accepted decision says only `ledger/store.py` may do that, and a query another module needs must become a store function.",
+        "suggestion": null,
+        "evidence": "docs/adr/0002-sqlite-through-the-store-module.md:12"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": 2.562747099902481,
+  "input_tokens": 4254,
+  "output_tokens": 177,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "d3e12b59ebf0291d07bcf484bac90b8f963f83e39d05d2eb63e15a88b8f71cdb",
+  "dropped_findings": 0
+}

@@ -1,0 +1,17 @@
+{
+  "case_id": "py-mono-clean-worker-raises",
+  "result": {
+    "findings": [],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 0,
+  "seconds": 3.402896699961275,
+  "input_tokens": 4564,
+  "output_tokens": 173,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "b3ff14a08ba8d3fd5f5b973e0ff60a40266e2cfc2d8f0e21a9f141d3ea892859",
+  "dropped_findings": 0
+}

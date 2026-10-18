@@ -1,0 +1,38 @@
+{
+  "case_id": "py-naive-aware-compare",
+  "result": {
+    "findings": [
+      {
+        "file": "app/auth.py",
+        "line_start": 31,
+        "line_end": 31,
+        "category": "bug",
+        "severity": "high",
+        "message": "`datetime.now()` returns a naive local time. If `expires_at` is timezone-aware, as tokens created with UTC were, comparing the two raises TypeError and every validity check crashes. If it is naive, expiry shifts by the server's UTC offset, so tokens stay valid too long or expire too early.",
+        "suggestion": "    return datetime.now(UTC) < expires_at",
+        "evidence": null
+      },
+      {
+        "file": "app/auth.py",
+        "line_start": 31,
+        "line_end": 31,
+        "category": "rule",
+        "severity": "low",
+        "message": "This changes token-expiry behaviour but adds no test, and the rules require a test with every change in behaviour.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:15"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 2,
+  "seconds": 4.178448999999091,
+  "input_tokens": 5189,
+  "output_tokens": 302,
+  "error": null,
+  "reviewer": "openai-compatible:claude-opus-5-5:default effort@https://api.anthropic.com/v1/",
+  "case_digest": "554ad50bf8251a4c76e0d0c3099d802b42e4eada4ba3a04e99ce653615be88c9",
+  "dropped_findings": 0
+}

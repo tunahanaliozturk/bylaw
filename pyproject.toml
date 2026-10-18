@@ -1,6 +1,6 @@
 [project]
 name = "bylaw"
-version = "0.4.0"
+version = "0.5.0"
 description = "Reviews pull requests against your repository's own rules and requirements."
 readme = "README.md"
 keywords = ["code-review", "pull-requests", "github-actions", "llm", "requirements", "editorconfig"]

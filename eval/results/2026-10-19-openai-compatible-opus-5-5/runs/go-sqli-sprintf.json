@@ -1,0 +1,48 @@
+{
+  "case_id": "go-sqli-sprintf",
+  "result": {
+    "findings": [
+      {
+        "file": "store.go",
+        "line_start": 46,
+        "line_end": 47,
+        "category": "security",
+        "severity": "critical",
+        "message": "The name is interpolated into the SQL string with fmt.Sprintf, allowing SQL injection (e.g. a name containing `' OR '1'='1`). This also breaks the repository rule that queries use placeholders.",
+        "suggestion": "\trows, err := s.db.QueryContext(ctx, \"SELECT id, name FROM widgets WHERE name = ?\", name)",
+        "evidence": "CONTRIBUTING.md:10"
+      },
+      {
+        "file": "store.go",
+        "line_start": 60,
+        "line_end": 60,
+        "category": "rule",
+        "severity": "low",
+        "message": "The error from rows.Err() is returned without being wrapped, unlike the other errors here. Callers lose the context that the failure happened while iterating the widget rows.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:7"
+      },
+      {
+        "file": "store.go",
+        "line_start": 44,
+        "line_end": 44,
+        "category": "rule",
+        "severity": "low",
+        "message": "This added blank line contains trailing whitespace, which .editorconfig requires to be trimmed.",
+        "suggestion": "",
+        "evidence": ".editorconfig:5"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 3,
+  "seconds": 4.623727299971506,
+  "input_tokens": 5416,
+  "output_tokens": 419,
+  "error": null,
+  "reviewer": "openai-compatible:claude-opus-5-5:default effort@https://api.anthropic.com/v1/",
+  "case_digest": "e02e8561cb050097db5d16deb072089f6c1a6823939008599eddc1c4affd468e",
+  "dropped_findings": 0
+}

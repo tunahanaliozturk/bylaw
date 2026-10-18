@@ -1,0 +1,58 @@
+{
+  "case_id": "py-path-traversal",
+  "result": {
+    "findings": [
+      {
+        "file": "app/files.py",
+        "line_start": 22,
+        "line_end": 22,
+        "category": "security",
+        "severity": "critical",
+        "message": "`name` comes straight from the client's query string and is joined to UPLOAD_DIR without validation. A value like `../../etc/passwd` or an absolute path lets anyone read arbitrary files on the server.",
+        "suggestion": "    path = (UPLOAD_DIR / name).resolve()\n    if not path.is_relative_to(UPLOAD_DIR.resolve()):\n        raise ValueError(\"invalid upload name\")\n    return path.read_bytes()",
+        "evidence": null
+      },
+      {
+        "file": "app/web.py",
+        "line_start": 35,
+        "line_end": 36,
+        "category": "security",
+        "severity": "high",
+        "message": "The handler never checks who is asking or whether the requested file belongs to them. Any caller can download any other user's uploads by guessing the name.",
+        "suggestion": null,
+        "evidence": null
+      },
+      {
+        "file": "app/web.py",
+        "line_start": 36,
+        "line_end": 36,
+        "category": "bug",
+        "severity": "medium",
+        "message": "Two cases are unhandled. A missing or empty `file` parameter, or a nonexistent file, raises FileNotFoundError or IsADirectoryError instead of returning 404. `.decode()` raises UnicodeDecodeError on binary uploads such as images, so most downloads crash with a 500.",
+        "suggestion": null,
+        "evidence": null
+      },
+      {
+        "file": "app/web.py",
+        "line_start": 33,
+        "line_end": 36,
+        "category": "rule",
+        "severity": "low",
+        "message": "The new download behaviour ships without any test, but the contributing guide requires a test for every change in behaviour.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:15"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 4,
+  "seconds": 9.824354900047183,
+  "input_tokens": 5569,
+  "output_tokens": 969,
+  "error": null,
+  "reviewer": "openai-compatible:claude-opus-5-5:default effort@https://api.anthropic.com/v1/",
+  "case_digest": "8d887b679ae0f772a926850463c35121dc8dd9a1451dea60a8957831acf7fab5",
+  "dropped_findings": 0
+}

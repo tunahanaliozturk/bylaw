@@ -1,0 +1,28 @@
+{
+  "case_id": "cs-blocking-result",
+  "result": {
+    "findings": [
+      {
+        "file": "OrdersController.cs",
+        "line_start": 17,
+        "line_end": 19,
+        "category": "rule",
+        "severity": "medium",
+        "message": "The new endpoint blocks on `FindAsync(...).Result`, which the repository's async-all-the-way rule forbids. It also ties up a thread-pool thread for each request. Passing `CancellationToken.None` also means an aborted request never cancels the lookup.",
+        "suggestion": "    public async Task<ActionResult<decimal>> Total(int id, CancellationToken ct)\n    {\n        var order = await orders.FindAsync(id, ct);",
+        "evidence": "CONTRIBUTING.md:7"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": 7.149723500013351,
+  "input_tokens": 4244,
+  "output_tokens": 683,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "ba3cd323f3920dbcbc39a3327e9a2bef7c96375c54b093289418e0ca23630fc0",
+  "dropped_findings": 0
+}

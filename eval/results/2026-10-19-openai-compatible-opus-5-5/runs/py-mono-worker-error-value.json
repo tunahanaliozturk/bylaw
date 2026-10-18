@@ -1,0 +1,28 @@
+{
+  "case_id": "py-mono-worker-error-value",
+  "result": {
+    "findings": [
+      {
+        "file": "packages/worker/worker/jobs.py",
+        "line_start": 25,
+        "line_end": 25,
+        "category": "rule",
+        "severity": "high",
+        "message": "The refund job returns an error value when the order is missing instead of raising. The queue treats any return as success and drops the message, so failed refunds are silently lost.",
+        "suggestion": "        raise JobError(f\"order {order_id} not found\")",
+        "evidence": "packages/worker/AGENTS.md:3"
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": 3.8088418999686837,
+  "input_tokens": 5601,
+  "output_tokens": 173,
+  "error": null,
+  "reviewer": "openai-compatible:claude-opus-5-5:default effort@https://api.anthropic.com/v1/",
+  "case_digest": "c5bdfcc77633f89cd3a1bff4b0536f24be3b0d4f99535a02f5d39fe728e4aaab",
+  "dropped_findings": 0
+}
