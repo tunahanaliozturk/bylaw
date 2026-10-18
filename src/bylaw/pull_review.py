@@ -1,4 +1,5 @@
-"""One pull request reviewed end to end. `bylaw review --pr` and the GitHub App run this same flow."""
+"""One pull request reviewed end to end. `bylaw review --pr` and the GitHub App run this same flow, and
+`bylaw review --gitlab-mr` runs its second half for a GitLab merge request (ADR 0020)."""
 
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
@@ -10,7 +11,8 @@ from bylaw.github import TRUSTED_ASSOCIATIONS, GitHubClient, GitHubSource, PullR
 from bylaw.incremental import ModelRun, keep_valid, run_model_review, trusted_memory
 from bylaw.model import Finding, ReviewContext, ReviewMemory, ReviewResult
 from bylaw.plan import remaining
-from bylaw.publish import publish
+from bylaw.publish import Publisher, publish
+from bylaw.source import RepoSource
 from bylaw.validate import Validated, validate
 
 Say = Callable[[str], None]
@@ -52,14 +54,45 @@ def review_pull_request(  # noqa: PLR0913 - two callers, every argument is a dis
         config = with_app_budget(config)
         if make is not None and (skipped := model_gate(source.pull_request(), config)):
             make = None
-    context = build_context(source, env, config, operator_sites=shared_secrets)
-    memory = trusted_memory(client.summary_comment(repo, number))
+    return review_change(
+        source,
+        client,
+        repo,
+        number,
+        config,
+        make=make,
+        post=post,
+        say=say,
+        env=env,
+        operator_sites=shared_secrets,
+        skipped=skipped,
+    )
+
+
+def review_change(  # noqa: PLR0913 - every argument is a distinct input
+    source: RepoSource,
+    publisher: Publisher,
+    repo: str,
+    number: int,
+    config: Config,
+    *,
+    make: MakeReviewer,
+    post: bool,
+    say: Say,
+    env: Mapping[str, str] | None = None,
+    operator_sites: bool = False,
+    skipped: str | None = None,
+) -> PullReview:
+    """Review a change with its base branch configuration, and publish it when `post` is set. The host
+    differs only in `source` and `publisher`, which for a GitLab merge request are one object."""
+    context = build_context(source, env, config, operator_sites=operator_sites)
+    memory = trusted_memory(publisher.summary_comment(repo, number))
     context, run = with_model_review(context, make, say, config, memory, skipped=skipped)
     checked = check(context, run.result, say)
     if not post:
         return PullReview(checked, checked.result.findings, context.head_sha)
     plan = publish(
-        client,
+        publisher,
         repo,
         number,
         context=context,
