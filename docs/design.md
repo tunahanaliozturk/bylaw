@@ -106,14 +106,19 @@ directory and says the nearest wins, and the validator drops a citation of anoth
 ## Decisions
 
 Accepted ADRs are a rule source of their own ([ADR 0016](adr/0016-adr-conformance.md)). bylaw lists the files
-matching `adr_globs` (default `docs/adr/**`, `docs/decisions/**`) on the base branch, reads the newest 40,
-and keeps those whose status says accepted: a `Status:` line or front matter key above the first section,
-or a `## Status` section. A status that also says superseded, deprecated or rejected wins over
-accepted, and proposed or draft ADRs are left out. The brief's `decisions` block holds each one's title,
-status and decision section (`## Decision`, or MADR's `## Decision Outcome`), numbered with the file's own
-lines, newest first: at most 2,000 characters each and 12,000 in all, with a note for what was cut or left
-out. A finding that contradicts one is a `rule` finding citing `docs/adr/<file>.md:<line>`, and the
-validator keeps the citation only for a line that was shown. An ADR is never also a spec.
+matching `adr_globs` (default `docs/adr/**`, `doc/adr/**`, `docs/decisions/**`) anywhere under each glob's
+fixed directory on the base branch, leaves out READMEs, indexes and templates, and reads the newest 40 in
+one GraphQL query. The status comes from a `Status:` line, table row or front matter key above the first
+section, or from a `## Status` section, with links removed; it is read clause by clause and the last
+clause that names a status decides, so "Accepted, superseded by 0012" is out and a history ending in
+"accepted" is in. Accepted, approved, implemented, adopted and decided count; proposed and draft ADRs are
+left out, and one note names the ADRs bylaw could not read. Headings in code fences do not count. The
+brief's `decisions` block holds each one's title, effective status and decision section (`## Decision`, or
+MADR's `## Decision Outcome`), numbered with the file's own lines, newest first: at most 2,000 characters
+each and 12,000 in all, with a note for what was cut or left out. An ADR under a package
+(`packages/api/docs/adr/`) binds only that package and is read only when the change touches it. A finding
+that contradicts one is a `rule` finding citing `docs/adr/<file>.md:<line>`, and the validator keeps the
+citation only for a line that was shown, on a file the decision binds. An ADR is never also a spec.
 
 ## Requirement sources
 
