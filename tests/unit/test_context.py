@@ -1,4 +1,6 @@
+import httpx
 import pytest
+import respx
 
 from bylaw.config import ConfigError, load_config
 from bylaw.context import build_context, generated_patterns, is_skipped
@@ -161,3 +163,21 @@ def test_the_base_branch_token_budget_travels_with_the_context() -> None:
 def test_a_token_budget_outside_the_limits_is_a_config_error() -> None:
     with pytest.raises(ConfigError):
         load_config("input_token_budget = 5\n")
+
+
+@respx.mock
+def test_a_pull_request_that_names_an_allowed_jira_issue_gets_its_criteria() -> None:
+    respx.get("https://acme.atlassian.net/rest/api/3/issue/PROJ-123").mock(
+        return_value=httpx.Response(
+            200,
+            json={"key": "PROJ-123", "fields": {"summary": "SSO", "description": "- [ ] Signs in with SSO"}},
+        )
+    )
+    config = '[jira]\nurl = "https://acme.atlassian.net"\nprojects = ["PROJ"]\n'
+    source = FakeSource(base={".bylaw.toml": config}, title="PROJ-123: single sign-on")
+
+    context = build_context(source, env={"JIRA_EMAIL": "dev@acme.test", "JIRA_API_TOKEN": "t"})
+
+    assert [(r.source, [c.text for c in r.criteria]) for r in context.requirements] == [
+        ("PROJ-123", ["Signs in with SSO"])
+    ]

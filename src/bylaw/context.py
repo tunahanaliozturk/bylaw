@@ -1,6 +1,7 @@
 """Builds the ReviewContext every reviewer, built-in or host model, works from."""
 
-from collections.abc import Sequence
+import os
+from collections.abc import Mapping, Sequence
 from pathlib import PurePosixPath
 
 from bylaw.config import load_config
@@ -10,6 +11,7 @@ from bylaw.model import ChangedFile, Finding, ReviewContext
 from bylaw.requirements import collect_requirements
 from bylaw.rules import RULE_PATHS, collect_rules
 from bylaw.source import RepoSource
+from bylaw.trackers import read_work_items
 
 LOCKFILES = frozenset(
     {
@@ -69,7 +71,8 @@ def _no_patch_note(file: ChangedFile) -> str | None:
     return f"{file.path}: binary, empty or permission-only change, nothing to review."
 
 
-def build_context(source: RepoSource) -> ReviewContext:
+def build_context(source: RepoSource, env: Mapping[str, str] | None = None) -> ReviewContext:
+    """`env` holds the tracker tokens; the process environment when not given (ADR 0014)."""
     info = source.info()
     config = load_config(source.read_base(".bylaw.toml"))
     patterns = generated_patterns(source.read_base(".gitattributes"))
@@ -109,15 +112,19 @@ def build_context(source: RepoSource) -> ReviewContext:
     requirements, requirement_notes = collect_requirements(
         source, info, files, config.spec_globs, config.issue_repos
     )
+    # Work items are referenced from the same text as issues, and from the title, where keys often sit.
+    work_items, work_item_notes = read_work_items(
+        [info.title, info.body, *info.commit_messages], config, os.environ if env is None else env
+    )
     return ReviewContext(
         base_sha=info.base_sha,
         head_sha=info.head_sha,
         title=info.title,
         files=files,
         rules=collect_rules(files, source.read_base, resolver.files_read),
-        requirements=requirements,
+        requirements=(*requirements, *work_items),
         findings=tuple(findings),
-        notes=(*notes, *requirement_notes),
+        notes=(*notes, *requirement_notes, *work_item_notes),
         severity_threshold=config.severity_threshold,
         max_comments=config.max_comments,
         input_tokens=config.input_token_budget,

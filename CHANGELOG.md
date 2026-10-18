@@ -4,6 +4,8 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## Unreleased
 
+- Jira Cloud issues as requirements. A pull request that names an issue such as `PROJ-123` in its title, body or commits gets that issue's acceptance criteria in its summary, from a checklist or an "Acceptance criteria" section in the description or from a criteria field you name. It is an opt-in: a `[jira]` table in `.bylaw.toml` with the site and the allowed projects, and `JIRA_EMAIL` with `JIRA_API_TOKEN` in the environment (the Action's `jira-email` and `jira-api-token` inputs).
+
 ## 0.2.0 - 2026-10-18
 
 - Incremental review: on a new push, the model sees only the files whose change differs from the last run, and the unchanged files keep their earlier findings. A criterion that was met stays met while the files it was met in are unchanged. `incremental = false` in `.bylaw.toml` turns it off (ADR 0012).
