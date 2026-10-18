@@ -352,9 +352,9 @@ def _check_replay(out: Path, pull: Snapshot, files: list[ChangedFile]) -> None:
     )
     with tempfile.TemporaryDirectory() as work:
         replayed = build_case_context(out.parent.parent, case, Path(work)).files
-    added = {f.path: [line.number for line in f.added_lines] for f in replayed}
+    if extra := sorted({f.path for f in replayed} ^ {f.path for f in files}):
+        raise ValueError(f"the snapshot does not reproduce the pull request's diff of {', '.join(extra)}")
+    added = {f.path: f.added_lines for f in replayed}
     for file in files:
-        if file.status != "removed" and added.get(file.path, []) != [
-            line.number for line in file.added_lines
-        ]:
+        if file.status != "removed" and added.get(file.path, ()) != file.added_lines:
             raise ValueError(f"the snapshot does not reproduce the pull request's diff of {file.path}")
