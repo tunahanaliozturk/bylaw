@@ -447,16 +447,25 @@ class GitLabMergeRequest:
         return threads
 
     def summary_comment(self, repo: str, number: int) -> SummaryComment | None:  # noqa: ARG002 - the Publisher protocol's arguments; this object knows them
-        """The note that opens with the summary marker, bylaw's own first (ADR 0008, ADR 0012)."""
+        """The note that opens with the summary marker and that bylaw's own account wrote (ADR 0020).
+
+        Once bylaw knows its account, a marker note by anyone else is never its summary: bylaw would edit a
+        person's note, and with a Developer token every run would end on a 403. A first run posts a new
+        note instead. Only a token that cannot say who it is falls back to a Developer's note, as the
+        GitHub Action does, and that note's review memory is never trusted.
+        """
+        own = self._own_id
         fallback: SummaryComment | None = None
         params = {"sort": "asc", "order_by": "created_at"}
         for page in self._client.pages(f"{self._mr_path}/notes", params):
             for note in _NOTES.validate_python(page):
-                if note.system or not note.body.startswith(SUMMARY_MARKER) or not self._trusted(note.author):
+                if note.system or not note.body.startswith(SUMMARY_MARKER) or note.author is None:
                     continue
-                if note.author is not None and note.author.id == self._own_id:
-                    return SummaryComment(id=note.id, body=note.body, bot=True)
-                fallback = fallback or SummaryComment(id=note.id, body=note.body)
+                if own is not None:
+                    if note.author.id == own:
+                        return SummaryComment(id=note.id, body=note.body, bot=True)
+                elif fallback is None and self._trusted(note.author):
+                    fallback = SummaryComment(id=note.id, body=note.body)
         return fallback
 
     def upsert_summary(self, repo: str, number: int, comment_id: int | None, body: str) -> None:  # noqa: ARG002 - the Publisher protocol's arguments; this object knows them
