@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>bylaw report for acme/app</title>
+<style>
+:root { --bg: #ffffff; --fg: #1f2328; --soft: #59636e; --line: #d1d9e0; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #0d1117; --fg: #e6edf3; --soft: #9198a1; --line: #3d444d; }
+}
+body { margin: 0 auto; max-width: 760px; padding: 32px 16px; background: var(--bg); color: var(--fg);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+h1 { font-size: 24px; margin: 0 0 4px; }
+h2 { font-size: 18px; margin: 40px 0 12px; }
+.soft { color: var(--soft); }
+img { display: block; max-width: 100%; height: auto; }
+.table { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; margin-top: 12px; font-variant-numeric: tabular-nums; }
+th, td { text-align: right; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+code { font-size: 13px; }
+</style>
+</head>
+<body>
+<h1>bylaw report</h1>
+<p class="soft"><code>acme/app</code>: 3 pull requests closed between 2027-08-02 and 2027-09-30, 1 of them merged. Made on 2027-10-01.</p>
+<h2>Findings and what happened to them</h2>
+<picture><source srcset="findings-dark.png" media="(prefers-color-scheme: dark)"><img src="findings-light.png" alt="Findings by category and outcome. security: 0 fixed, 0 muted, 0 resolved, 0 suppressed, 1 open at close; bug: 0 fixed, 0 muted, 1 resolved, 0 suppressed, 0 open at close; rule: 1 fixed, 2 muted, 0 resolved, 1 suppressed, 0 open at close; requirement: 0 fixed, 0 muted, 0 resolved, 0 suppressed, 0 open at close."></picture>
+<div class="table"><table>
+<tr><th>Category</th><th>Found</th><th>Fixed</th><th>Muted</th><th>Resolved</th><th>Suppressed</th><th>Open at close</th><th>Fix rate</th></tr>
+<tr><td>security</td><td>1</td><td>0</td><td>0</td><td>0</td><td>0</td><td>1</td><td>0%</td></tr>
+<tr><td>bug</td><td>1</td><td>0</td><td>0</td><td>1</td><td>0</td><td>0</td><td>0%</td></tr>
+<tr><td>rule</td><td>4</td><td>1</td><td>2</td><td>0</td><td>1</td><td>0</td><td>25%</td></tr>
+<tr><td>requirement</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>-</td></tr>
+</table></div>
+<p class="soft">Fixed: gone on a later run in which the model read its file. Muted: a maintainer replied <code>bylaw: ignore</code>. Resolved: someone other than the author resolved its thread with the finding still there. Suppressed: hidden by a <code>[[suppress]]</code> entry. Open at close: none of these when the pull request closed.</p>
+<h2>Criteria per month</h2>
+<picture><source srcset="criteria-dark.png" media="(prefers-color-scheme: dark)"><img src="criteria-light.png" alt="Acceptance criteria per month by status. 2027-08: 2 met, 1 partial, 1 missing, 0 not assessed; 2027-09: 3 met, 0 partial, 0 missing, 0 not assessed."></picture>
+<div class="table"><table>
+<tr><th>Month</th><th>Pull requests</th><th>Met</th><th>Partial</th><th>Missing</th><th>Not assessed</th></tr>
+<tr><td>2027-08</td><td>2</td><td>2</td><td>1</td><td>1</td><td>0</td></tr>
+<tr><td>2027-09</td><td>1</td><td>3</td><td>0</td><td>0</td><td>0</td></tr>
+</table></div>
+<p class="soft">As the last review of each pull request judged them, by the month it closed.</p>
+<h2>Rules dismissed most</h2>
+<div class="table"><table>
+<tr><th>Rule</th><th>Category</th><th>Dismissed in</th><th>Fixed in</th></tr>
+<tr><td><code>&lt;b&gt;ruff:S101&lt;/b&gt;</code></td><td>rule</td><td>1</td><td>0</td></tr>
+<tr><td><code>ruff:S101</code></td><td>rule</td><td>1</td><td>1</td></tr>
+</table></div>
+<p class="soft">Counted in pull requests, as suggestions count them: a dismissal by a pull request's own author never counts. A rule dismissed often may deserve a suppression or a clearer wording; bylaw suggests one when <code>[learn]</code> allows it.</p>
+</body>
+</html>
