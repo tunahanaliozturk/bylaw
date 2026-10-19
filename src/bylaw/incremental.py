@@ -12,6 +12,7 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from importlib.metadata import version
 
+from bylaw.compliance import load_profile
 from bylaw.engine import Budgeted, Reviewer, ReviewError, Usage
 from bylaw.github import SummaryComment
 from bylaw.model import (
@@ -63,7 +64,9 @@ def inputs_key(context: ReviewContext) -> str:
     rules = [[rule.path, rule.kind, rule.text] for rule in context.rules]
     requirements = [requirement.model_dump(mode="json") for requirement in context.requirements]
     decisions = [decision.model_dump(mode="json") for decision in context.decisions]
-    return _hash(json.dumps([version("bylaw"), rules, requirements, decisions]))
+    # The profile's content too, so a new edition of a profile counts even within one bylaw version.
+    profiles = [load_profile(name).model_dump(mode="json") for name in context.profiles]
+    return _hash(json.dumps([version("bylaw"), rules, requirements, decisions, profiles]))
 
 
 def run_model_review(  # noqa: PLR0913 - every argument is a distinct input

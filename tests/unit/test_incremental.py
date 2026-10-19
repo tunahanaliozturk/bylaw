@@ -442,3 +442,9 @@ def test_without_a_token_budget_a_reviewer_is_told_none() -> None:
     run_model_review(_context(NEW), lambda: reviewer, None, incremental=True, budget=None)
 
     assert reviewer.token_budget is None
+
+
+def test_turning_a_profile_on_means_a_full_review() -> None:
+    context = _context(OLD, NEW)
+
+    assert inputs_key(context.model_copy(update={"profiles": ("iso27001",)})) != inputs_key(context)

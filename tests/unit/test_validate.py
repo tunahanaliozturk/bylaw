@@ -496,3 +496,39 @@ def test_rule_and_decision_lines_count_only_newlines_as_line_breaks() -> None:
 
     assert validate(context, ReviewResult(findings=tuple(kept))).dropped == ()
     assert len(validate(context, ReviewResult(findings=tuple(gone))).dropped) == 2
+
+
+def _tagged(*controls: str) -> Finding:
+    return _finding().model_copy(update={"controls": controls})
+
+
+def test_control_ids_the_active_profiles_define_are_kept() -> None:
+    context = CONTEXT.model_copy(update={"profiles": ("iso27001",)})
+
+    kept = validate(context, ReviewResult(findings=(_tagged("8.28", "8.15"),)))
+
+    assert kept.result.findings[0].controls == ("8.28", "8.15")
+    assert kept.dropped == ()
+
+
+def test_an_unknown_control_id_is_dropped_but_the_finding_is_kept() -> None:
+    context = CONTEXT.model_copy(update={"profiles": ("iso27001",)})
+
+    kept = validate(context, ReviewResult(findings=(_tagged("8.28", "9.99", "8.28"),)))
+
+    assert [f.controls for f in kept.result.findings] == [("8.28",)]
+    assert kept.dropped == ("app.py:3 security: control 9.99 is not in the active profiles",)
+
+
+def test_without_a_profile_every_control_id_is_dropped_and_the_finding_kept() -> None:
+    kept = validate(CONTEXT, ReviewResult(findings=(_tagged("8.28"),)))
+
+    assert [f.controls for f in kept.result.findings] == [()]
+    assert kept.dropped == ("app.py:3 security: control 8.28 is not in the active profiles",)
+
+
+def test_a_finding_validated_twice_keeps_its_controls() -> None:
+    context = CONTEXT.model_copy(update={"profiles": ("iso27001",)})
+    once = validate(context, ReviewResult(findings=(_tagged("8.24"),))).result
+
+    assert validate(context, once).result == once
