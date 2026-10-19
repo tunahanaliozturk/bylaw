@@ -573,3 +573,20 @@ def test_a_deleted_test_is_recorded_as_removed_not_as_a_test_change() -> None:
     ]
     assert "- Tests changed: `tests/test_app.py`." in section
     assert "- Tests removed: `tests/test_old.py`." in section
+
+
+def test_a_long_accepted_list_is_capped_like_the_other_lists() -> None:
+    muted = tuple(
+        Group(finding=_tagged(line, "8.28"), fingerprint=FP, others=(), by="carol") for line in range(1, 9)
+    )
+
+    body = summary_body(PROFILED, ReviewResult(), replace(_plan(), muted=muted))
+
+    accepted = next(line for line in body.splitlines() if line.startswith("- Accepted:"))
+    assert accepted.endswith("and 3 more.")
+
+
+def test_the_notes_come_before_the_compliance_sections_so_trimming_keeps_them() -> None:
+    body = summary_body(PROFILED, ReviewResult(), _plan())
+
+    assert body.index("### Notes") < body.index("### Controls touched")

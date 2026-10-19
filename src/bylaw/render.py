@@ -101,13 +101,14 @@ def summary_body(context: ReviewContext, result: ReviewResult, plan: Plan) -> st
         _headline(context, plan, current),
         _requirements(context, result),
         _scope_creep(result),
+        # Before the long sections: a trimmed summary must keep the notes the other sections point to.
+        _notes((*context.notes, *plan.notes)),
         *_compliance(context, result, plan),
         _details("Other findings", plan.summary_only),
         _details("Resolved by the pull request's author but still present", plan.author_resolved),
         _details("Resolved by a reviewer but still present", plan.reviewer_resolved),
         _details("Muted with `bylaw: ignore`", plan.muted),
         _rule_sources(context),
-        _notes((*context.notes, *plan.notes)),
         _footer(plan.state.review),
     ]
     body = "\n\n".join(section for section in sections if section)
@@ -265,9 +266,9 @@ def _change_management(record: Evidence) -> str:
         f"- Findings: {opened} open, {len(accepted)} accepted, {threads} resolved as fixed this run.",
     ]
     if accepted:
-        lines.append("- Accepted: " + "; ".join(_acceptance(f) for f in accepted) + ".")
+        lines.append("- Accepted: " + _listed([_acceptance(f) for f in accepted], "; ") + ".")
     if by_author := [f for f in record.findings if f.status == "resolved_by_author"]:
-        lines.append("- Still open: " + "; ".join(_acceptance(f) for f in by_author) + ".")
+        lines.append("- Still open: " + _listed([_acceptance(f) for f in by_author], "; ") + ".")
     return "### Change management evidence\n\n" + "\n".join(lines)
 
 
