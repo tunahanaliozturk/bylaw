@@ -7,7 +7,7 @@ it is rendered, so it cannot open an HTML comment, close a section or plant a by
 import json
 import re
 from collections import Counter
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 
 from pydantic import ValidationError
@@ -22,7 +22,7 @@ from bylaw.model import (
     ReviewResult,
     Severity,
 )
-from bylaw.plan import Group, Plan, State, suppressed_by
+from bylaw.plan import OUTCOME_STATUSES, Group, Outcome, Plan, State, suppressed_by
 
 SUMMARY_MARKER = "<!-- bylaw:summary -->"
 MAX_BODY = 65_536
@@ -34,6 +34,10 @@ _MAX_STATE_ENTRIES = 1000
 # ponytail: the review memory (ADR 0012) gets at most this much of the comment; a bigger one is left out
 # and the next run reviews everything, which costs tokens but never loses a finding.
 _MAX_MEMORY = 20_000
+# ponytail: outcomes (ADR 0022) get at most this much; past it the open and fixed ones are dropped first,
+# which only makes the report count fewer of them. About 120 entries with ordinary paths.
+_MAX_OUTCOMES = 12_000
+_OUTCOME_FIELDS = ("status", "category", "rule", "file", "by")
 _MAX_PLACES = 5
 _TRIMMED = "\n\n_Summary trimmed to fit the comment size limit._"
 _MAX_CELL = 80
@@ -134,7 +138,28 @@ def _state_json(state: State) -> str:
         raw["review"] = state.review.model_dump(mode="json")
         if len(_escaped(raw["review"])) > _MAX_MEMORY:
             raw["review"] = tokens_only(state.review).model_dump(mode="json")
+    if state.outcomes:
+        raw["outcomes"] = _outcomes_within_budget(state.outcomes)
+    if state.criteria:
+        raw["criteria"] = dict(state.criteria)
     return _escaped(raw)
+
+
+def _outcomes_within_budget(outcomes: Mapping[str, Outcome]) -> dict[str, list[str | None]]:
+    """As many outcomes as fit `_MAX_OUTCOMES`, mutes and resolves first: they are what learning counts."""
+    ranked = sorted(outcomes.items(), key=lambda item: (item[1].status not in ("muted", "resolved"), item[0]))
+    kept: dict[str, list[str | None]] = {}
+    size = 0
+    for fp, o in ranked:
+        entry = [o.status, o.category, o.rule, o.file, o.by]
+        # ponytail: the escaped length of one entry plus its key and separators, summed; a little over
+        # the true size of the object, never under it.
+        cost = len(_escaped({fp: entry}))
+        if size + cost > _MAX_OUTCOMES:
+            continue
+        kept[fp] = entry
+        size += cost
+    return kept
 
 
 def _escaped(raw: object) -> str:
@@ -166,7 +191,33 @@ def read_state(body: str) -> State:
             review = ReviewMemory.model_validate(raw["review"])
         except ValidationError:
             review = None  # an unreadable memory only means the next run reviews everything
-    return State(auto_resolved=auto, review=review)
+    criteria = raw.get("criteria")
+    counts = (
+        {k: v for k, v in criteria.items() if isinstance(v, int) and not isinstance(v, bool)}
+        if isinstance(criteria, dict)
+        else {}
+    )
+    return State(
+        auto_resolved=auto, review=review, outcomes=_read_outcomes(raw.get("outcomes")), criteria=counts
+    )
+
+
+def _read_outcomes(raw: object) -> dict[str, Outcome]:
+    """Each entry is `[status, category, rule, file, by]`; one that does not read so is left out."""
+    outcomes: dict[str, Outcome] = {}
+    for fp, entry in raw.items() if isinstance(raw, dict) else ():
+        if not (isinstance(entry, list) and len(entry) == len(_OUTCOME_FIELDS)):
+            continue
+        status, category, rule, file, by = entry
+        if (
+            status in OUTCOME_STATUSES
+            and isinstance(category, str)
+            and isinstance(file, str)
+            and (rule is None or isinstance(rule, str))
+            and (by is None or isinstance(by, str))
+        ):
+            outcomes[fp] = Outcome(status, category, rule, file, by)
+    return outcomes
 
 
 def _headline(context: ReviewContext, plan: Plan, current: list[Group]) -> str:

@@ -7,8 +7,9 @@ import hashlib
 import html
 import re
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from pathlib import PurePosixPath
+from typing import Literal, get_args
 
 from bylaw.model import Category, Finding, ReviewContext, ReviewMemory, Severity, Suppression
 
@@ -54,12 +55,38 @@ class Thread:
     resolved_by_pr_author: bool = False
 
 
+OutcomeStatus = Literal["open", "fixed", "muted", "resolved", "suppressed"]
+OUTCOME_STATUSES: tuple[OutcomeStatus, ...] = get_args(OutcomeStatus)
+
+
+@dataclass(frozen=True, slots=True)
+class Outcome:
+    """What happened to one finding on a pull request so far (ADR 0022).
+
+    `fixed`: it went away while the model read its file. `muted`: a maintainer replied `bylaw: ignore`.
+    `resolved`: someone other than the author resolved its thread with the finding still there.
+    `suppressed`: a suppression in .bylaw.toml hid it. `open`: none of these.
+    """
+
+    status: OutcomeStatus
+    category: str
+    # The evidence it cites, as a suppression would name it; None for a finding that cites nothing.
+    rule: str | None
+    file: str
+    # The maintainer who muted it or the person who resolved its thread.
+    by: str | None = None
+
+
 @dataclass(frozen=True, slots=True)
 class State:
     # Ids of the threads bylaw resolved itself. States saved before this held fingerprints instead.
     auto_resolved: frozenset[str]
     # What the last model review saw and said, for an incremental review (ADR 0012).
     review: ReviewMemory | None = None
+    # Fingerprint to what happened to that finding on this pull request, for learning (ADR 0022).
+    outcomes: Mapping[str, Outcome] = field(default_factory=dict)
+    # How many criteria the last run found met, partial, missing and not assessed.
+    criteria: Mapping[str, int] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
@@ -250,6 +277,55 @@ def remaining(plan: Plan) -> tuple[Finding, ...]:
     request author's resolve does not (ADR 0008)."""
     groups = (*plan.inline, *plan.open_threads, *plan.summary_only, *plan.author_resolved)
     return tuple(finding for group in groups for finding in (group.finding, *group.others))
+
+
+def track_outcomes(
+    previous: Mapping[str, Outcome], plan: Plan, unreviewed: frozenset[str] = frozenset()
+) -> dict[str, Outcome]:
+    """What happened to each finding so far: this run's plan over the last run's outcomes (ADR 0022).
+
+    A mute or a resolve stays, even when the code changes later: the maintainer's call was made. A
+    finding that is gone counts as fixed only when the model read its file this run (ADR 0012).
+    """
+    current: dict[str, Outcome] = {}
+    by_status: tuple[tuple[OutcomeStatus, tuple[Group, ...]], ...] = (
+        ("open", (*plan.inline, *plan.open_threads, *plan.summary_only, *plan.author_resolved)),
+        ("muted", plan.muted),
+        ("resolved", plan.reviewer_resolved),
+        ("suppressed", plan.suppressed),
+    )
+    for status, groups in by_status:
+        for group in groups:
+            finding = group.finding
+            by = group.by if status in ("muted", "resolved") else None
+            current[group.fingerprint] = Outcome(status, finding.category, finding.evidence, finding.file, by)
+    for fp, old in previous.items():
+        if fp in current and not (old.status in ("muted", "resolved") and current[fp].status == "open"):
+            continue
+        gone = old.status == "open" and old.file not in unreviewed
+        current[fp] = replace(old, status="fixed") if gone else old
+    return current
+
+
+def close_outcomes(
+    outcomes: Mapping[str, Outcome], threads: Sequence[Thread], auto_resolved: frozenset[str]
+) -> dict[str, Outcome]:
+    """The outcomes when the pull request closes: a mute or resolve made after the last run counts too.
+
+    The same trust rules as a run: the thread must open with a trusted fingerprint, a mute must come from
+    a maintainer who is not the author, and a resolve by the author or by bylaw itself accepts nothing.
+    """
+    closed = dict(outcomes)
+    for thread in threads:
+        first = thread.comments[0] if thread.comments else None
+        found = FINGERPRINT.findall(first.body) if first and first.trusted else []
+        if not found or (old := closed.get(found[-1])) is None or old.status != "open":
+            continue
+        if mute := next((reply for reply in thread.comments[1:] if _mutes(reply)), None):
+            closed[found[-1]] = replace(old, status="muted", by=mute.author or None)
+        elif thread.resolved and not thread.resolved_by_pr_author and thread.id not in auto_resolved:
+            closed[found[-1]] = replace(old, status="resolved", by=thread.resolved_by)
+    return closed
 
 
 def _mutes(reply: ThreadComment) -> bool:

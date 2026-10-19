@@ -1,13 +1,23 @@
 """Publishes a validated review: one review with the new inline comments, thread changes, the summary."""
 
+from collections import Counter
 from collections.abc import Sequence
 from dataclasses import replace
 from typing import Protocol
 
 from bylaw.config import Config
 from bylaw.github import ReviewComment, SummaryComment
-from bylaw.model import ReviewContext, ReviewMemory, ReviewResult
-from bylaw.plan import Plan, State, Thread, added_text, group_findings, make_plan, suppressed_by
+from bylaw.model import CriterionStatus, ReviewContext, ReviewMemory, ReviewResult
+from bylaw.plan import (
+    Plan,
+    State,
+    Thread,
+    added_text,
+    group_findings,
+    make_plan,
+    suppressed_by,
+    track_outcomes,
+)
 from bylaw.render import inline_body, inline_parts, read_state, review_body, summary_body, tokens_only
 
 
@@ -51,7 +61,11 @@ def publish(  # noqa: PLR0913 - one call site, every argument is a distinct inpu
     if memory is None and state.review is not None:
         # A run that keeps no memory (bylaw post, no key) still keeps the pull request's token count.
         memory = tokens_only(state.review)
-    plan = replace(plan, state=replace(plan.state, review=memory))
+    # Outcomes feed learning, so like the memory they are carried only from a bot's summary (ADR 0022).
+    previous = state.outcomes if summary is not None and summary.bot else {}
+    outcomes = track_outcomes(previous, plan, unreviewed)
+    criteria = criteria_counts(context, result)
+    plan = replace(plan, state=replace(plan.state, review=memory, outcomes=outcomes, criteria=criteria))
     if plan.inline:
         comments = [
             ReviewComment(
@@ -90,10 +104,19 @@ def _state_after(plan: Plan, done: Sequence[tuple[str, bool]]) -> State:
     reopened = {thread_id for thread_id, closed in done if not closed}
     not_resolved = set(plan.resolve) - resolved
     not_reopened = set(plan.unresolve) - reopened
-    return State(
-        auto_resolved=frozenset((plan.state.auto_resolved - not_resolved) | not_reopened),
-        review=plan.state.review,
+    return replace(
+        plan.state, auto_resolved=frozenset((plan.state.auto_resolved - not_resolved) | not_reopened)
     )
+
+
+def criteria_counts(context: ReviewContext, result: ReviewResult) -> dict[str, int]:
+    """How many of the linked criteria the result found met, partial and missing, and how many it left."""
+    statuses = {item.criterion: item.status.value for item in result.criteria}
+    keys = [f"{r.source}/{c.key}" for r in context.requirements for c in r.criteria]
+    # Inferred criteria (ADR 0011) count too.
+    keys += [k for k in statuses if k not in keys]
+    counts = Counter(statuses.get(key, "not assessed") for key in keys)
+    return {status: counts[status] for status in (*(s.value for s in CriterionStatus), "not assessed")}
 
 
 def first_plan(context: ReviewContext, result: ReviewResult, config: Config) -> Plan:
