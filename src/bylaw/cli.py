@@ -12,7 +12,7 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
-from bylaw.config import Config, ConfigError, load_config
+from bylaw.config import DEPRECATED, Config, ConfigError, load_config
 from bylaw.context import build_context
 from bylaw.engine import (
     PROVIDERS,
@@ -163,7 +163,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
         if args.command == "context":
-            _write(_context(args).model_dump_json(indent=2), args.output)
+            context = _context(args)
+            _say_deprecations(context)
+            _write(context.model_dump_json(indent=2), args.output)
         elif args.command == "validate":
             checked = _validated(args)
             payload = {"result": checked.result.model_dump(mode="json"), "dropped": list(checked.dropped)}
@@ -359,6 +361,13 @@ def _say(text: str) -> None:
     print(f"bylaw: {flat}", file=sys.stderr)
 
 
+def _say_deprecations(context: ReviewContext) -> None:
+    """The summary carries every note; standard error, the workflow log in the Action, gets these too."""
+    for note in context.notes:
+        if note.startswith(DEPRECATED):
+            _say(note)
+
+
 def _review(args: argparse.Namespace) -> int:
     if _without_secrets():
         print(
@@ -391,6 +400,7 @@ def _review(args: argparse.Namespace) -> int:
     else:
         review, repo = _review_pull_request(args)
         checked, counted, context, plan = review.checked, review.counted, review.context, review.plan
+    _say_deprecations(context)
     if args.evidence:
         # Before the exit code: a run that fails on a finding is the one an auditor most wants a record of.
         number = args.pr if args.gitlab_mr is None else args.gitlab_mr

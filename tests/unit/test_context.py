@@ -2,6 +2,7 @@ import httpx
 import pytest
 import respx
 
+from bylaw import config as config_module
 from bylaw.config import ConfigError, load_config
 from bylaw.context import build_context, generated_patterns, is_skipped
 from bylaw.model import (
@@ -395,3 +396,13 @@ def test_the_base_branch_profiles_travel_with_the_context_even_when_the_change_d
     )
 
     assert build_context(source).profiles == ("iso27001",)
+
+
+def test_a_deprecated_key_on_the_base_branch_becomes_a_note_in_the_summary(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(config_module, "DEPRECATED_KEYS", {"max_comments": "Use `dummy_limit` instead."})
+
+    context = build_context(FakeSource(base={".bylaw.toml": "max_comments = 3\n"}))
+
+    assert any(note.startswith("Deprecated: `max_comments`") for note in context.notes)

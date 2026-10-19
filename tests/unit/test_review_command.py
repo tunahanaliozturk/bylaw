@@ -289,3 +289,18 @@ def test_evidence_for_a_pull_request_needs_post_so_it_reads_the_threads(
     assert code == 2
     assert "--evidence with --pr or --gitlab-mr needs --post" in capsys.readouterr().err
     assert not evidence.exists()
+
+
+def test_a_deprecation_note_in_the_context_is_also_said_on_standard_error(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    note = "Deprecated: `dummy` in .bylaw.toml still works, but goes in the next major release."
+    path = tmp_path / "context.json"
+    path.write_text(json.dumps({**CONTEXT, "notes": [note, "Something else."]}), encoding="utf-8")
+
+    code = cli.main(["review", "--context", str(path)])
+
+    assert code == 0
+    said = capsys.readouterr().err.splitlines()
+    assert f"bylaw: {note}" in said
+    assert "bylaw: Something else." not in said
