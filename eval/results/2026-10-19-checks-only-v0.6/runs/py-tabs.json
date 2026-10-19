@@ -1,0 +1,29 @@
+{
+  "case_id": "py-tabs",
+  "result": {
+    "findings": [
+      {
+        "file": "app/users.py",
+        "line_start": 39,
+        "line_end": 39,
+        "category": "rule",
+        "severity": "low",
+        "message": "Indented with tabs where .editorconfig asks for spaces on 2 added lines, first at line 39.",
+        "suggestion": null,
+        "evidence": ".editorconfig:8",
+        "controls": []
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 0,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "no-model",
+  "case_digest": "e7c223488697564b24f7d41a4da4eb12e6ee3346ae4074f97ae3cd64bd251e89",
+  "dropped_findings": 0
+}

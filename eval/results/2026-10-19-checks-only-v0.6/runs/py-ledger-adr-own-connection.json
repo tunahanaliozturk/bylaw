@@ -1,0 +1,17 @@
+{
+  "case_id": "py-ledger-adr-own-connection",
+  "result": {
+    "findings": [],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 0,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "no-model",
+  "case_digest": "d3e12b59ebf0291d07bcf484bac90b8f963f83e39d05d2eb63e15a88b8f71cdb",
+  "dropped_findings": 0
+}

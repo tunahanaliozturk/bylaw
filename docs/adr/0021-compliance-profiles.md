@@ -22,12 +22,14 @@ request switch the profile off for itself.
 - **A profile is a file shipped inside bylaw.** `src/bylaw/profiles/<name>.toml` names the standard and
   its edition, and lists controls: an id, a short title and guidance for the reviewer, all in bylaw's own
   words. It may add severity rules (below). The first is `iso27001`, with the development related
-  controls of ISO/IEC 27001:2022 Annex A: 5.34, 8.3 to 8.5, 8.8, 8.9, 8.11, 8.12, 8.15, 8.24 to 8.29 and
-  8.31 to 8.33. A repository cannot define or edit a profile: the controls and rules are part of bylaw's
+  controls of ISO/IEC 27001:2022 Annex A: 5.17, 5.34, 8.2 to 8.5, 8.8 to 8.12, 8.15, 8.16, 8.24 to 8.29
+  and 8.31 to 8.33, the ones bylaw can look for in a diff. A repository cannot define or edit a profile: the controls and rules are part of bylaw's
   version, reviewed like its code, so a change cannot redefine what a control means to pass.
 - **The standard's text is never copied.** ISO/IEC 27001:2022 and ISO/IEC 27002:2022 are copyrighted
   by ISO and IEC. A profile carries the control numbers, a short title bylaw wrote for each and bylaw's
-  own reviewer guidance, which says what to look for in code, not what the control says. The profile
+  own reviewer guidance, which says what to look for in code, not what the control says. Some short
+  titles match the standard's own short names ("Secure coding"), because that is what the practice is
+  called; no sentence of the standard is copied. The profile
   file's header says so. A team that needs the wording reads its own licensed copy. The numbering was
   checked against two public lists of the 2022 Annex A controls, and those lists are cited in the profile
   for the numbering only, not as a source of text.

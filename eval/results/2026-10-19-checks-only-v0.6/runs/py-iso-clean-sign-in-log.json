@@ -1,0 +1,17 @@
+{
+  "case_id": "py-iso-clean-sign-in-log",
+  "result": {
+    "findings": [],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 0,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "no-model",
+  "case_digest": "bfea07c8e9e7b374dd668e2856c1f9f200036e0e1de1754a82c706f024f297b5",
+  "dropped_findings": 0
+}

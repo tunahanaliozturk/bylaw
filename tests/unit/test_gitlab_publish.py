@@ -462,15 +462,11 @@ def test_a_resolved_thread_names_who_resolved_it_and_whether_that_was_the_author
                     resolved=True,
                     resolved_by=by_author,
                 ),
-                _note(
-                    2,
-                    "bylaw: ignore",
-                    REPORTER,
-                    type="DiffNote",
-                    resolvable=True,
-                    resolved=True,
-                    resolved_by=by_author,
-                ),
+                {
+                    **_note(2, "bylaw: ignore", REPORTER, type="DiffNote", resolvable=True, resolved=True),
+                    "author": {"id": REPORTER, "username": "rita"},
+                    "resolved_by": by_author,
+                },
             ],
         }
     ]
@@ -481,3 +477,4 @@ def test_a_resolved_thread_names_who_resolved_it_and_whether_that_was_the_author
     thread = _mr(client).review_threads("group/app", 5)[0]
 
     assert (thread.resolved_by, thread.resolved_by_pr_author) == ("alice", True)
+    assert thread.comments[1].author == "rita"

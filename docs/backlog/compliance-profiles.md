@@ -13,7 +13,7 @@ profiles = ["iso27001"]
 ## Items
 
 - [x] **CMP-1** (M) ADR: what a profile is, what bylaw claims and does not claim (it helps with evidence, it does not make anyone compliant), and how the standard's text is handled. Done when: ADR accepted.
-- [x] **CMP-2** (M) Profile file format: control ids with bylaw's own short guidance for reviewers, never the standard's text, which is copyrighted. Done when: `profiles/iso27001.toml` with the development-related Annex A 2022 controls, for example 5.34, 8.3 to 8.5, 8.8, 8.9, 8.11, 8.12, 8.15, 8.24, 8.25 to 8.29 and 8.31 to 8.33.
+- [x] **CMP-2** (M) Profile file format: control ids with bylaw's own short guidance for reviewers, never the standard's text, which is copyrighted. Done when: `profiles/iso27001.toml` with the development-related Annex A 2022 controls, for example 5.34, 8.3 to 8.5, 8.8, 8.9, 8.11, 8.12, 8.15, 8.24, 8.25 to 8.29 and 8.31 to 8.33. Shipped with those and 5.17, 8.2, 8.10 and 8.16, which a diff can touch as well.
 - [x] **CMP-3** (S) `profiles` setting read from the base branch, so a pull request cannot switch a profile off for itself. Done when: config tests.
 - [x] **CMP-4** (M) The brief adds the profile's guidance; findings may carry `controls: ["8.28"]`, and validation drops ids the profile does not define. Done when: prompt and validate tests.
 - [x] **CMP-5** (M) Severity rules per profile, for example personal data in logs is at least `high` under bylaw's 27001 profile. Done when: tests.

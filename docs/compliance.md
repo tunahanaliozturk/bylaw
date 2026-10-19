@@ -31,21 +31,28 @@ that is outside the scope of your certificate is better left out of the app's in
 
 ## What the `iso27001` profile covers
 
-The profile lists these controls. The titles are bylaw's own short names, not the standard's wording, and
-the guidance bylaw gives the reviewer for each is written in its own words as well:
-[`src/bylaw/profiles/iso27001.toml`](../src/bylaw/profiles/iso27001.toml).
+The profile lists these controls. The titles are short names bylaw chose. A few match the standard's own
+short names, such as "Secure coding" or "Change management", because that is what the practice is
+called; none of the standard's text is copied. The guidance bylaw gives the reviewer for each is written
+in its own words: [`src/bylaw/profiles/iso27001.toml`](../src/bylaw/profiles/iso27001.toml).
 
 | Control | bylaw's title | Control | bylaw's title |
 | --- | --- | --- | --- |
-| 5.34 | Personal data protection | 8.24 | Cryptography |
+| 5.17 | Handling credentials | 8.15 | Logs |
+| 5.34 | Personal data protection | 8.16 | Watching for misuse |
+| 8.2 | Admin and elevated access | 8.24 | Cryptography |
 | 8.3 | Restricting access to information | 8.25 | Secure development process |
 | 8.4 | Source code access | 8.26 | Security requirements for applications |
 | 8.5 | Authentication | 8.27 | Secure architecture |
 | 8.8 | Technical vulnerabilities | 8.28 | Secure coding |
 | 8.9 | Configuration | 8.29 | Security testing |
-| 8.11 | Masking sensitive data | 8.31 | Separate environments |
-| 8.12 | Preventing data leaks | 8.32 | Change management |
-| 8.15 | Logs | 8.33 | Test data |
+| 8.10 | Deleting data | 8.31 | Separate environments |
+| 8.11 | Masking sensitive data | 8.32 | Change management |
+| 8.12 | Preventing data leaks | 8.33 | Test data |
+
+These are the controls bylaw looks for in a diff. Others can be touched by a change too, such as
+supplier relationships (5.19 to 5.22) when a change adds a third-party service; bylaw leaves those to
+the people who run the management system.
 
 With the profile on:
 
@@ -111,6 +118,11 @@ the one an auditor most wants to see. A later run of the same pull request write
 own workflow run. Within one run the upload step sets `overwrite: true`, so a re-run attempt replaces the
 file of the attempt before it instead of failing on the name.
 
+A `pull_request` run that gets no secrets and a read-only token, a fork's or Dependabot's, is skipped
+whole, as the Action always has: no review, no summary and no evidence file. Review those with the
+`pull_request_target` recipe ([docs/recipes](recipes/)), or treat the next run on the base branch's
+merge as the record.
+
 With `--pr` or `--gitlab-mr`, `--evidence` needs `--post`: only a posting run reads the review threads,
 and a file written without them would miss every mute and every resolve. With `--context`, for a local
 change, there are no threads, so the file shows the change as a first run would see it.
@@ -120,7 +132,8 @@ cycle needs the records longer, copy them to your own records store, for example
 workflow that downloads the artifacts of merged pull requests. The GitHub App has no artifact store; there
 the summary comment is the record.
 
-On GitLab ([hosts.md](hosts.md)), add `--evidence bylaw-evidence.json` to the job's `bylaw review
+On GitLab ([hosts.md](hosts.md)), `by` comes from GitLab too: the username on a muting note, and
+GitLab's `resolved_by` on a resolved thread. Add `--evidence bylaw-evidence.json` to the job's `bylaw review
 --gitlab-mr` command and keep the file as a job artifact with `artifacts: paths: [bylaw-evidence.json]`
 and `when: always`, so a job that `--fail-on` fails keeps it too. `repository` is then the project path
 and `pull_request` the merge request's number.
@@ -214,8 +227,10 @@ that meets your Statement of Applicability is your judgement and your auditor's.
 
 The evaluation set has planted cases for the profile: a change that writes a password to a log, a change
 that hashes passwords with MD5, and a clean change in the same project. Each label names the controls a
-right answer tags, and the report gives how many tagged findings named one of them. The numbers, per model
-and date, are in [eval/README](eval/README.md).
+right answer tags, and the report gives how many tagged findings named one of them. So far only bylaw's own
+checks have been run on them ([the no-model baseline](../eval/results/2026-10-19-checks-only-v0.6/report.md)),
+which find none of these defects, as expected without a model. No committed model run covers them yet;
+results per model and date will be in [eval/README](eval/README.md).
 
 ## About this page
 

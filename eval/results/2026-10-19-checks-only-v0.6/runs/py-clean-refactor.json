@@ -1,0 +1,17 @@
+{
+  "case_id": "py-clean-refactor",
+  "result": {
+    "findings": [],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 0,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "no-model",
+  "case_digest": "9e38dc2d279919a5417a7e94807e3a909c988b94f449a84277df54622819b4c1",
+  "dropped_findings": 0
+}

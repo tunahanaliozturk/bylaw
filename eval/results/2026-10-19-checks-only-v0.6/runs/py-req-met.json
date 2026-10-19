@@ -1,0 +1,17 @@
+{
+  "case_id": "py-req-met",
+  "result": {
+    "findings": [],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 0,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "no-model",
+  "case_digest": "7a2636df3b8c628ccc3ed9cdd52fd92abbff6af98914161cc4c4e85133a4f111",
+  "dropped_findings": 0
+}

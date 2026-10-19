@@ -1,0 +1,17 @@
+{
+  "case_id": "cs-async-void",
+  "result": {
+    "findings": [],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 0,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "no-model",
+  "case_digest": "88d0d2a098bb784af89ba3ecf55d70eb3d2bffb800f058d3fa87c656aced8faa",
+  "dropped_findings": 0
+}
