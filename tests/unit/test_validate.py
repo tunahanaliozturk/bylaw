@@ -582,15 +582,21 @@ def test_a_long_unknown_control_id_is_cut_in_the_dropped_list() -> None:
     assert kept.dropped == (f"app.py:3 security: control {'x' * 20}... is not in the active profiles",)
 
 
-def test_an_oversized_finding_is_dropped_so_the_rest_of_the_review_still_posts() -> None:
-    # GitHub refuses the whole review when one comment is over its size limit.
+def test_an_oversized_finding_is_cut_down_rather_than_dropped() -> None:
+    # GitHub refuses the whole review when one comment is over its size limit, and dropping a finding that
+    # was posted before would resolve its thread as fixed.
     long_message = _finding().model_copy(update={"message": "m" * 2001})
     long_suggestion = _finding(start=4, end=4).model_copy(update={"suggestion": "s" * 10_001})
     long_evidence = _finding(start=5, end=5, evidence="CONTRIBUTING.md:2" + "x" * 500)
 
-    assert _dropped(long_message, long_suggestion, long_evidence) == (
-        "app.py:3 security: message is longer than 2000 characters",
-        "app.py:4 security: suggestion is longer than 10000 characters",
+    checked = validate(CONTEXT, ReviewResult(findings=(long_message, long_suggestion, long_evidence)))
+
+    message, suggestion = checked.result.findings
+    assert (len(message.message), message.message[-3:]) == (2000, "...")
+    assert (suggestion.suggestion, suggestion.message) == (None, "m")
+    assert checked.dropped == (
+        "app.py:3 security: message cut to 2000 characters",
+        "app.py:4 security: suggestion left out: longer than 10000 characters",
         "app.py:5 security: evidence is longer than 500 characters",
     )
 
