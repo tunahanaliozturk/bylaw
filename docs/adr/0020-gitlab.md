@@ -32,23 +32,41 @@ The core (context, validation, the plan, the summary and its state) is unchanged
   endpoint at `diff_refs.start_sha`, the target branch commit. `base_sha` is the merge base: an author who
   branched from an old commit would bring old rules with them, which ADR 0004 rules out, and GitHub's base
   sha is the target branch head too. Positions still send all three shas.
+- **One snapshot.** The shas come from the merge request and the diff from other requests, one per page,
+  so a push in between would put comments on the wrong lines. After the diff, bylaw reads the merge
+  request again; if its `diff_refs` moved, it reads the newer diff, up to three times, and then stops
+  with an error, since the pipeline of the newest push reviews it anyway. The single
+  [diff version](https://docs.gitlab.com/api/merge_requests/#retrieve-a-merge-request-diff-version)
+  endpoint would give shas, commits and diffs in one answer, but without paging; the re-check keeps paging.
 - **Positioned discussions.** One discussion per inline finding, on the new side: `position_type: text`,
   the three shas, `old_path` (the old name of a renamed file), `new_path` and `new_line`. A finding over
   several lines adds a `line_range` whose line codes are computed as GitLab documents them
   (`<sha1 of the path>_<old>_<new>`, an added line keeping the old file's counter where it was inserted);
-  if GitLab rejects the range with a 400, the comment is posted on its last line alone. GitLab has no
-  review that groups comments, so the review body GitHub gets is not posted.
+  if GitLab rejects the range with a 400, the comment is posted on its last line alone. If GitLab
+  refuses that line too, the finding becomes an unpositioned discussion that names the file and line, so
+  nothing is lost and the run still reaches the summary. GitLab has no review that groups comments, so
+  the review body GitHub gets is not posted.
 - **Suggestions.** GitLab applies a plain `suggestion` block to the commented line only, so a finding over
-  several lines gets `suggestion:-N+0`, or applying it would replace one line with all of them.
+  several lines gets `suggestion:-N+0`, or applying it would replace one line with all of them. The block
+  is built from what the comment was rendered from (the prose before it, the suggestion, the prose after
+  it), never parsed back out of the body: a file name with a line break in the "Also at" list would
+  otherwise hide where the suggestion ends.
 - **Quick actions.** GitLab runs `/merge`, `/approve`, `/close` and the rest from any note line that starts
   with a slash, as the token's user. Text from the model, the merge request and issues reaches those
-  lines, so bylaw puts a zero-width space in front of every such line before posting. Only bylaw's own
-  suggestion block is left as written: it is always a fenced code block, where GitLab reads no quick
-  action. Other code blocks get the space too, because telling them apart exactly as GitLab's Markdown
-  does is where a mistake would hide.
+  lines, so bylaw puts a zero-width space in front of every such line before posting. GitLab's extractor
+  (`lib/gitlab/quick_actions/extractor.rb`) deletes every carriage return before it looks, and that is the
+  only character it removes, so bylaw deletes them first too: `\r/approve` would otherwise start with a
+  slash once GitLab had read it. The suggestion's fence is measured after that deletion, since `` ``\r` ``
+  would otherwise become a closing fence. Only bylaw's own suggestion block is left as written: it is
+  always a fenced code block, where GitLab reads no quick action. Other code blocks get the space too,
+  because telling them apart exactly as GitLab's Markdown does is where a mistake would hide.
 - **Summary note.** One note that starts with the summary marker, edited in place with `PUT`, with the
   hidden state at its end (ADR 0005). GitLab strips trailing whitespace and carriage returns from a note
-  body; the state block does not depend on either.
+  body; the state block does not depend on either. Once bylaw knows its account, only a note that account
+  wrote is its summary, and with none it posts a new note: taking a Developer's marker note would edit a
+  person's words with a Maintainer token, and end every run on a 403 with a Developer token. Only a token
+  that cannot say who it is falls back to a Developer's marker note, as the GitHub Action falls back to a
+  trusted one.
 - **Resolving.** `PUT .../discussions/:id?resolved=true|false`. A discussion counts as resolved when all
   of its resolvable notes are.
 - **Trust (ADR 0008).** GitLab has no author association on a note, so bylaw asks the members API for the
@@ -59,35 +77,46 @@ The core (context, validation, the plan, the summary and its state) is unchanged
   author of the merge request is trusted for tracker reads (ADR 0014) on the same rule.
 - **Review memory (ADR 0012).** GitLab can say who a token is (`GET /user`), which the Action's
   `GITHUB_TOKEN` cannot, so the memory is trusted only in a summary written by that exact account, not by
-  any bot, as the GitHub App does with its own login (ADR 0017). A summary by a Developer is still used for mutes and resolved threads, with a full review. A token
-  that cannot say who it is trusts no memory.
+  any bot, as the GitHub App does with its own login (ADR 0017). A token that cannot say who it is trusts
+  no memory, and its fallback summary carries mutes and resolved threads with a full review.
 - **Closing issues (GLB-3).** The union of what `GET .../closes_issues` returns, which follows a
   self-managed instance's own pattern, and what GitLab's default closing pattern finds in the title,
-  description and commit messages, because GitLab lists nothing for a merge request into a branch other than the
-  default one. References are `#12`, `lib#12` (a project in the same namespace), `group/sub/lib#12` and
-  issue links on the same instance. ADR 0007's allow list applies unchanged, by full project path.
+  description and commit messages, because GitLab lists nothing for a merge request into a branch other
+  than the default one. References are `#12`, `lib#12` (a project in the same namespace),
+  `group/sub/lib#12` and issue links on the same instance, with or without a `#note_1` anchor, a trailing
+  slash or a query. A number must end the reference: `#1abc` is not issue 1. ADR 0007's allow list
+  applies unchanged, by full project path.
 - **Issues.** The title, the description and the comments of Developers and above, newest first, at most
   20 and 8,000 characters as on GitHub. System notes and internal notes are never read, and a
   confidential issue is left out entirely: its text would land in a summary more people can read.
 - **CI.** `docs/recipes/gitlab-ci.yml` runs on `merge_request_event` pipelines with
   `uvx bylaw@<version>`, `CI_API_V4_URL`, `CI_MERGE_REQUEST_IID` and `CI_MERGE_REQUEST_PROJECT_ID`, and
   a project access token in `GITLAB_TOKEN`. `CI_JOB_TOKEN` can read a merge request and its notes but not
-  its diffs, and it cannot post, so it is not enough.
+  its diffs, and it cannot post, so it is not enough. The job sets `GIT_STRATEGY: none`: bylaw reads
+  everything through the API, so a checkout of the merge request's branch only costs time and puts files
+  the author controls in the job's directory. `uvx` already ignores local configuration files
+  ([uv configuration files](https://docs.astral.sh/uv/concepts/configuration-files/)); with no checkout
+  that does not depend on it.
 
 ## Consequences
 
 - A GitLab merge request gets inline discussions and a summary note, and a re-run behaves as on GitHub.
-  The fake server tests cover reading, positions, line ranges, the fallback, suggestions, quick actions,
-  the summary, trust and a re-run that resolves a fixed finding.
+  The fake server tests cover reading, a push during the read, positions, line ranges and both
+  fallbacks, suggestions, quick actions with carriage returns, the summary, trust and a re-run that
+  resolves a fixed finding.
 - A merge request from a fork runs its pipeline in the fork, without the project's variables. bylaw sees
   no token there, prints a note and exits with success, as it does on GitHub.
 - Cost: one members call per distinct note author, cached per run. An issue with many outside commenters
   costs a call per commenter until 20 trusted comments are found.
-- Cost: the token variable cannot be protected, because merge request pipelines run on unprotected
-  branches. Anyone who can push a branch can read it in a job. That is a Developer, who can already
-  push code and comment with their own account, but with the token they could also post a summary as
-  bylaw's account with a forged review memory, so the next run skips files it should have read. Use a
-  dedicated token with nothing but the Developer role, and rotate it if a job ever prints it.
+- Cost: in most projects the token variable cannot be protected. A protected variable reaches a merge
+  request pipeline only when, since GitLab 18.1, a Maintainer allows it and both branches are protected
+  and in the same project
+  ([Control access to protected variables](https://docs.gitlab.com/ci/pipelines/merge_request_pipelines/#control-access-to-protected-variables-and-runners));
+  feature branches usually are not, and fork pipelines never get one. So anyone who can push a branch
+  can read the token in a job. That is a Developer, who can already push code and comment with their
+  own account, but with the token they could also post a summary as bylaw's account with a forged review
+  memory, so the next run skips files it should have read. Use a dedicated token with nothing but the
+  Developer role, and rotate it if a job ever prints it.
 - Cost: reading many base files at once is one request per file; GitLab's GraphQL `repository.blobs`
   could batch them if that turns out to be slow.
 - Cost: GitLab caps `changes_count` at the string `"1000+"`, so a very large merge request gets no note

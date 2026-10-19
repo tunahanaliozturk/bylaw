@@ -32,7 +32,10 @@ Everything above is tested against a fake GitLab built from the API documentatio
 - [ ] Internal notes and system notes on an issue are not quoted, and a confidential issue is left out with a note.
 - [ ] A merge request from a fork runs its pipeline in the fork, where bylaw prints its note and exits 0.
 - [ ] For a fork, files at the head sha are readable through the target project (`read_head` for specs).
-- [ ] The token variable, masked and not protected, reaches a merge request pipeline on an unprotected branch.
+- [ ] The token variable, masked and not protected, reaches a merge request pipeline on an unprotected branch, and the job runs with `GIT_STRATEGY: none` (no checkout).
+- [ ] A finding whose line GitLab refuses as a position is posted as an unpositioned discussion naming the line, and the summary still updates.
+- [ ] A finding message with `\r/approve` approves nothing.
+- [ ] A Developer's note that starts with the summary marker is left alone: bylaw posts its own summary next to it.
 - [ ] A self-managed instance under a relative URL (`https://host/gitlab/api/v4`) resolves issue links.
 
 ## Notes
