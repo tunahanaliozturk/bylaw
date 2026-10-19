@@ -29,9 +29,12 @@ DISCLAIMER = (
     "bylaw records what its review saw: the tags are the reviewer's judgement, and this is evidence for an "
     "audit, not a compliance verdict."
 )
-_TEST_DIRECTORIES = frozenset({"test", "tests", "__tests__", "testing"})
-# test_x.py, x_test.py, x_test.go, x.test.ts, x.spec.js, XTests.cs, XTest.java and the like.
-_TEST_NAME = re.compile(r"^test_.*\.py$|_test\.(py|go)$|\.(test|spec)\.[cm]?[jt]sx?$|Tests?\.(cs|java|kt)$")
+# Not "testing": packages such as Go's and Django's ship code under that name that is not a test.
+_TEST_DIRECTORIES = frozenset({"test", "tests", "__tests__", "spec"})
+# test_x.py, x_test.py, x_test.go, x.test.ts, x.spec.js, x_spec.rb, XTests.cs, XTest.java and the like.
+_TEST_NAME = re.compile(
+    r"^test_.*\.py$|_test\.(py|go)$|_spec\.rb$|\.(test|spec)\.[cm]?[jt]sx?$|Tests?\.(cs|java|kt)$"
+)
 
 
 class _Frozen(BaseModel):
