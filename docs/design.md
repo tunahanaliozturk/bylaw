@@ -178,7 +178,9 @@ cannot drift apart.
   code with its own lock file ([ADR 0009](adr/0009-action-runs-from-its-own-source.md)). Inputs:
   `api-key`, `provider`, `model`, `effort`, `base-url`, `fail-on`, `github-token`; a cloud provider's
   extra is installed from `provider` ([providers.md](providers.md)). Without a key it runs the
-  deterministic checks only. Listed on the GitHub Marketplace and versioned by tags (`v1`, `v1.2.0`).
+  deterministic checks only. On a `closed` event it runs `bylaw learn` instead of the review, and
+  `report` (`artifact` or `pages`) publishes the report page ([learning.md](learning.md)). Listed on the
+  GitHub Marketplace and versioned by tags (`v1`, `v1.2.0`).
 - **Claude Code plugin.** The plugin lives in `plugin/`, apart from the source, so the plugin directories
   scan only what users install: `plugin/.claude-plugin/plugin.json`, `plugin/skills/bylaw-review/SKILL.md`
   and a `/bylaw-review` command. `.claude-plugin/marketplace.json` at the root points at it. Install: `/plugin marketplace add
@@ -212,7 +214,9 @@ which fork PRs spend API budget ([ADR 0006](adr/0006-pull-request-target-recipe.
   instructions inside it are not followed. A fixture with an injection attempt in the diff is part of the
   test suite.
 - Action permissions: `contents: read`, `pull-requests: write`, `issues: read`. The app asks for the same,
-  plus `metadata: read`, which every app has, and mints each token for one repository.
+  plus `metadata: read`, which every app has, and mints each token for one repository. Learning, which
+  is off by default, also needs `contents: write` on the run for a closed pull request, to write the
+  `bylaw-outcomes` branch and suggestion branches ([ADR 0022](adr/0022-learning-and-reports.md)).
 - bylaw never executes code from the pull request.
 
 ## Configuration
@@ -226,6 +230,12 @@ carry the control ids they touch, raises some severities by fixed rules after va
 change-management record to the summary and, in the Action, an evidence file per pull request. It helps
 with audit evidence and does not make anyone compliant ([ADR 0021](adr/0021-compliance-profiles.md),
 [compliance.md](compliance.md)).
+
+`[[suppress]]` entries hide findings that cite one rule in some paths, never a security finding, and the
+summary lists each one with what it hid. With `[learn]` on, the Action records each closed pull request's
+outcomes on a `bylaw-outcomes` branch, opens a pull request suggesting a suppression once maintainers have
+dismissed a rule often enough, and can publish a report page built from the same records
+([ADR 0022](adr/0022-learning-and-reports.md), [learning.md](learning.md)).
 
 ## Testing and evaluation
 
