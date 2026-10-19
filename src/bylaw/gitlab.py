@@ -111,6 +111,7 @@ class _Note(_Model):
     confidential: bool = False
     resolvable: bool = False
     resolved: bool = False
+    resolved_by: _User | None = None
     position: _Position | None = None
 
 
@@ -444,18 +445,25 @@ class GitLabMergeRequest:
                         body=note.body,
                         trusted=self._trusted(note.author),
                         by_pr_author=note.author is not None and note.author.id == author,
+                        author=note.author.username if note.author else "",
                     )
                     for note in notes
+                )
+                resolved = bool(resolvable) and all(note.resolved for note in resolvable)
+                resolver = (
+                    next((n.resolved_by for n in resolvable if n.resolved_by), None) if resolved else None
                 )
                 threads.append(
                     Thread(
                         id=discussion.id,
-                        resolved=bool(resolvable) and all(note.resolved for note in resolvable),
+                        resolved=resolved,
                         comments=comments,
                         # A position GitLab could not carry to the newest diff stays on its old head.
                         line=position.new_line if position and position.head_sha == head else None,
                         original_line=position.new_line if position else None,
                         path=position.new_path if position else "",
+                        resolved_by=(resolver.username or None) if resolver else None,
+                        resolved_by_pr_author=resolver is not None and resolver.id == author,
                     )
                 )
         return threads

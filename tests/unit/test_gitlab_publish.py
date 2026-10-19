@@ -441,3 +441,43 @@ def test_a_rerun_resolves_the_discussion_of_a_fixed_finding(
     body = json.loads(summary.calls.last.request.content)["body"]
     assert body.startswith(SUMMARY_MARKER)
     assert read_state(body).auto_resolved == frozenset({"d1"})
+
+
+def test_a_resolved_thread_names_who_resolved_it_and_whether_that_was_the_author(
+    client: GitLabClient, server: respx.MockRouter
+) -> None:
+    position = {"new_path": "app.py", "new_line": 4, "head_sha": "h1"}
+    by_author = {"id": AUTHOR, "username": "alice"}
+    discussions = [
+        {
+            "id": "d1",
+            "notes": [
+                _note(
+                    1,
+                    "f",
+                    BOT,
+                    type="DiffNote",
+                    position=position,
+                    resolvable=True,
+                    resolved=True,
+                    resolved_by=by_author,
+                ),
+                _note(
+                    2,
+                    "bylaw: ignore",
+                    REPORTER,
+                    type="DiffNote",
+                    resolvable=True,
+                    resolved=True,
+                    resolved_by=by_author,
+                ),
+            ],
+        }
+    ]
+    server.get(url__startswith=f"{P}/merge_requests/5/discussions").mock(
+        return_value=httpx.Response(200, json=discussions)
+    )
+
+    thread = _mr(client).review_threads("group/app", 5)[0]
+
+    assert (thread.resolved_by, thread.resolved_by_pr_author) == ("alice", True)

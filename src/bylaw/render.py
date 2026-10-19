@@ -88,7 +88,13 @@ def review_body(plan: Plan) -> str:
 
 
 def summary_body(context: ReviewContext, result: ReviewResult, plan: Plan) -> str:
-    current = [*plan.inline, *plan.open_threads, *plan.summary_only, *plan.reviewer_resolved]
+    current = [
+        *plan.inline,
+        *plan.open_threads,
+        *plan.summary_only,
+        *plan.author_resolved,
+        *plan.reviewer_resolved,
+    ]
     sections = [
         SUMMARY_MARKER,
         "## bylaw review",
@@ -97,6 +103,7 @@ def summary_body(context: ReviewContext, result: ReviewResult, plan: Plan) -> st
         _scope_creep(result),
         *_compliance(context, result, plan),
         _details("Other findings", plan.summary_only),
+        _details("Resolved by the pull request's author but still present", plan.author_resolved),
         _details("Resolved by a reviewer but still present", plan.reviewer_resolved),
         _details("Muted with `bylaw: ignore`", plan.muted),
         _rule_sources(context),
@@ -252,6 +259,8 @@ def _change_management(record: Evidence) -> str:
     ]
     if accepted:
         lines.append("- Accepted: " + "; ".join(_acceptance(f) for f in accepted) + ".")
+    if by_author := [f for f in record.findings if f.status == "resolved_by_author"]:
+        lines.append("- Still open: " + "; ".join(_acceptance(f) for f in by_author) + ".")
     return "### Change management evidence\n\n" + "\n".join(lines)
 
 
@@ -264,8 +273,11 @@ def _criteria_met(requirement: EvidenceRequirement) -> str:
 
 def _acceptance(finding: EvidenceFinding) -> str:
     where = _code(f"{finding.file}:{finding.line_start}")
-    who = f" by {_code(finding.accepted_by)}" if finding.accepted_by else ""
-    if finding.accepted_how == "muted":
+    who = f" by {_code(finding.by)}" if finding.by else ""
+    if finding.status == "resolved_by_author":
+        author = f" {_code(finding.by)}" if finding.by else ""
+        return f"{where} resolved by its author{author}, which does not accept it"
+    if finding.how == "muted":
         return f"{where} muted{who or ' by a maintainer'} with `bylaw: ignore`"
     return f"{where} resolved{who or ' by a reviewer'}"
 

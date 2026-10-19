@@ -45,8 +45,9 @@ class Thread:
     path: str = ""
     # GitHub failed to return the replies between the first one and the newest hundred.
     older_replies_unread: bool = False
-    # The login of whoever resolved it, as GitHub reports it.
+    # The login of whoever resolved it, as the host reports it, and whether that was the change's author.
     resolved_by: str | None = None
+    resolved_by_pr_author: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,6 +68,8 @@ class Plan:
     resolve: tuple[str, ...]
     unresolve: tuple[str, ...]
     state: State
+    # Resolved by the pull request's author while the finding is still there: open all the same (ADR 0008).
+    author_resolved: tuple[Group, ...] = ()
 
 
 def added_text(context: ReviewContext) -> dict[str, dict[int, str]]:
@@ -122,6 +125,7 @@ def make_plan(  # noqa: PLR0913 - every argument is a distinct input to one deci
     summary_only: list[Group] = []
     muted: list[Group] = []
     reviewer_resolved: list[Group] = []
+    author_resolved: list[Group] = []
     open_threads: list[Group] = []
     unresolve: list[str] = []
     for index, group in sorted(enumerate(groups), key=lambda item: _order(item[1])):
@@ -138,6 +142,8 @@ def make_plan(  # noqa: PLR0913 - every argument is a distinct input to one deci
             auto_resolved.discard(existing.id)
             auto_resolved.discard(group.fingerprint)
             open_threads.append(group)
+        elif existing.resolved and existing.resolved_by_pr_author:
+            author_resolved.append(replace(group, by=existing.resolved_by))
         elif existing.resolved:
             reviewer_resolved.append(replace(group, by=existing.resolved_by))
         else:
@@ -152,6 +158,7 @@ def make_plan(  # noqa: PLR0913 - every argument is a distinct input to one deci
         resolve=tuple(thread.id for _, thread in fixed),
         unresolve=tuple(unresolve),
         state=State(auto_resolved=frozenset(auto_resolved & {t.id for ts in ours.values() for t in ts})),
+        author_resolved=tuple(author_resolved),
     )
 
 
@@ -204,8 +211,9 @@ def _pair(
 
 
 def remaining(plan: Plan) -> tuple[Finding, ...]:
-    """Findings still standing after a run: a maintainer's mute or resolve takes a finding out."""
-    groups = (*plan.inline, *plan.open_threads, *plan.summary_only)
+    """Findings still standing after a run: a maintainer's mute or resolve takes a finding out, the pull
+    request author's resolve does not (ADR 0008)."""
+    groups = (*plan.inline, *plan.open_threads, *plan.summary_only, *plan.author_resolved)
     return tuple(finding for group in groups for finding in (group.finding, *group.others))
 
 

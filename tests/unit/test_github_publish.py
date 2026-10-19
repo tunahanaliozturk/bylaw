@@ -448,3 +448,23 @@ def test_threads_carry_who_resolved_them_and_who_wrote_each_reply(client: GitHub
 
     assert (threads[0].resolved_by, threads[0].comments[0].author) == ("dave", "carol")
     assert "resolvedBy { login }" in route.calls[0].request.content.decode()
+
+
+@respx.mock
+def test_a_thread_resolved_by_the_pull_request_author_is_marked(client: GitHubClient) -> None:
+    first = {
+        "body": "finding",
+        "author": {"__typename": "Bot", "login": "bylaw"},
+        "authorAssociation": "NONE",
+    }
+    thread = {
+        "id": "T1",
+        "isResolved": True,
+        "resolvedBy": {"login": "Alice"},
+        "comments": {"nodes": [first]},
+    }
+    page = {"pageInfo": {"hasNextPage": False, "endCursor": None}, "nodes": [thread]}
+    data = {"data": {"repository": {"pullRequest": {"author": {"login": "alice"}, "reviewThreads": page}}}}
+    respx.post(f"{API}/graphql").mock(return_value=httpx.Response(200, json=data))
+
+    assert client.review_threads("octo/app", 5)[0].resolved_by_pr_author is True

@@ -634,6 +634,11 @@ class GitHubClient:
                         path=node.path,
                         older_replies_unread=unread,
                         resolved_by=node.resolved_by.login if node.resolved_by else None,
+                        resolved_by_pr_author=bool(
+                            node.resolved_by
+                            and pr_author
+                            and _login(node.resolved_by.login) == _login(pr_author)
+                        ),
                     )
                 )
             if not pull.review_threads.page_info.has_next_page:

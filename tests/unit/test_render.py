@@ -1,5 +1,6 @@
 from dataclasses import replace
 
+from bylaw.evidence import build_evidence
 from bylaw.model import (
     MODEL_NOT_RUN,
     Category,
@@ -521,3 +522,17 @@ def test_an_inline_comment_names_the_controls_it_touches() -> None:
     body = inline_body(Group(finding=_tagged(3, "8.28"), fingerprint=FP, others=()))
 
     assert "Controls: `8.28`" in body
+
+
+def test_a_finding_the_author_resolved_stays_open_in_the_evidence_and_is_flagged() -> None:
+    resolved = Group(finding=_tagged(7, "8.28"), fingerprint=FP, others=(), by="alice")
+    plan = replace(_plan(), author_resolved=(resolved,))
+
+    body = summary_body(PROFILED, ReviewResult(), plan)
+    record = build_evidence(PROFILED, ReviewResult(), plan)
+
+    section = body.split("### Change management evidence")[1].split("###")[0]
+    assert "- Findings: 1 open, 0 accepted, 0 threads resolved as fixed this run." in section
+    assert "`app.py:7` resolved by its author `alice`, which does not accept it" in section
+    assert [(f.status, f.by) for f in record.findings] == [("resolved_by_author", "alice")]
+    assert "Resolved by the pull request's author but still present (1)" in body
