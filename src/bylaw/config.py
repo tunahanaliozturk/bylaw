@@ -83,6 +83,20 @@ class App(BaseModel):
 CONFIG_VERSIONS = (1,)
 
 
+class Learn(BaseModel):
+    """Learning from what maintainers do with findings (ADR 0022). Off unless a maintainer turns it on."""
+
+    model_config = _SETTINGS
+
+    # Record each closed pull request's outcomes on the `bylaw-outcomes` branch and suggest suppressions.
+    enabled: bool = False
+    # Distinct pull requests in which maintainers muted, or resolved without a change, the same kind of
+    # finding before bylaw suggests a suppression for it.
+    threshold: int = Field(default=3, ge=2, le=100)
+    # The categories a suggestion may cover. Security is not a choice: it is never suggested.
+    suggest: tuple[Literal["rule", "bug"], ...] = ("rule",)
+
+
 class Config(BaseModel):
     model_config = _SETTINGS
 
@@ -110,6 +124,7 @@ class Config(BaseModel):
     app: App = App()
     # Compliance profiles shipped with bylaw, such as "iso27001" (ADR 0021).
     profiles: tuple[str, ...] = ()
+    learn: Learn = Learn()
 
     @field_validator("version")
     @classmethod
