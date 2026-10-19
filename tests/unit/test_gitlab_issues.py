@@ -51,6 +51,25 @@ def test_gitlabs_default_closing_pattern_names_every_issue_in_a_closing_statemen
     )
 
 
+def test_a_number_that_runs_into_letters_is_not_a_reference() -> None:
+    assert closing_refs(["Closes #1abc and fixes #2_x"], "group/app", WEB) == ()
+
+
+def test_an_issue_link_with_a_note_anchor_a_slash_or_a_query_is_recognised() -> None:
+    texts = [
+        f"Closes {WEB}/group/app/-/issues/7#note_1",
+        f"Fixes {WEB}/group/app/-/issues/8/",
+        f"Resolves {WEB}/group/app/-/issues/9?view=list",
+        f"Closes {WEB}/group/app/-/issues/10abc",
+    ]
+
+    assert closing_refs(texts, "group/app", WEB) == (
+        IssueRef("group", "app", 7),
+        IssueRef("group", "app", 8),
+        IssueRef("group", "app", 9),
+    )
+
+
 def test_a_nested_group_reference_keeps_its_full_path_in_the_label() -> None:
     (ref,) = closing_refs(["Fixes Org/Team/Lib#5"], "group/app", WEB)
 
