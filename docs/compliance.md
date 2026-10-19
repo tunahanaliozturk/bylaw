@@ -110,6 +110,11 @@ cycle needs the records longer, copy them to your own records store, for example
 workflow that downloads the artifacts of merged pull requests. The GitHub App has no artifact store; there
 the summary comment is the record.
 
+On GitLab ([hosts.md](hosts.md)), add `--evidence bylaw-evidence.json` to the job's `bylaw review
+--gitlab-mr` command and keep the file as a job artifact with `artifacts: paths: [bylaw-evidence.json]`
+and `when: always`, so a job that `--fail-on` fails keeps it too. `repository` is then the project path
+and `pull_request` the merge request's number.
+
 ### Schema, version 1
 
 The file is one JSON object. `schema_version` changes when a field changes meaning or goes away; a new
