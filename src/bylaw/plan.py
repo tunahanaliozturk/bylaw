@@ -6,7 +6,7 @@ Pure functions over data, so every rule about re-runs is unit tested without Git
 import hashlib
 import re
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from bylaw.model import Finding, ReviewContext, ReviewMemory, Severity
 
@@ -20,6 +20,8 @@ class Group:
     finding: Finding
     fingerprint: str
     others: tuple[Finding, ...]
+    # Who accepted it: the maintainer whose reply muted it, or the person who resolved its thread.
+    by: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -27,6 +29,7 @@ class ThreadComment:
     body: str
     trusted: bool
     by_pr_author: bool = False
+    author: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -42,6 +45,8 @@ class Thread:
     path: str = ""
     # GitHub failed to return the replies between the first one and the newest hundred.
     older_replies_unread: bool = False
+    # The login of whoever resolved it, as GitHub reports it.
+    resolved_by: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -126,15 +131,15 @@ def make_plan(  # noqa: PLR0913 - every argument is a distinct input to one deci
                 summary_only.append(group)
             else:
                 inline.append(group)
-        elif any(_mutes(reply) for reply in existing.comments[1:]):
-            muted.append(group)
+        elif mute := next((reply for reply in existing.comments[1:] if _mutes(reply)), None):
+            muted.append(replace(group, by=mute.author or None))
         elif existing.resolved and _resolved_by_bylaw(existing, group.fingerprint, auto_resolved, ours):
             unresolve.append(existing.id)
             auto_resolved.discard(existing.id)
             auto_resolved.discard(group.fingerprint)
             open_threads.append(group)
         elif existing.resolved:
-            reviewer_resolved.append(group)
+            reviewer_resolved.append(replace(group, by=existing.resolved_by))
         else:
             open_threads.append(group)
 

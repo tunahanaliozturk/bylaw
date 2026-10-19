@@ -9,7 +9,7 @@ from bylaw.context import build_context
 from bylaw.engine import Reviewer
 from bylaw.github import TRUSTED_ASSOCIATIONS, GitHubClient, GitHubSource, PullRequest
 from bylaw.incremental import ModelRun, keep_valid, run_model_review, trusted_memory
-from bylaw.model import Finding, ReviewContext, ReviewMemory, ReviewResult
+from bylaw.model import MODEL_NOT_RUN, Finding, ReviewContext, ReviewMemory, ReviewResult
 from bylaw.plan import remaining
 from bylaw.publish import Publisher, publish
 from bylaw.source import RepoSource
@@ -163,7 +163,7 @@ def model_gate(pull: PullRequest, config: Config) -> str | None:
         else "To review such pull requests with the model, set `[app] model_review_label` for a label, or"
     )
     return (
-        f"The model review did not run: this pull request {why}, and the GitHub App reviews those with "
+        f"{MODEL_NOT_RUN}: this pull request {why}, and the GitHub App reviews those with "
         f'bylaw\'s own checks only. {unlock} `[app] model_review = "all"` in .bylaw.toml.'
     )
 

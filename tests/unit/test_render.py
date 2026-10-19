@@ -1,7 +1,9 @@
 from dataclasses import replace
 
 from bylaw.model import (
+    MODEL_NOT_RUN,
     Category,
+    ChangedFile,
     Criterion,
     CriterionResult,
     CriterionStatus,
@@ -442,3 +444,80 @@ def test_the_summary_lists_the_decisions_among_the_rule_sources() -> None:
 
     assert "<summary>Rule sources (1)</summary>" in body
     assert "- `docs/adr/0002-sqlite.md`" in body
+
+
+PROFILED = CONTEXT.model_copy(
+    update={
+        "profiles": ("iso27001",),
+        "files": (
+            ChangedFile(path="app.py", status="modified"),
+            ChangedFile(path="tests/test_app.py", status="modified"),
+            ChangedFile(path="web/cart.test.ts", status="added"),
+        ),
+    }
+)
+
+
+def _tagged(line: int, *controls: str) -> Finding:
+    return _finding(line).model_copy(update={"controls": controls})
+
+
+def test_with_a_profile_the_summary_lists_the_controls_the_findings_touch() -> None:
+    plan = _plan(
+        inline=(Group(finding=_tagged(3, "8.28", "8.15"), fingerprint=FP, others=(_tagged(9, "8.28"),)),)
+    )
+
+    body = summary_body(PROFILED, ReviewResult(), plan)
+
+    section = body.split("### Controls touched")[1].split("###")[0]
+    assert "ISO/IEC 27001:2022, Annex A" in section
+    assert "| `8.28` Secure coding | `app.py:3` high, open; `app.py:9` high, open |" in section
+    assert "| `8.15` Logs | `app.py:3` high, open |" in section
+    assert "not a compliance verdict" in section
+
+
+def test_with_a_profile_the_summary_gives_the_change_management_evidence() -> None:
+    result = ReviewResult(criteria=(CriterionResult(criterion="issue#1/AC-1", status=CriterionStatus.MET),))
+    muted = Group(finding=_tagged(5, "8.11"), fingerprint=FP, others=(), by="carol")
+    resolved = Group(finding=_tagged(7), fingerprint=FP, others=(), by="dave")
+    plan = replace(_plan(), muted=(muted,), reviewer_resolved=(resolved,), resolve=("T9",))
+
+    body = summary_body(PROFILED, result, plan)
+
+    section = body.split("### Change management evidence")[1].split("###")[0]
+    assert "- Requirements: `issue#1`, 1 of 2 criteria met." in section
+    assert f"- Reviewed: `{'a' * 7}` against `{'b' * 7}`, with the model review." in section
+    assert "- Tests changed: `tests/test_app.py`, `web/cart.test.ts`." in section
+    assert "- Findings: 0 open, 2 accepted, 1 thread resolved as fixed this run." in section
+    assert (
+        "- Accepted: `app.py:5` muted by `carol` with `bylaw: ignore`; `app.py:7` resolved by `dave`."
+        in section
+    )
+
+
+def test_the_evidence_says_when_the_model_review_did_not_run_and_when_nothing_is_linked() -> None:
+    context = PROFILED.model_copy(
+        update={"requirements": (), "files": (), "notes": (f"{MODEL_NOT_RUN}: no API key is set.",)}
+    )
+
+    section = summary_body(context, ReviewResult(), _plan()).split("### Change management evidence")[1]
+
+    assert "- Requirements: none linked." in section
+    assert "without the model review (see the notes)." in section
+    assert "- Tests changed: none." in section
+    assert "No finding touches a control of the profile." in summary_body(context, ReviewResult(), _plan())
+
+
+def test_without_a_profile_the_summary_has_no_compliance_sections() -> None:
+    body = summary_body(
+        CONTEXT, ReviewResult(), _plan(inline=(Group(finding=_tagged(3, "8.28"), fingerprint=FP, others=()),))
+    )
+
+    assert "Controls touched" not in body
+    assert "Change management evidence" not in body
+
+
+def test_an_inline_comment_names_the_controls_it_touches() -> None:
+    body = inline_body(Group(finding=_tagged(3, "8.28"), fingerprint=FP, others=()))
+
+    assert "Controls: `8.28`" in body

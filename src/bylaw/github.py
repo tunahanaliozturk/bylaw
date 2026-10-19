@@ -228,6 +228,7 @@ query($owner: String!, $name: String!, $number: Int!, $after: String) {
         nodes {
           id
           isResolved
+          resolvedBy { login }
           path
           line
           originalLine
@@ -294,6 +295,7 @@ _MAX_THREAD_PAGES = 10
 class _GqlThread(_Model):
     id: str
     is_resolved: bool = Field(alias="isResolved")
+    resolved_by: _GqlAuthor | None = Field(default=None, alias="resolvedBy")
     path: str = ""
     line: int | None = None
     original_line: int | None = Field(default=None, alias="originalLine")
@@ -618,6 +620,7 @@ class GitHubClient:
                         body=c.body,
                         trusted=self._trusted(c.author, c.author_association),
                         by_pr_author=c.author is not None and c.author.login == pr_author,
+                        author=c.author.login if c.author else "",
                     )
                     for c in read
                 )
@@ -630,6 +633,7 @@ class GitHubClient:
                         original_line=node.original_line,
                         path=node.path,
                         older_replies_unread=unread,
+                        resolved_by=node.resolved_by.login if node.resolved_by else None,
                     )
                 )
             if not pull.review_threads.page_info.has_next_page:

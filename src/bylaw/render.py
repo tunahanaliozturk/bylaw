@@ -12,7 +12,16 @@ from dataclasses import dataclass
 
 from pydantic import ValidationError
 
-from bylaw.model import CriterionResult, Location, ReviewContext, ReviewMemory, ReviewResult, Severity
+from bylaw.evidence import DISCLAIMER, Evidence, EvidenceFinding, EvidenceRequirement, build_evidence
+from bylaw.model import (
+    CriterionResult,
+    CriterionStatus,
+    Location,
+    ReviewContext,
+    ReviewMemory,
+    ReviewResult,
+    Severity,
+)
 from bylaw.plan import Group, Plan, State
 
 SUMMARY_MARKER = "<!-- bylaw:summary -->"
@@ -48,6 +57,8 @@ def inline_parts(group: Group) -> InlineParts:
     before = [f"**{finding.category} · {finding.severity}** {_text(finding.message)}"]
     if finding.evidence:
         before.append(f"Evidence: {_code(finding.evidence)}")
+    if finding.controls:
+        before.append("Controls: " + ", ".join(_code(control) for control in finding.controls))
     after: list[str] = []
     if group.others:
         places = ", ".join(_code(f"{other.file}:{other.line_start}") for other in group.others[:_MAX_PLACES])
@@ -84,6 +95,7 @@ def summary_body(context: ReviewContext, result: ReviewResult, plan: Plan) -> st
         _headline(context, plan, current),
         _requirements(context, result),
         _scope_creep(result),
+        *_compliance(context, result, plan),
         _details("Other findings", plan.summary_only),
         _details("Resolved by a reviewer but still present", plan.reviewer_resolved),
         _details("Muted with `bylaw: ignore`", plan.muted),
@@ -202,6 +214,65 @@ def _scope_creep(result: ReviewResult) -> str:
         f"- {_code(f'{entry.file}:{entry.line}')} {_text(entry.message)}" for entry in result.scope_creep
     ]
     return "### Scope creep\n\n" + "\n".join(lines)
+
+
+def _compliance(context: ReviewContext, result: ReviewResult, plan: Plan) -> list[str]:
+    """ADR 0021: the controls the findings touch and the change-management record, when a profile is on."""
+    if not context.profiles:
+        return []
+    record = build_evidence(context, result, plan)
+    return [_controls_touched(record), _change_management(record)]
+
+
+def _controls_touched(record: Evidence) -> str:
+    standards = "; ".join(f"{_code(p.name)}, {_text(p.standard)}" for p in record.profiles)
+    head = f"### Controls touched\n\nProfile {standards}. {DISCLAIMER}"
+    if not record.controls:
+        return f"{head}\n\nNo finding touches a control of the profile."
+    rows = ["| Control | Findings |", "| --- | --- |"]
+    for control in record.controls:
+        touching = [f for f in record.findings if control.id in f.controls]
+        places = [f"{_code(f'{f.file}:{f.line_start}')} {f.severity}, {f.status}" for f in touching]
+        rows.append(f"| {_code(control.id)} {_cell(control.title)} | {_listed(places, '; ')} |")
+    return f"{head}\n\n" + "\n".join(rows)
+
+
+def _change_management(record: Evidence) -> str:
+    requirements = "; ".join(f"{_code(r.source)}, {_criteria_met(r)}" for r in record.requirements)
+    model = "with the model review" if record.model_review else "without the model review (see the notes)"
+    tests = _listed([_code(path) for path in record.tests_changed], ", ")
+    accepted = [f for f in record.findings if f.status == "accepted"]
+    opened = len(record.findings) - len(accepted)
+    threads = f"{record.threads_resolved} thread{'s' if record.threads_resolved != 1 else ''}"
+    lines = [
+        f"- Requirements: {requirements or 'none linked'}.",
+        f"- Reviewed: {_code(record.head_sha[:7])} against {_code(record.base_sha[:7])}, {model}.",
+        f"- Tests changed: {tests or 'none'}.",
+        f"- Findings: {opened} open, {len(accepted)} accepted, {threads} resolved as fixed this run.",
+    ]
+    if accepted:
+        lines.append("- Accepted: " + "; ".join(_acceptance(f) for f in accepted) + ".")
+    return "### Change management evidence\n\n" + "\n".join(lines)
+
+
+def _criteria_met(requirement: EvidenceRequirement) -> str:
+    if not requirement.criteria:
+        return "no criteria"
+    met = sum(c.status == CriterionStatus.MET for c in requirement.criteria)
+    return f"{met} of {len(requirement.criteria)} criteria met"
+
+
+def _acceptance(finding: EvidenceFinding) -> str:
+    where = _code(f"{finding.file}:{finding.line_start}")
+    who = f" by {_code(finding.accepted_by)}" if finding.accepted_by else ""
+    if finding.accepted_how == "muted":
+        return f"{where} muted{who or ' by a maintainer'} with `bylaw: ignore`"
+    return f"{where} resolved{who or ' by a reviewer'}"
+
+
+def _listed(items: list[str], separator: str) -> str:
+    more = f"{separator}and {len(items) - _MAX_PLACES} more" if len(items) > _MAX_PLACES else ""
+    return separator.join(items[:_MAX_PLACES]) + more
 
 
 def _details(title: str, groups: Iterable[Group]) -> str:

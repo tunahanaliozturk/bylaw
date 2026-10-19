@@ -1,3 +1,5 @@
+from dataclasses import replace
+
 from bylaw.model import AddedLine, Category, ChangedFile, Finding, ReviewContext, Severity
 from bylaw.plan import (
     Group,
@@ -254,3 +256,17 @@ def test_a_thread_on_a_file_the_model_did_not_review_is_not_resolved_as_fixed() 
     plan = make_plan([], [held, other], NO_STATE, Severity.MEDIUM, 15, unreviewed=frozenset({"app.py"}))
 
     assert plan.resolve == ("T2",)
+
+
+def test_a_muted_finding_names_the_maintainer_who_muted_it() -> None:
+    reply = ThreadComment("bylaw: ignore, accepted risk", trusted=True, author="carol")
+    plan = make_plan([_group(FP)], [_ours(FP, "T1", False, reply)], NO_STATE, Severity.MEDIUM, 15)
+
+    assert [g.by for g in plan.muted] == ["carol"]
+
+
+def test_a_finding_a_reviewer_resolved_names_who_resolved_the_thread() -> None:
+    thread = replace(_ours(FP, "T1", True), resolved_by="dave")
+    plan = make_plan([_group(FP)], [thread], NO_STATE, Severity.MEDIUM, 15)
+
+    assert [g.by for g in plan.reviewer_resolved] == ["dave"]
