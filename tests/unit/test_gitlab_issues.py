@@ -205,7 +205,8 @@ def test_an_issue_in_an_unlisted_project_is_not_read(client: GitLabClient, serve
     context = build_context(_mr(client), env={})
 
     assert [r.source for r in context.requirements] == ["issue#12"]
-    assert "group/other#3 is in another repository; list it under issue_repos in .bylaw.toml to use it." in (
-        context.notes
+    assert (
+        "`group/other#3` is in another repository; list it under issue_repos in .bylaw.toml to use it."
+        in (context.notes)
     )
     assert not other.called

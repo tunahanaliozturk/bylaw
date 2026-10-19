@@ -127,21 +127,27 @@ def collect_requirements(  # noqa: PLR0913 - the ADR globs only take paths away 
     if source.repo is not None:
         allowed.add(source.repo.lower())
     keyword_refs = parse_issue_refs([info.body, *info.commit_messages], source.repo)
+    elsewhere: list[str] = []
+    unreadable: list[str] = []
     for ref in dict.fromkeys([*source.closing_issue_refs(), *keyword_refs]):
+        # In a code span: a bare `owner/repo#1` in a comment links and cross-references that issue.
         label = ref.label(source.repo)
         if f"{ref.owner}/{ref.repo}" not in allowed:
             # ADR 0007: issue text ends up in a public comment, so another repository needs an opt-in.
-            notes.append(
-                f"{label} is in another repository; list it under issue_repos in .bylaw.toml to use it."
+            elsewhere.append(
+                f"`{label}` is in another repository; list it under issue_repos in .bylaw.toml to use it."
             )
             continue
         issue = source.read_issue(ref)
         if issue is None:
-            notes.append(f"Could not read {label}; it is left out of the requirement check.")
+            unreadable.append(f"Could not read `{label}`; it is left out of the requirement check.")
             continue
         requirements.append(_requirement(label, issue.title, issue.body, issue.comments, issue=True))
         if issue.comments_unreadable:
-            notes.append(f"{label}: its comments could not be read; only the issue text is used.")
+            notes.append(f"`{label}`: its comments could not be read; only the issue text is used.")
+    # A pull request body can name hundreds of references; a few notes say enough.
+    notes += _capped(elsewhere, "more references to other repositories were left out.")
+    notes += _capped(unreadable, "more references could not be read and were left out.")
     for path in spec_paths(changed, info.body, spec_globs, source.repo, adr_globs):
         text = source.read_head(path)
         if text is None:
@@ -150,6 +156,15 @@ def collect_requirements(  # noqa: PLR0913 - the ADR globs only take paths away 
         requirements.append(_requirement(path, _title(text, path), text))
     notes.extend(f"{r.source} has no structured acceptance criteria." for r in requirements if not r.criteria)
     return tuple(requirements), tuple(notes)
+
+
+_MAX_REFERENCE_NOTES = 5
+
+
+def _capped(notes: list[str], rest: str) -> list[str]:
+    if len(notes) <= _MAX_REFERENCE_NOTES:
+        return notes
+    return [*notes[:_MAX_REFERENCE_NOTES], f"{len(notes) - _MAX_REFERENCE_NOTES} {rest}"]
 
 
 def _requirement(
