@@ -11,9 +11,19 @@
 standard = "ISO/IEC 27001:2022, Annex A"
 
 [[controls]]
+id = "5.17"
+title = "Handling credentials"
+guidance = "How passwords, API keys and tokens are created, sent, stored and reset. Look for credentials sent in URLs or emails in clear text, reset or invite links that never expire, default or shared passwords, and secrets committed to the repository or printed in output."
+
+[[controls]]
 id = "5.34"
 title = "Personal data protection"
 guidance = "Code that collects, stores, shows or sends personal data: names, emails, phone numbers, addresses, government ids, health or payment data. Look for data kept longer or shared wider than the feature needs, and personal data copied into places nobody cleans up, such as caches, exports or error reports."
+
+[[controls]]
+id = "8.2"
+title = "Admin and elevated access"
+guidance = "Admin roles, superuser flags, impersonation and service accounts. Look for a role check that can be skipped, a new admin-only action reachable by ordinary users, privileges granted by default, and service credentials with more rights than the job needs."
 
 [[controls]]
 id = "8.3"
@@ -41,6 +51,11 @@ title = "Configuration"
 guidance = "Settings that change how the system runs: debug flags, CORS, TLS verification, timeouts, feature switches and infrastructure files. Look for an insecure default, a setting turned off for convenience, and production values set in code."
 
 [[controls]]
+id = "8.10"
+title = "Deleting data"
+guidance = "Code that deletes accounts or records, or keeps them. Look for a delete that only hides a row while the data stays readable, copies left behind in backups, caches, search indexes or files, and retention rules in the requirement that the code does not apply."
+
+[[controls]]
 id = "8.11"
 title = "Masking sensitive data"
 guidance = "Personal data, secrets or card numbers shown, logged or returned in full where part of it or none would do. When personal data or a secret reaches a log, tag the finding with both 8.11 and 8.15."
@@ -54,6 +69,11 @@ guidance = "Data leaving the system it belongs to: responses that return more fi
 id = "8.15"
 title = "Logs"
 guidance = "Logging of security relevant events and what goes into logs. Look for sign-in, permission and admin actions with no log line, logs that can be forged with line breaks from user input, and personal data or secrets written to a log (tag those 8.11 too)."
+
+[[controls]]
+id = "8.16"
+title = "Watching for misuse"
+guidance = "Signals that let a team notice an attack: failed sign-ins, permission errors, rate limits and alerts. Look for such signals removed, swallowed or silenced, and for a new sensitive action that leaves nothing an operator could watch. Use 8.15 for what a log line contains."
 
 [[controls]]
 id = "8.24"
