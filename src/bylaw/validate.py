@@ -1,10 +1,13 @@
-"""Drops what the review context cannot back up. Runs on every result, whoever produced it."""
+"""Drops what the review context cannot back up, then applies the profiles' severity rules (ADR 0021).
+
+Runs on every result, whoever produced it.
+"""
 
 import re
 from dataclasses import dataclass
 
 from bylaw import linters
-from bylaw.compliance import load_profile
+from bylaw.compliance import load_profile, with_severity_rules
 from bylaw.model import (
     Category,
     CriterionResult,
@@ -48,7 +51,8 @@ def validate(context: ReviewContext, result: ReviewResult) -> Validated:
             dropped.append(f"{finding.file}:{finding.line_start} {finding.category}: {problem}")
             continue
         seen.add(key)
-        findings.append(checker.with_known_controls(finding, dropped))
+        tagged = checker.with_known_controls(finding, dropped)
+        findings.append(with_severity_rules(context.profiles, tagged))
 
     criteria: list[CriterionResult] = []
     assessed: set[str] = set()

@@ -10,7 +10,7 @@ from typing import Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from bylaw.model import Category, Severity
+from bylaw.model import Category, Finding, Severity
 
 
 class _Frozen(BaseModel):
@@ -63,3 +63,18 @@ def load_profile(name: str) -> Profile:
         raise ValueError(f"unknown compliance profile {name!r}; bylaw has {', '.join(available())}")
     text = _DIRECTORY.joinpath(f"{name}.toml").read_text(encoding="utf-8")
     return Profile.model_validate({**tomllib.loads(text), "name": name})
+
+
+_RANK = {severity: rank for rank, severity in enumerate(Severity)}
+
+
+def with_severity_rules(profiles: tuple[str, ...], finding: Finding) -> Finding:
+    """The finding raised to the minimum of every rule it meets. Applied by bylaw after validation, so the
+    same tags always give the same severity; a rule never lowers one (ADR 0021)."""
+    severity = finding.severity
+    for name in profiles:
+        for rule in load_profile(name).severity_rules:
+            meets = set(rule.controls) <= set(finding.controls) and rule.category in (None, finding.category)
+            if meets and _RANK[rule.minimum] < _RANK[severity]:
+                severity = rule.minimum
+    return finding if severity == finding.severity else finding.model_copy(update={"severity": severity})
