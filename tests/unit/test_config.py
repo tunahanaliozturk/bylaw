@@ -71,3 +71,27 @@ def test_the_app_settings_can_open_the_model_review_to_all_or_to_a_label() -> No
 def test_an_unknown_app_model_review_value_is_refused() -> None:
     with pytest.raises(ConfigError, match="base branch is invalid"):
         load_config('[app]\nmodel_review = "everyone"\n')
+
+
+def test_a_compliance_profile_is_switched_on_by_name() -> None:
+    assert load_config('profiles = ["iso27001"]\n').profiles == ("iso27001",)
+
+
+def test_no_profile_is_on_by_default() -> None:
+    assert load_config(None).profiles == ()
+
+
+def test_an_unknown_profile_is_a_config_error_that_names_the_known_ones() -> None:
+    with pytest.raises(ConfigError, match="iso27001"):
+        load_config('profiles = ["iso27002"]\n')
+
+
+def test_a_profile_named_twice_counts_once() -> None:
+    assert load_config('profiles = ["iso27001", "iso27001"]\n').profiles == ("iso27001",)
+
+
+def test_a_repository_cannot_drop_a_profile_the_organisation_turned_on() -> None:
+    # ADR 0021: profiles are a floor; every other key the repository sets replaces the organisation's.
+    config = load_config("profiles = []\nmax_comments = 3\n", defaults='profiles = ["iso27001"]\n')
+
+    assert (config.profiles, config.max_comments) == (("iso27001",), 3)

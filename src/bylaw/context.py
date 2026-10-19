@@ -162,4 +162,5 @@ def build_context(
         severity_threshold=config.severity_threshold,
         max_comments=config.max_comments,
         input_tokens=config.input_token_budget,
+        profiles=config.profiles,
     )

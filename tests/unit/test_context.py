@@ -385,3 +385,13 @@ def test_a_pull_request_from_an_untrusted_author_gets_no_work_items() -> None:
 
     assert context.requirements == ()
     assert any(note.startswith("ENG-7 was not read") for note in context.notes)
+
+
+def test_the_base_branch_profiles_travel_with_the_context_even_when_the_change_drops_them() -> None:
+    source = FakeSource(
+        base={".bylaw.toml": 'profiles = ["iso27001"]\n'},
+        head={".bylaw.toml": "profiles = []\n"},
+        files=(_file(".bylaw.toml", "profiles = []"),),
+    )
+
+    assert build_context(source).profiles == ("iso27001",)

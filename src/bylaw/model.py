@@ -155,6 +155,8 @@ class ReviewContext(_Frozen):
     carried_over: tuple[str, ...] = ()
     # Accepted ADRs the change is held to, newest first (ADR 0016).
     decisions: tuple[Decision, ...] = ()
+    # Compliance profiles from the base branch's .bylaw.toml, by name (ADR 0021).
+    profiles: tuple[str, ...] = ()
 
 
 class CriterionStatus(StrEnum):
