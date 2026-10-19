@@ -39,6 +39,9 @@ class RuleKind(StrEnum):
     PROSE = "prose"
 
 
+# Every note about a model review that did not happen starts with this, so the summary can tell.
+MODEL_NOT_RUN = "The model review did not run"
+
 FileStatus = Literal["added", "modified", "renamed", "removed"]
 
 

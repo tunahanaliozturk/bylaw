@@ -17,7 +17,7 @@ profiles = ["iso27001"]
 - [x] **CMP-3** (S) `profiles` setting read from the base branch, so a pull request cannot switch a profile off for itself. Done when: config tests.
 - [x] **CMP-4** (M) The brief adds the profile's guidance; findings may carry `controls: ["8.28"]`, and validation drops ids the profile does not define. Done when: prompt and validate tests.
 - [x] **CMP-5** (M) Severity rules per profile, for example personal data in logs is at least `high` under bylaw's 27001 profile. Done when: tests.
-- [ ] **CMP-6** (M) Summary section "Controls touched" and change-management evidence: linked requirement, review done, tests changed, findings resolved or accepted and by whom. Done when: render tests.
+- [x] **CMP-6** (M) Summary section "Controls touched" and change-management evidence: linked requirement, review done, tests changed, findings resolved or accepted and by whom. Done when: render tests.
 - [ ] **CMP-7** (M) Evidence file per pull request (JSON, published as an Actions artifact) for audits. Done when: schema documented, artifact on the demo repository.
 - [ ] **CMP-8** (M) Evaluation cases for the profile: changes that break a control and clean ones. Done when: cases in the set, scored.
 - [ ] **CMP-9** (S) Docs: what the profile covers, what it does not, and how an auditor reads the evidence. Done when: docs page reviewed by someone who has run a 27001 audit.

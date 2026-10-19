@@ -16,6 +16,7 @@ from bylaw.compliance import load_profile
 from bylaw.engine import Budgeted, Reviewer, ReviewError, Usage
 from bylaw.github import SummaryComment
 from bylaw.model import (
+    MODEL_NOT_RUN,
     ChangedFile,
     CriterionResult,
     CriterionStatus,
@@ -83,7 +84,7 @@ def run_model_review(  # noqa: PLR0913 - every argument is a distinct input
     `skipped` says why there is no reviewer when it is not a missing key.
     """
     if make_reviewer is None:
-        return _held(context, memory, [skipped or "The model review did not run: no API key is set."], 0)
+        return _held(context, memory, [skipped or f"{MODEL_NOT_RUN}: no API key is set."], 0)
     spent = memory.tokens if memory else 0
     if budget is not None and spent >= budget:
         return _held(context, memory, [_over_budget(spent, budget)], 0)
@@ -110,11 +111,11 @@ def run_model_review(  # noqa: PLR0913 - every argument is a distinct input
     if not read:
         if room < context.input_tokens:
             note = (
-                f"The model review did not run: the token budget (`[budget] pr_tokens`) leaves {room:,} "
+                f"{MODEL_NOT_RUN}: the token budget (`[budget] pr_tokens`) leaves {room:,} "
                 "tokens, too few for any changed file. The earlier review stands."
             )
         else:
-            note = "The model review did not run: no changed file fits in the input budget."
+            note = f"{MODEL_NOT_RUN}: no changed file fits in the input budget."
         return _held(context, memory, [note], 0)
     notes = list(_incremental(plan, len(read)))
     if left_out:
@@ -129,7 +130,7 @@ def run_model_review(  # noqa: PLR0913 - every argument is a distinct input
     except ReviewError as error:
         # A failed call can still be billed, so it counts against the budget.
         used = _tokens(getattr(reviewer, "last_usage", None))
-        return _held(context, memory, [f"The model review did not run: {error}."], used)
+        return _held(context, memory, [f"{MODEL_NOT_RUN}: {error}."], used)
     fresh = ReviewResult(
         findings=tuple(f for f in answer.findings if f.file in read),
         criteria=answer.criteria,
@@ -294,7 +295,7 @@ def _unquoted(context: ReviewContext, criteria: tuple[CriterionResult, ...]) -> 
 
 def _over_budget(spent: int, budget: int) -> str:
     return (
-        f"The model review did not run: this pull request reached its token budget ({spent:,} of "
+        f"{MODEL_NOT_RUN}: this pull request reached its token budget ({spent:,} of "
         f"{budget:,} tokens, `[budget] pr_tokens` in .bylaw.toml). The earlier review stands."
     )
 

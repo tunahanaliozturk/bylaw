@@ -430,3 +430,21 @@ def test_a_token_answer_that_names_no_repositories_names_none() -> None:
 
     with GitHubClient("jwt") as client:
         assert client.installation_token(7, ["app"], {"contents": "read"}).repositories == frozenset()
+
+
+@respx.mock
+def test_threads_carry_who_resolved_them_and_who_wrote_each_reply(client: GitHubClient) -> None:
+    reply = {
+        "body": "bylaw: ignore",
+        "author": {"__typename": "User", "login": "carol"},
+        "authorAssociation": "MEMBER",
+    }
+    thread = {"id": "T1", "isResolved": True, "resolvedBy": {"login": "dave"}, "comments": {"nodes": [reply]}}
+    page = {"pageInfo": {"hasNextPage": False, "endCursor": None}, "nodes": [thread]}
+    data = {"data": {"repository": {"pullRequest": {"author": {"login": "alice"}, "reviewThreads": page}}}}
+    route = respx.post(f"{API}/graphql").mock(return_value=httpx.Response(200, json=data))
+
+    threads = client.review_threads("octo/app", 5)
+
+    assert (threads[0].resolved_by, threads[0].comments[0].author) == ("dave", "carol")
+    assert "resolvedBy { login }" in route.calls[0].request.content.decode()
