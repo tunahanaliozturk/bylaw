@@ -163,4 +163,5 @@ def build_context(
         max_comments=config.max_comments,
         input_tokens=config.input_token_budget,
         profiles=config.profiles,
+        suppressions=config.suppress,
     )

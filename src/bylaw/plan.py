@@ -8,8 +8,9 @@ import html
 import re
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, replace
+from pathlib import PurePosixPath
 
-from bylaw.model import Finding, ReviewContext, ReviewMemory, Severity
+from bylaw.model import Category, Finding, ReviewContext, ReviewMemory, Severity, Suppression
 
 FINGERPRINT = re.compile(r"<!-- bylaw:fp=([0-9a-f]{16}) -->")
 _IGNORE = re.compile(r"^\s*bylaw:\s*ignore\b", re.IGNORECASE | re.MULTILINE)
@@ -76,6 +77,8 @@ class Plan:
     # Notes publishing adds, such as threads read without their older replies: the summary and the
     # evidence read them from here, so both say the same.
     notes: tuple[str, ...] = ()
+    # Hidden by a suppression in .bylaw.toml: listed in the summary, never posted or counted (ADR 0022).
+    suppressed: tuple[Group, ...] = ()
 
 
 def added_text(context: ReviewContext) -> dict[str, dict[int, str]]:
@@ -228,6 +231,18 @@ def _says(thread: Thread, finding: Finding) -> bool:
     _, _, text = thread.comments[0].body.partition("** ")
     text = html.unescape(text).replace(_ZERO_WIDTH_SPACE, "")
     return text == finding.message or text.startswith(f"{finding.message}\n\n")
+
+
+def suppressed_by(finding: Finding, suppressions: Iterable[Suppression]) -> Suppression | None:
+    """The suppression that hides a finding: it must cite the suppression's rule, exactly, in one of its
+    paths. A security finding is never hidden (ADR 0022)."""
+    if finding.category == Category.SECURITY or finding.evidence is None:
+        return None
+    path = PurePosixPath(finding.file)
+    return next(
+        (s for s in suppressions if s.rule == finding.evidence and any(path.full_match(p) for p in s.paths)),
+        None,
+    )
 
 
 def remaining(plan: Plan) -> tuple[Finding, ...]:

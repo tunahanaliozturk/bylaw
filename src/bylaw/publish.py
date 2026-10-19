@@ -7,7 +7,7 @@ from typing import Protocol
 from bylaw.config import Config
 from bylaw.github import ReviewComment, SummaryComment
 from bylaw.model import ReviewContext, ReviewMemory, ReviewResult
-from bylaw.plan import Plan, State, Thread, added_text, group_findings, make_plan
+from bylaw.plan import Plan, State, Thread, added_text, group_findings, make_plan, suppressed_by
 from bylaw.render import inline_body, inline_parts, read_state, review_body, summary_body, tokens_only
 
 
@@ -36,6 +36,8 @@ def publish(  # noqa: PLR0913 - one call site, every argument is a distinct inpu
     memory: ReviewMemory | None = None,
     unreviewed: frozenset[str] = frozenset(),
 ) -> Plan:
+    # The base branch's suppressions, not whatever a context file says, are the ones the summary lists.
+    context = context.model_copy(update={"suppressions": config.suppress})
     summary = client.summary_comment(repo, number)
     state = read_state(summary.body) if summary else State(auto_resolved=frozenset())
     threads = client.review_threads(repo, number)
@@ -115,7 +117,15 @@ def _plan(  # noqa: PLR0913 - two callers, every argument is a distinct input
     *,
     unreviewed: frozenset[str] = frozenset(),
 ) -> Plan:
-    groups = group_findings(result.findings, added_text(context))
-    return make_plan(
-        groups, threads, state, config.severity_threshold, config.max_comments, unreviewed=unreviewed
+    added = added_text(context)
+    hidden = [f for f in result.findings if suppressed_by(f, config.suppress)]
+    shown = [f for f in result.findings if f not in hidden]
+    plan = make_plan(
+        group_findings(shown, added),
+        threads,
+        state,
+        config.severity_threshold,
+        config.max_comments,
+        unreviewed=unreviewed,
     )
+    return replace(plan, suppressed=group_findings(hidden, added))

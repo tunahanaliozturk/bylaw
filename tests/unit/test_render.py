@@ -590,3 +590,49 @@ def test_the_notes_come_before_the_compliance_sections_so_trimming_keeps_them() 
     body = summary_body(PROFILED, ReviewResult(), _plan())
 
     assert body.index("### Notes") < body.index("### Controls touched")
+
+
+def test_the_summary_lists_each_active_suppression_with_its_reason_and_what_it_hid() -> None:
+    from bylaw.model import Suppression  # noqa: PLC0415
+
+    hidden = _finding().model_copy(update={"category": Category.RULE, "evidence": "ruff:S101"})
+    suppressions = (
+        Suppression(rule="ruff:S101", paths=("app.py",), reason="Asserts <b>are</b> fine here."),
+        Suppression(rule="CONTRIBUTING.md:4", reason="Old rule."),
+    )
+    context = CONTEXT.model_copy(update={"suppressions": suppressions})
+    plan = replace(_plan(), suppressed=(Group(finding=hidden, fingerprint=FP, others=()),))
+
+    body = summary_body(context, ReviewResult(), plan)
+
+    assert "### Suppressions" in body
+    assert "only hides a finding that cites its rule in its paths, and never a security finding" in body
+    assert (
+        "- `ruff:S101` in `app.py`: Asserts &lt;b&gt;are&lt;/b&gt; fine here. Hid 1 finding this run." in body
+    )
+    assert "- `CONTRIBUTING.md:4` in `**`: Old rule. Hid 0 findings this run." in body
+    assert "<summary>Hidden by a suppression (1)</summary>" in body
+
+
+def test_without_suppressions_the_summary_has_no_suppression_section() -> None:
+    assert "Suppressions" not in summary_body(CONTEXT, ReviewResult(), _plan())
+
+
+def test_a_finding_a_suppression_hid_is_in_the_evidence_as_suppressed() -> None:
+    hidden = _finding().model_copy(update={"category": Category.RULE})
+    plan = replace(_plan(), suppressed=(Group(finding=hidden, fingerprint=FP, others=()),))
+
+    (entry,) = build_evidence(CONTEXT, ReviewResult(), plan).findings
+
+    assert (entry.file, entry.status) == ("app.py", "suppressed")
+
+
+def test_the_change_management_evidence_counts_suppressed_findings_apart_from_open_ones() -> None:
+    hidden = _finding().model_copy(update={"category": Category.RULE})
+    plan = replace(_plan(), suppressed=(Group(finding=hidden, fingerprint=FP, others=()),))
+    profiled = CONTEXT.model_copy(update={"profiles": ("iso27001",)})
+
+    body = summary_body(profiled, ReviewResult(), plan)
+
+    assert "- Findings: 0 open, 0 accepted" in body
+    assert "- Hidden by a suppression in `.bylaw.toml`: 1." in body

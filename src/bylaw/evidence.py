@@ -57,7 +57,7 @@ class EvidenceRequirement(_Frozen):
     criteria: tuple[EvidenceCriterion, ...]
 
 
-_Status = Literal["open", "accepted", "resolved_by_author"]
+_Status = Literal["open", "accepted", "resolved_by_author", "suppressed"]
 
 
 class EvidenceFinding(_Frozen):
@@ -70,6 +70,7 @@ class EvidenceFinding(_Frozen):
     evidence: str | None
     controls: tuple[str, ...]
     # "resolved_by_author": the pull request's author resolved its thread, which accepts nothing (ADR 0008),
+    # "suppressed": a suppression in .bylaw.toml hid it (ADR 0022).
     # so it still counts as open, for `--fail-on` too.
     status: _Status
     # How a person closed it, muted or resolved, and their login when the host says.
@@ -125,6 +126,8 @@ def build_evidence(context: ReviewContext, result: ReviewResult, plan: Plan) -> 
         *(_accepted(g, "muted") for g in plan.muted),
         *(_accepted(g, "resolved") for g in plan.reviewer_resolved),
         *(_closed(g, "resolved_by_author", "resolved") for g in plan.author_resolved),
+        # Hidden by a suppression in .bylaw.toml: not posted, but on the record (ADR 0022).
+        *([_entry(f, "suppressed") for f in (g.finding, *g.others)] for g in plan.suppressed),
     ]
     flat = [entry for group in findings for entry in group]
     profiles = [load_profile(name) for name in context.profiles]

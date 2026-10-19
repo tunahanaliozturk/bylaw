@@ -304,3 +304,18 @@ def test_a_deprecation_note_in_the_context_is_also_said_on_standard_error(
     said = capsys.readouterr().err.splitlines()
     assert f"bylaw: {note}" in said
     assert "bylaw: Something else." not in said
+
+
+def test_a_finding_a_suppression_hides_does_not_fail_a_local_review(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    rule = {"path": "CONTRIBUTING.md", "kind": "prose", "text": "Never call eval.\n"}
+    suppression = {"rule": "CONTRIBUTING.md:1", "reason": "This tool evaluates on purpose."}
+    context = tmp_path / "context.json"
+    payload = {**CONTEXT, "rules": [rule], "suppressions": [suppression]}
+    context.write_text(json.dumps(payload), encoding="utf-8")
+    cited = HIGH.model_copy(update={"category": Category.RULE, "evidence": "CONTRIBUTING.md:1"})
+    monkeypatch.setenv("BYLAW_API_KEY", "k")
+    _use(monkeypatch, FakeReviewer(ReviewResult(findings=(cited,))))
+
+    assert cli.main(["review", "--context", str(context), "--fail-on", "high"]) == 0

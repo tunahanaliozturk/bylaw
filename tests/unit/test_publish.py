@@ -3,9 +3,18 @@ from dataclasses import dataclass, field
 
 from bylaw.config import Config
 from bylaw.github import ReviewComment, SummaryComment
-from bylaw.model import AddedLine, Category, ChangedFile, Finding, ReviewContext, ReviewResult, Severity
-from bylaw.plan import Thread, ThreadComment
-from bylaw.publish import preview, publish
+from bylaw.model import (
+    AddedLine,
+    Category,
+    ChangedFile,
+    Finding,
+    ReviewContext,
+    ReviewResult,
+    Severity,
+    Suppression,
+)
+from bylaw.plan import Thread, ThreadComment, remaining
+from bylaw.publish import first_plan, preview, publish
 
 CONTEXT = ReviewContext(
     base_sha="b" * 40,
@@ -198,3 +207,60 @@ def test_after_a_failed_resolve_the_summary_counts_only_the_threads_really_resol
     body = client.summaries[-1][1]
     assert "1 thread(s) resolved" in body
     assert "1 thread resolved as fixed this run" in body
+
+
+def _cited(file: str, category: Category = Category.RULE, evidence: str = "ruff:S101") -> Finding:
+    return Finding(
+        file=file,
+        line_start=1,
+        line_end=1,
+        category=category,
+        severity=Severity.HIGH,
+        message=f"{category} in {file}.",
+        evidence=evidence,
+    )
+
+
+def _files(*paths: str) -> ReviewContext:
+    added = (AddedLine(number=1, text="assert x"),)
+    return CONTEXT.model_copy(
+        update={"files": tuple(ChangedFile(path=p, status="added", added_lines=added) for p in paths)}
+    )
+
+
+TESTS_ONLY = Config(
+    suppress=(Suppression(rule="ruff:S101", paths=("tests/**",), reason="Tests use assert."),)
+)
+
+
+def test_a_suppression_hides_a_finding_that_cites_its_rule_in_its_paths() -> None:
+    client = FakeClient()
+    result = ReviewResult(findings=(_cited("tests/test_app.py"),))
+
+    plan = publish(
+        client, "octo/app", 5, context=_files("tests/test_app.py"), result=result, config=TESTS_ONLY
+    )
+
+    assert client.reviews == []
+    assert [g.finding.file for g in plan.suppressed] == ["tests/test_app.py"]
+    assert remaining(plan) == ()
+
+
+def test_a_suppression_leaves_other_rules_and_other_paths_alone() -> None:
+    other_rule = _cited("tests/test_app.py", evidence="ruff:S608")
+    other_path = _cited("app.py")
+    result = ReviewResult(findings=(other_rule, other_path))
+
+    plan = first_plan(_files("tests/test_app.py", "app.py"), result, TESTS_ONLY)
+
+    assert plan.suppressed == ()
+    assert set(remaining(plan)) == {other_rule, other_path}
+
+
+def test_a_suppression_never_hides_a_security_finding() -> None:
+    security = _cited("tests/test_app.py", category=Category.SECURITY)
+
+    plan = first_plan(_files("tests/test_app.py"), ReviewResult(findings=(security,)), TESTS_ONLY)
+
+    assert plan.suppressed == ()
+    assert remaining(plan) == (security,)

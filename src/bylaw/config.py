@@ -7,7 +7,7 @@ from urllib.parse import urlsplit
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
 from bylaw.compliance import available
-from bylaw.model import Severity
+from bylaw.model import ReviewContext, Severity, Suppression
 
 # A Jira project key or a Linear team key: upper case, so `utf-8` in prose never reads as one.
 TrackerKey = Annotated[str, Field(pattern=r"^[A-Z][A-Z0-9_]*$")]
@@ -125,6 +125,8 @@ class Config(BaseModel):
     # Compliance profiles shipped with bylaw, such as "iso27001" (ADR 0021).
     profiles: tuple[str, ...] = ()
     learn: Learn = Learn()
+    # Findings maintainers decided are not worth a comment, by rule and path (ADR 0022).
+    suppress: tuple[Suppression, ...] = ()
 
     @field_validator("version")
     @classmethod
@@ -149,6 +151,16 @@ class Config(BaseModel):
         if shared:
             raise ValueError(f"{', '.join(sorted(shared))} listed for both Jira and Linear")
         return self
+
+
+def settings_from(context: ReviewContext) -> Config:
+    """The settings a context file was made with, read from the base branch by `bylaw context`, for a run
+    that has no pull request to read them from again."""
+    return Config(
+        severity_threshold=context.severity_threshold,
+        max_comments=context.max_comments,
+        suppress=context.suppressions,
+    )
 
 
 _BASE = ".bylaw.toml on the base branch"

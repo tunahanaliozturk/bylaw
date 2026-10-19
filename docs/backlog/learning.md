@@ -12,7 +12,7 @@ When maintainers keep muting or resolving the same kind of finding without a cha
 - [ ] **LRN-2** (L) Outcome store across pull requests; ADR on where it lives. Done when: ADR and tests.
 - [ ] **LRN-3** (M) Suggestion pull request when a threshold is reached. Done when: integration test.
 - [x] **LRN-4** (S) `[learn]` setting, off by default. Done when: config test.
-- [ ] **LRN-5** (S) Summary lists active suppressions. Done when: render test.
+- [x] **LRN-5** (S) Summary lists active suppressions. Done when: render test.
 
 ## Notes
 
