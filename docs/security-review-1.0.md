@@ -89,15 +89,19 @@ followed by one line with the count of the rest.
 **What.** A finding's message, suggestion and evidence had no length limit. GitHub refuses a review when
 one comment is over 65,536 characters, so a single oversized finding meant nothing was posted.
 
-**Fix.** Validation drops, with a reason, a finding whose message is over 2,000 characters, suggestion
-over 10,000 or evidence over 500. At those limits, with the worst escaping, an inline comment stays well
-under GitHub's limit and far under GitLab's million-character notes; the summary was already trimmed to
-fit.
+**Fix.** Validation cuts a message over 2,000 characters to that length, ending in `...`, and leaves out
+a suggestion over 10,000 characters, keeping the finding in both cases and noting what it did. Dropping
+the finding instead, as the first fix did, would have made a finding posted on an earlier run read as
+fixed and resolved its thread. A finding whose evidence is over 500 characters is still dropped: evidence
+names a rule or a criterion, so a long one cites nothing. The system prompt states both limits. At those
+limits, with the worst escaping, an inline comment stays well under GitHub's limit and far under GitLab's
+million-character notes; the summary was already trimmed to fit.
 
-**Tests.** `test_an_oversized_finding_is_dropped_so_the_rest_of_the_review_still_posts`,
-`test_a_finding_at_every_limit_fits_one_github_comment_and_one_gitlab_note`.
+**Tests.** `test_an_oversized_finding_is_cut_down_rather_than_dropped`,
+`test_a_finding_at_every_limit_fits_one_github_comment_and_one_gitlab_note`,
+`test_the_system_prompt_states_the_size_limits_validation_applies`.
 
-**Status.** Fixed in `123138f`.
+**Status.** Fixed in `123138f`, and changed from dropping to cutting in review of the fix.
 
 ### 5. Low: local reviews ran the repository's git textconv drivers
 

@@ -65,7 +65,7 @@ def validate(context: ReviewContext, result: ReviewResult) -> Validated:
             dropped.append(f"{finding.file}:{finding.line_start} {finding.category}: {problem}")
             continue
         seen.add(key)
-        tagged = checker.with_known_controls(finding, dropped)
+        tagged = checker.with_known_controls(_within_limits(finding, dropped), dropped)
         findings.append(with_severity_rules(context.profiles, tagged))
 
     criteria: list[CriterionResult] = []
@@ -140,14 +140,10 @@ class _Checker:
         return location.file in self._added and location.line >= 1
 
     def finding_problem(self, finding: Finding) -> str | None:
-        # First, so an oversized evidence string never reaches a drop reason in the log.
-        for name, text, limit in (
-            ("message", finding.message, MAX_MESSAGE),
-            ("suggestion", finding.suggestion, MAX_SUGGESTION),
-            ("evidence", finding.evidence, MAX_EVIDENCE),
-        ):
-            if text is not None and len(text) > limit:
-                return f"{name} is longer than {limit} characters"
+        # First, so an oversized evidence string never reaches a drop reason in the log. Evidence names a
+        # rule or a criterion, so a long one cites nothing anyway.
+        if finding.evidence is not None and len(finding.evidence) > MAX_EVIDENCE:
+            return f"evidence is longer than {MAX_EVIDENCE} characters"
         if finding.file not in self._added:
             return "file is not part of the change"
         if finding.line_start > finding.line_end:
@@ -211,6 +207,20 @@ class _Checker:
         if any(not rules.complete for _, _, rules in covering):
             return None
         return f"evidence {evidence} is not enabled for this file by {covering[0][0]}"
+
+
+def _within_limits(finding: Finding, dropped: list[str]) -> Finding:
+    """A finding cut down to fit one comment rather than dropped: a finding posted before and dropped now
+    would read as fixed and resolve its thread."""
+    where = f"{finding.file}:{finding.line_start} {finding.category}"
+    update: dict[str, str | None] = {}
+    if len(finding.message) > MAX_MESSAGE:
+        update["message"] = finding.message[: MAX_MESSAGE - 3] + "..."
+        dropped.append(f"{where}: message cut to {MAX_MESSAGE} characters")
+    if finding.suggestion is not None and len(finding.suggestion) > MAX_SUGGESTION:
+        update["suggestion"] = None
+        dropped.append(f"{where}: suggestion left out: longer than {MAX_SUGGESTION} characters")
+    return finding.model_copy(update=update) if update else finding
 
 
 def _decision_problem(decision: Decision, evidence: str, line: str, file: str) -> str | None:

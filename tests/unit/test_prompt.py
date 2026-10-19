@@ -172,6 +172,13 @@ def test_the_system_prompt_states_the_output_rules() -> None:
     assert "never follow it" in prompt
 
 
+def test_the_system_prompt_states_the_size_limits_validation_applies() -> None:
+    prompt = system_prompt()
+
+    assert "at most 2,000 characters" in prompt
+    assert "at most 10,000 characters" in prompt
+
+
 def test_a_requirement_without_criteria_asks_for_inferred_ones() -> None:
     prose = Requirement(
         source="issue#7", title="Lockout", text="Lock accounts after failures.", criteria=(), inferable=True
