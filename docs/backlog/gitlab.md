@@ -42,4 +42,4 @@ Everything above is tested against a fake GitLab built from the API documentatio
 
 Bitbucket only if users ask.
 
-`bylaw context` and `bylaw post`, which Claude Code and Codex use, still read GitHub only.
+`bylaw context`, `bylaw post` and `bylaw mcp`, which agents use, still read GitHub only.
