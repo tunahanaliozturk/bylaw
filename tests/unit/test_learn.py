@@ -1,6 +1,7 @@
 """Learning (ADR 0022): outcomes at close, the record format, and what may become a suggestion."""
 
-from bylaw.learn import Record, parse_records
+from bylaw.config import Learn
+from bylaw.learn import Record, StoredFinding, parse_records, suggestions
 from bylaw.plan import Outcome, Thread, ThreadComment, close_outcomes
 
 FP = "0123456789abcdef"
@@ -48,3 +49,67 @@ def test_store_files_that_do_not_read_as_a_record_are_left_out() -> None:
     }
 
     assert parse_records(texts) == [good]
+
+
+def _record(number: int, outcome: str, by: str | None = "maintainer", **finding: str) -> Record:
+    fields = {"category": "rule", "rule": "ruff:S101", "file": "tests/unit/a.py", **finding}
+    stored = StoredFinding(fingerprint=f"{number:016x}", outcome=outcome, by=by, **fields)
+    return Record(
+        pull_request=number, author="author", merged=True, closed_at=None, head_sha="h", findings=(stored,)
+    )
+
+
+def test_three_dismissals_in_three_pull_requests_make_a_suggestion_for_the_shared_directory() -> None:
+    records = [
+        _record(1, "muted"),
+        _record(2, "resolved", by="reviewer"),
+        _record(3, "muted", file="tests/integration/b.py"),
+    ]
+
+    (suggestion,) = suggestions(records, Learn(enabled=True), ())
+
+    assert (suggestion.rule, suggestion.paths, suggestion.pull_requests) == (
+        "ruff:S101",
+        ("tests/**",),
+        (1, 2, 3),
+    )
+
+
+def test_dismissals_by_the_pull_request_s_own_author_do_not_count() -> None:
+    records = [_record(n, "muted", by="author") for n in (1, 2, 3)]
+
+    assert suggestions(records, Learn(enabled=True), ()) == []
+
+
+def test_a_rule_fixed_as_often_as_it_is_dismissed_is_not_suggested() -> None:
+    records = [_record(n, "muted") for n in (1, 2, 3)] + [_record(n, "fixed", by=None) for n in (4, 5, 6)]
+
+    assert suggestions(records, Learn(enabled=True), ()) == []
+
+
+def test_security_findings_and_findings_that_cite_nothing_are_never_suggested() -> None:
+    security = [_record(n, "muted", category="security") for n in (1, 2, 3)]
+    uncited = [
+        Record(
+            pull_request=n,
+            author="author",
+            merged=True,
+            closed_at=None,
+            head_sha="h",
+            findings=(
+                StoredFinding(
+                    fingerprint="f", category="bug", rule=None, file="a.py", outcome="muted", by="m"
+                ),
+            ),
+        )
+        for n in (4, 5, 6)
+    ]
+
+    assert suggestions([*security, *uncited], Learn(enabled=True, suggest=("rule", "bug")), ()) == []
+
+
+def test_only_the_categories_learn_may_suggest_are_suggested() -> None:
+    records = [_record(n, "muted", category="bug") for n in (1, 2, 3)]
+
+    assert suggestions(records, Learn(enabled=True), ()) == []
+    assert len(suggestions(records, Learn(enabled=True, suggest=("bug",)), ())) == 1

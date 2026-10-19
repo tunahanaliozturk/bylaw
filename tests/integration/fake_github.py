@@ -63,6 +63,8 @@ class FakeGitHub:
     races: int = 0
     # Writes refused as a read-only GITHUB_TOKEN refuses them.
     read_only: bool = False
+    # Pull requests refused, as when Actions may not create them.
+    refuse_pulls: bool = False
 
     def __call__(self, request: httpx.Request) -> httpx.Response:
         body = json.loads(request.content) if request.content else None
@@ -81,6 +83,14 @@ class FakeGitHub:
             return self.base
         commit = self.commits.get(sha)
         return None if commit is None else self.trees[commit["tree"]]
+
+    def put_branch(self, name: str, files: dict[str, str]) -> None:
+        """A branch with these files in one parentless commit, as an earlier run would have left it."""
+        tree = _sha(files)
+        self.trees[tree] = dict(files)
+        commit = {"message": "earlier", "tree": tree, "parents": []}
+        self.commits[_sha(commit)] = commit
+        self.branches[name] = _sha(commit)
 
     def reply(self, thread: int, body: str, login: str, association: str = "MEMBER") -> None:
         node = {
@@ -233,7 +243,7 @@ class FakeGitHub:
 
     def _pulls(self, method: str, body: Any, params: httpx.QueryParams) -> httpx.Response:
         if method == "POST":
-            if self.read_only:
+            if self.read_only or self.refuse_pulls:
                 return httpx.Response(403, json={"message": "Resource not accessible by integration"})
             number = 100 + len(self.opened)
             self.opened.append({**body, "number": number})
