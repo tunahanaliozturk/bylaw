@@ -8,7 +8,7 @@ from bylaw.config import Config
 from bylaw.github import ReviewComment, SummaryComment
 from bylaw.model import ReviewContext, ReviewMemory, ReviewResult
 from bylaw.plan import Plan, State, Thread, added_text, group_findings, make_plan
-from bylaw.render import inline_body, read_state, review_body, summary_body, tokens_only
+from bylaw.render import inline_body, inline_parts, read_state, review_body, summary_body, tokens_only
 
 
 class Publisher(Protocol):
@@ -52,7 +52,9 @@ def publish(  # noqa: PLR0913 - one call site, every argument is a distinct inpu
     plan = replace(plan, state=replace(plan.state, review=memory))
     if plan.inline:
         comments = [
-            ReviewComment(g.finding.file, g.finding.line_end, g.finding.line_start, inline_body(g))
+            ReviewComment(
+                g.finding.file, g.finding.line_end, g.finding.line_start, inline_body(g), inline_parts(g)
+            )
             for g in plan.inline
         ]
         client.create_review(repo, number, context.head_sha, review_body(plan), comments)

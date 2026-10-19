@@ -14,7 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 from bylaw.diff import parse_patch
 from bylaw.model import ChangedFile, FileStatus
 from bylaw.plan import Thread, ThreadComment
-from bylaw.render import SUMMARY_MARKER
+from bylaw.render import SUMMARY_MARKER, InlineParts
 from bylaw.source import ChangeInfo, Issue, IssueRef
 
 _PAGE_SIZE = 100
@@ -361,6 +361,8 @@ class ReviewComment:
     line: int
     start_line: int
     body: str
+    # What `body` was rendered from, for a host that lays a suggestion out differently; GitHub posts `body`.
+    parts: InlineParts | None = None
 
     def payload(self) -> dict[str, object]:
         data: dict[str, object] = {"path": self.path, "line": self.line, "side": "RIGHT", "body": self.body}

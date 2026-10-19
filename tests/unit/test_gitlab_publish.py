@@ -10,9 +10,9 @@ from bylaw.config import Config
 from bylaw.github import ReviewComment
 from bylaw.gitlab import GitLabClient, GitLabMergeRequest
 from bylaw.model import Category, ChangedFile, Finding, ReviewContext, ReviewResult, Severity
-from bylaw.plan import added_text, group_findings
+from bylaw.plan import Group, added_text, group_findings
 from bylaw.publish import publish
-from bylaw.render import SUMMARY_MARKER, read_state
+from bylaw.render import SUMMARY_MARKER, inline_body, inline_parts, read_state
 
 API = "https://gitlab.example.com/api/v4"
 P = f"{API}/projects/42"
@@ -63,6 +63,52 @@ def _note(note_id: int, body: str, author: int, **extra: object) -> dict[str, ob
 
 def _mr(client: GitLabClient) -> GitLabMergeRequest:
     return GitLabMergeRequest(client, "42", 5)
+
+
+def _rendered(  # noqa: PLR0913 - a finding's parts, each a distinct input
+    path: str,
+    line: int,
+    start: int,
+    *,
+    message: str = "m",
+    suggestion: str | None = None,
+    others: tuple[str, ...] = (),
+) -> ReviewComment:
+    """A comment as publish() builds it, from a rendered finding."""
+
+    def finding(file: str) -> Finding:
+        return Finding(
+            file=file,
+            line_start=start,
+            line_end=line,
+            category=Category.BUG,
+            severity=Severity.HIGH,
+            message=message,
+            suggestion=suggestion,
+        )
+
+    group = Group(finding=finding(path), fingerprint="0123456789abcdef", others=tuple(map(finding, others)))
+    return ReviewComment(path, line, start, inline_body(group), inline_parts(group))
+
+
+def _quick_actions(body: str) -> list[str]:
+    """Lines GitLab would run, read as its extractor does: carriage returns deleted first, then every
+    line that starts with a slash outside a fenced code block."""
+    found: list[str] = []
+    fence: str | None = None
+    for line in body.replace("\r", "").split("\n"):
+        if fence is None and line.startswith(("```", "~~~")):
+            fence = line[: len(line) - len(line.lstrip(line[0]))]
+        elif (
+            fence is not None
+            and line.strip()
+            and set(line.strip()) == {fence[0]}
+            and len(line.strip()) >= len(fence)
+        ):
+            fence = None
+        elif fence is None and line.startswith("/"):
+            found.append(line)
+    return found
 
 
 def test_threads_carry_trust_by_role_and_bylaws_own_account(
@@ -187,6 +233,30 @@ def test_a_line_that_could_run_a_quick_action_is_made_inert(
     assert body == "text\n&#8203;/merge\n&#8203;/approve now\n  /label ~x"
 
 
+def test_a_carriage_return_cannot_carry_a_quick_action_past_the_guard(
+    client: GitLabClient, server: respx.MockRouter
+) -> None:
+    create = server.post(f"{P}/merge_requests/5/notes").mock(return_value=httpx.Response(201, json={}))
+
+    # GitLab deletes every carriage return before it looks for quick actions.
+    _mr(client).upsert_summary("group/app", 5, None, "Looks fine.\n\r/approve\n\r/merge")
+
+    assert _quick_actions(json.loads(create.calls.last.request.content)["body"]) == []
+
+
+def test_a_carriage_return_cannot_close_the_suggestion_early(
+    client: GitLabClient, server: respx.MockRouter
+) -> None:
+    create = server.post(f"{P}/merge_requests/5/discussions").mock(return_value=httpx.Response(201, json={}))
+    comment = _rendered("new.py", 1, 1, message="m\r\n\r/close", suggestion="x``\r`\n/merge\nafter")
+
+    _mr(client).create_review("group/app", 5, "h1", "", [comment])
+
+    sent = json.loads(create.calls.last.request.content)["body"]
+    assert _quick_actions(sent) == []
+    assert "````suggestion\nx```\n/merge\nafter\n````" in sent
+
+
 def test_a_single_line_comment_is_a_discussion_on_the_new_line(
     client: GitLabClient, server: respx.MockRouter
 ) -> None:
@@ -213,9 +283,8 @@ def test_a_multi_line_comment_has_a_line_range_and_its_suggestion_covers_it(
     client: GitLabClient, server: respx.MockRouter
 ) -> None:
     create = server.post(f"{P}/merge_requests/5/discussions").mock(return_value=httpx.Response(201, json={}))
-    body = "**bug** m\n\n```suggestion\nfixed\n```\n\n<!-- bylaw:fp=0123456789abcdef -->"
 
-    _mr(client).create_review("group/app", 5, "h1", "", [ReviewComment("app.py", 6, 4, body)])
+    _mr(client).create_review("group/app", 5, "h1", "", [_rendered("app.py", 6, 4, suggestion="fixed")])
 
     sent = json.loads(create.calls.last.request.content)
     sha = hashlib.sha1(b"app.py").hexdigest()  # noqa: S324 - GitLab's line code format, not security
@@ -248,13 +317,26 @@ def test_suggestion_lines_are_left_as_written_and_prose_lines_made_inert(
     client: GitLabClient, server: respx.MockRouter
 ) -> None:
     create = server.post(f"{P}/merge_requests/5/discussions").mock(return_value=httpx.Response(201, json={}))
-    body = "**bug** m\n/close\n\n```suggestion\n/usr/bin/env\n```\n\n<!-- bylaw:fp=0123456789abcdef -->"
+    comment = _rendered("new.py", 1, 1, message="m\n/close", suggestion="/usr/bin/env")
 
-    _mr(client).create_review("group/app", 5, "h1", "", [ReviewComment("new.py", 1, 1, body)])
+    _mr(client).create_review("group/app", 5, "h1", "", [comment])
 
     sent = json.loads(create.calls.last.request.content)["body"]
     assert "\n&#8203;/close\n" in sent
     assert "```suggestion\n/usr/bin/env\n```" in sent
+
+
+def test_a_path_with_a_line_break_keeps_the_suggestion_whole_and_its_range(
+    client: GitLabClient, server: respx.MockRouter
+) -> None:
+    create = server.post(f"{P}/merge_requests/5/discussions").mock(return_value=httpx.Response(201, json={}))
+    comment = _rendered("app.py", 6, 4, suggestion="/fixed", others=("odd\n/merge.py",))
+
+    _mr(client).create_review("group/app", 5, "h1", "", [comment])
+
+    sent = json.loads(create.calls.last.request.content)["body"]
+    assert "```suggestion:-2+0\n/fixed\n```" in sent
+    assert _quick_actions(sent) == []
 
 
 def test_threads_are_resolved_and_reopened(client: GitLabClient, server: respx.MockRouter) -> None:
