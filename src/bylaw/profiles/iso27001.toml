@@ -1,0 +1,112 @@
+# bylaw's ISO/IEC 27001 profile: the Annex A controls of ISO/IEC 27001:2022 that a code change can touch.
+# ISO/IEC 27001:2022 and ISO/IEC 27002:2022 are copyright ISO and IEC. This file does not contain their
+# text: it holds the control numbers, a short title bylaw wrote for each, and bylaw's own guidance on what
+# to look for in a pull request. Read the controls themselves in your own licensed copy of the standard.
+# Using this profile does not make anyone compliant; it helps a team keep evidence (docs/adr/0021).
+#
+# The numbering was checked against two public lists of the 2022 Annex A controls, for numbering only:
+# https://opensecurityarchitecture.org/frameworks/iso-27001-2022 and
+# https://www.isms.online/iso-27001/annex-a-2022/ (both read on 2026-10-19).
+
+standard = "ISO/IEC 27001:2022, Annex A"
+
+[[controls]]
+id = "5.34"
+title = "Personal data protection"
+guidance = "Code that collects, stores, shows or sends personal data: names, emails, phone numbers, addresses, government ids, health or payment data. Look for data kept longer or shared wider than the feature needs, and personal data copied into places nobody cleans up, such as caches, exports or error reports."
+
+[[controls]]
+id = "8.3"
+title = "Restricting access to information"
+guidance = "Endpoints, queries and jobs that read or change data must check that the caller may see that record, not only that they are signed in. Look for missing ownership or tenant checks, and for filters applied after the data was already loaded or returned."
+
+[[controls]]
+id = "8.4"
+title = "Source code access"
+guidance = "Changes to who can read or change the code and its pipeline: CI workflows, deploy keys, tokens in the repository, branch protection settings kept as code, and scripts that fetch or publish code."
+
+[[controls]]
+id = "8.5"
+title = "Authentication"
+guidance = "Sign-in, session, token and password reset code. Look for comparisons that are not constant time, tokens that are guessable or never expire, missing rate limits on guesses, and secrets that grant access without proving who the caller is."
+
+[[controls]]
+id = "8.8"
+title = "Technical vulnerabilities"
+guidance = "New or upgraded dependencies, pinned versions and known vulnerable calls. Look for a dependency added without a pinned version or lock file update, and for code that disables a security update or a vulnerability check."
+
+[[controls]]
+id = "8.9"
+title = "Configuration"
+guidance = "Settings that change how the system runs: debug flags, CORS, TLS verification, timeouts, feature switches and infrastructure files. Look for an insecure default, a setting turned off for convenience, and production values set in code."
+
+[[controls]]
+id = "8.11"
+title = "Masking sensitive data"
+guidance = "Personal data, secrets or card numbers shown, logged or returned in full where part of it or none would do. When personal data or a secret reaches a log, tag the finding with both 8.11 and 8.15."
+
+[[controls]]
+id = "8.12"
+title = "Preventing data leaks"
+guidance = "Data leaving the system it belongs to: responses that return more fields than the client needs, error messages with internal details, exports, uploads to third parties, and data sent to analytics or a model."
+
+[[controls]]
+id = "8.15"
+title = "Logs"
+guidance = "Logging of security relevant events and what goes into logs. Look for sign-in, permission and admin actions with no log line, logs that can be forged with line breaks from user input, and personal data or secrets written to a log (tag those 8.11 too)."
+
+[[controls]]
+id = "8.24"
+title = "Cryptography"
+guidance = "Hashing, encryption, signatures, random numbers and keys. Look for MD5 or SHA-1 for passwords or signatures, fast unsalted hashes for passwords, ECB mode, fixed IVs or nonces, non-cryptographic random for tokens, and keys in code."
+
+[[controls]]
+id = "8.25"
+title = "Secure development process"
+guidance = "Changes to how the team builds and checks software: CI steps removed or skipped, security checks turned off, review rules weakened, and release steps that bypass the usual path."
+
+[[controls]]
+id = "8.26"
+title = "Security requirements for applications"
+guidance = "A change whose linked requirement states a security need, such as who may do something, input limits or data retention, and the code does not meet it. Cite the criterion as evidence as usual."
+
+[[controls]]
+id = "8.27"
+title = "Secure architecture"
+guidance = "Changes that cut across the system's security design: a new path around an authorisation layer, a service talking to a database it should reach only through another, trust placed in the client, and secrets shared between components."
+
+[[controls]]
+id = "8.28"
+title = "Secure coding"
+guidance = "The everyday security mistakes in code: injection of any kind, path traversal, unsafe deserialisation, missing input validation, unsafe use of untrusted input and errors that fail open. Most security findings touch this control."
+
+[[controls]]
+id = "8.29"
+title = "Security testing"
+guidance = "Security relevant code changed without a test that would catch it breaking: authentication, authorisation, input validation and cryptography. Also tests that were disabled or weakened."
+
+[[controls]]
+id = "8.31"
+title = "Separate environments"
+guidance = "Code or configuration that mixes environments: production hosts, credentials or data used in tests or development, test switches that reach production, and debug paths left reachable in production."
+
+[[controls]]
+id = "8.32"
+title = "Change management"
+guidance = "A change bigger than its description says, unrelated changes bundled together, or behaviour changed without the linked requirement asking for it. Scope creep notes touch this control; report a finding only when the hidden change matters."
+
+[[controls]]
+id = "8.33"
+title = "Test data"
+guidance = "Real personal data, production dumps or live credentials in tests, fixtures and seed files. Test data should be made up or properly anonymised."
+
+[[severity_rules]]
+controls = ["8.15", "8.11"]
+minimum = "high"
+why = "personal data or a secret in a log is at least high under this profile"
+
+[[severity_rules]]
+controls = ["8.24"]
+category = "security"
+minimum = "high"
+why = "a security weakness in cryptography is at least high under this profile"
