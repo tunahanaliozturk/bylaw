@@ -1,0 +1,85 @@
+{
+  "case_id": "cs-creep-discount",
+  "result": {
+    "findings": [
+      {
+        "file": "OrderService.cs",
+        "line_start": 15,
+        "line_end": 18,
+        "category": "security",
+        "severity": "high",
+        "message": "`PlaceAsync` grants a 20% discount whenever the caller-supplied customer string ends in `@staff.example`. The customer value is untrusted input and is not verified, so anyone can claim the staff discount. The order-notes spec does not ask for this pricing change either.",
+        "suggestion": null,
+        "evidence": null,
+        "controls": []
+      },
+      {
+        "file": "OrderService.cs",
+        "line_start": 32,
+        "line_end": 32,
+        "category": "bug",
+        "severity": "low",
+        "message": "`FirstAsync` throws a generic `InvalidOperationException` when no order has this id. Callers cannot tell a missing order apart from other failures, which makes it hard to return `NotFound()`.",
+        "suggestion": "        var order = await db.Orders.FirstOrDefaultAsync(o => o.Id == id, cancellationToken)\n            ?? throw new KeyNotFoundException($\"Order {id} not found.\");",
+        "evidence": null,
+        "controls": []
+      }
+    ],
+    "criteria": [
+      {
+        "criterion": "docs/specs/order-notes.md/AC-1",
+        "status": "met",
+        "text": null,
+        "code": [
+          {
+            "file": "OrderService.cs",
+            "line": 26
+          },
+          {
+            "file": "OrderService.cs",
+            "line": 33
+          },
+          {
+            "file": "Order.cs",
+            "line": 9
+          }
+        ],
+        "tests": [],
+        "note": "Implemented, but no test proves the note is stored."
+      },
+      {
+        "criterion": "docs/specs/order-notes.md/AC-2",
+        "status": "met",
+        "text": null,
+        "code": [
+          {
+            "file": "OrderService.cs",
+            "line": 28
+          },
+          {
+            "file": "OrderService.cs",
+            "line": 30
+          }
+        ],
+        "tests": [],
+        "note": "Implemented, but no test covers the 200-character limit."
+      }
+    ],
+    "scope_creep": [
+      {
+        "file": "OrderService.cs",
+        "line": 15,
+        "message": "Staff discount in `PlaceAsync` is unrelated to order notes and not requested by any criterion."
+      }
+    ]
+  },
+  "dropped": [],
+  "model_findings": 2,
+  "seconds": 10.655879899975844,
+  "input_tokens": 5168,
+  "output_tokens": 986,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "a8e2ba9b356a9e5b6e15ef5f9fa23eda9c34ede27ca816f82bfe05a76580efd9",
+  "dropped_findings": 0
+}

@@ -1,0 +1,40 @@
+{
+  "case_id": "py-ledger-adr-own-connection",
+  "result": {
+    "findings": [
+      {
+        "file": "ledger/reports.py",
+        "line_start": 3,
+        "line_end": 3,
+        "category": "rule",
+        "severity": "medium",
+        "message": "`ledger/reports.py` now imports `sqlite3`. Under the accepted ADR, only `ledger/store.py` may open connections and run SQL; every other module must call the store's functions.",
+        "suggestion": null,
+        "evidence": "docs/adr/0002-sqlite-through-the-store-module.md:12",
+        "controls": []
+      },
+      {
+        "file": "ledger/reports.py",
+        "line_start": 17,
+        "line_end": 20,
+        "category": "rule",
+        "severity": "medium",
+        "message": "`largest_entries` opens its own connection and runs a SELECT directly. The ADR says a query another module needs becomes a new function in `ledger/store.py`. Move this query into the store (e.g. `store.largest_entries(limit)`) and call it from reports.",
+        "suggestion": null,
+        "evidence": "docs/adr/0002-sqlite-through-the-store-module.md:13",
+        "controls": []
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 2,
+  "seconds": 3.621091799926944,
+  "input_tokens": 4477,
+  "output_tokens": 353,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "d3e12b59ebf0291d07bcf484bac90b8f963f83e39d05d2eb63e15a88b8f71cdb",
+  "dropped_findings": 0
+}

@@ -1,0 +1,49 @@
+{
+  "case_id": "ts-creep-shipping",
+  "result": {
+    "findings": [
+      {
+        "file": "src/orders.ts",
+        "line_start": 21,
+        "line_end": 21,
+        "category": "bug",
+        "severity": "high",
+        "message": "`orderFromCart` now adds an unexplained hard-coded 499 cents to every order total. This overcharges every order, and neither the coupon spec nor anything else in the change asks for it.",
+        "suggestion": "  return { id, userId: cart.userId, totalCents: subtotalCents(cart) };",
+        "evidence": null,
+        "controls": []
+      }
+    ],
+    "criteria": [
+      {
+        "criterion": "docs/specs/coupons.md/AC-1",
+        "status": "met",
+        "text": null,
+        "code": [
+          {
+            "file": "src/cart.ts",
+            "line": 28
+          }
+        ],
+        "tests": [],
+        "note": "`Math.max(0, subtotal - couponCents)` implements the criterion, but no test covers it, including the case that clamps to zero."
+      }
+    ],
+    "scope_creep": [
+      {
+        "file": "src/orders.ts",
+        "line": 21,
+        "message": "A fixed 499-cent surcharge on every order total is not part of the coupon requirement."
+      }
+    ]
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": 5.935802099993452,
+  "input_tokens": 4790,
+  "output_tokens": 511,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "d727156e3fcf53e5c0157277c3182f8a0e65dbbbc71bfdf8185bcc7341e3e535",
+  "dropped_findings": 0
+}

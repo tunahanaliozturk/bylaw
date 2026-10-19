@@ -1,0 +1,40 @@
+{
+  "case_id": "ts-no-final-newline",
+  "result": {
+    "findings": [
+      {
+        "file": "src/money.ts",
+        "line_start": 3,
+        "line_end": 3,
+        "category": "rule",
+        "severity": "low",
+        "message": "No newline at the end of the file on line 3.",
+        "suggestion": null,
+        "evidence": ".editorconfig:4",
+        "controls": []
+      },
+      {
+        "file": "src/money.ts",
+        "line_start": 2,
+        "line_end": 2,
+        "category": "bug",
+        "severity": "medium",
+        "message": "Negative amounts are formatted wrongly: `Math.floor` rounds toward negative infinity and `%` keeps the sign. For example, -150 becomes \"-2.-50\" instead of \"-1.50\", which breaks refunds, discounts and negative balances.",
+        "suggestion": "  const sign = cents < 0 ? \"-\" : \"\";\n  const abs = Math.abs(cents);\n  return `${sign}${Math.floor(abs / 100)}.${String(abs % 100).padStart(2, \"0\")}`;",
+        "evidence": null,
+        "controls": []
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": 5.570095999981277,
+  "input_tokens": 4319,
+  "output_tokens": 533,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "1a03ff51db7142ebc8ecbdc476d325a8b4d79d8c533c95da07b3c214678b71f6",
+  "dropped_findings": 0
+}

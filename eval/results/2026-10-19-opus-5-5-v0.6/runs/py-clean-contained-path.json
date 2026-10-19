@@ -1,0 +1,29 @@
+{
+  "case_id": "py-clean-contained-path",
+  "result": {
+    "findings": [
+      {
+        "file": "app/files.py",
+        "line_start": 23,
+        "line_end": 23,
+        "category": "bug",
+        "severity": "medium",
+        "message": "The containment check compares a resolved `target` with an unresolved `UPLOAD_DIR`. If `UPLOAD_DIR` is relative or passes through a symlink, `is_relative_to` is false for every file, so all legitimate downloads raise `PermissionError`.",
+        "suggestion": "    if not target.is_relative_to(UPLOAD_DIR.resolve()):",
+        "evidence": null,
+        "controls": []
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": 8.986887000035495,
+  "input_tokens": 4937,
+  "output_tokens": 822,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "0ce913d7ea7e2bd68d521b851f70dae8249d1cd62745a20bc350dca59bcafcc4",
+  "dropped_findings": 0
+}

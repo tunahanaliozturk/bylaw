@@ -90,7 +90,7 @@ every claim in the README stays measured. Dates are targets, not promises; the o
 - Evaluation set v2: add 20 to 30 real pull requests from permissive open-source projects with labels
   agreed by two people, next to the planted set (the alternative ADR 0010 deferred).
 
-### Q3, May to July 2027: more places to run (v0.5, v0.6; v0.5 released 2026-10-19 with the GitHub App and the model providers)
+### Q3, May to July 2027: more places to run (v0.5, v0.6; both released 2026-10-19)
 
 - A GitHub App, for organisations that do not want a workflow file per repository: one install, central
   configuration, the same deterministic core.

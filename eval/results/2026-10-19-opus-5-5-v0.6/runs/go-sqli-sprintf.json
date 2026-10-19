@@ -1,0 +1,29 @@
+{
+  "case_id": "go-sqli-sprintf",
+  "result": {
+    "findings": [
+      {
+        "file": "store.go",
+        "line_start": 46,
+        "line_end": 46,
+        "category": "security",
+        "severity": "critical",
+        "message": "`FindByName` builds the SQL query by interpolating `name` with `fmt.Sprintf`, so any caller-supplied name containing a quote can inject arbitrary SQL. The repository's rules forbid this and require placeholders.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:10",
+        "controls": []
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": 6.433432299993001,
+  "input_tokens": 4582,
+  "output_tokens": 523,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "e02e8561cb050097db5d16deb072089f6c1a6823939008599eddc1c4affd468e",
+  "dropped_findings": 0
+}

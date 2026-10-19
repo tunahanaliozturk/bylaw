@@ -9,7 +9,7 @@ You do the reviewing; bylaw gathers the context, tells you the output rules, che
 
 ## Run bylaw
 
-Run every command below as `uvx bylaw@0.5.0 <command>`: the released version on PyPI that this skill was written for.
+Run every command below as `uvx bylaw@0.6.0 <command>`: the released version on PyPI that this skill was written for.
 
 If `uvx` is missing, tell the user to install uv, the Python package manager from Astral, and stop.
 

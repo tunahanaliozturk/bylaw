@@ -1,0 +1,40 @@
+{
+  "case_id": "py-print",
+  "result": {
+    "findings": [
+      {
+        "file": "app/users.py",
+        "line_start": 41,
+        "line_end": 41,
+        "category": "rule",
+        "severity": "low",
+        "message": "The new `rename` function reports via `print`, but the repository requires the `logging` module for messages. A bare `print` also bypasses log levels and handlers in production.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:8",
+        "controls": []
+      },
+      {
+        "file": "app/users.py",
+        "line_start": 38,
+        "line_end": 38,
+        "category": "rule",
+        "severity": "low",
+        "message": "`rename` adds new behaviour, but the change includes no test for it. The contributing guide requires every change in behaviour to come with a test.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:15",
+        "controls": []
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 2,
+  "seconds": 6.714787799981423,
+  "input_tokens": 4521,
+  "output_tokens": 604,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "4f297df07c0748ed1e0d97a7f89f1cf7b57f33924ce06d9df65ede43747a2a0f",
+  "dropped_findings": 0
+}

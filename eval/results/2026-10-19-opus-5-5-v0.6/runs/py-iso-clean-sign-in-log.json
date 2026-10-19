@@ -1,0 +1,32 @@
+{
+  "case_id": "py-iso-clean-sign-in-log",
+  "result": {
+    "findings": [
+      {
+        "file": "app/accounts.py",
+        "line_start": 42,
+        "line_end": 42,
+        "category": "security",
+        "severity": "low",
+        "message": "Only wrong-password failures are logged. The earlier `return None` for an email with no account still returns silently, so sign-in attempts against unknown emails leave no trace an operator could watch. That gap covers credential stuffing and account enumeration.",
+        "suggestion": null,
+        "evidence": null,
+        "controls": [
+          "8.16",
+          "8.15"
+        ]
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": 7.032968900050037,
+  "input_tokens": 6555,
+  "output_tokens": 592,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "bfea07c8e9e7b374dd668e2856c1f9f200036e0e1de1754a82c706f024f297b5",
+  "dropped_findings": 0
+}

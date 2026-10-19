@@ -1,0 +1,51 @@
+{
+  "case_id": "ts-missing-await",
+  "result": {
+    "findings": [
+      {
+        "file": "src/server.ts",
+        "line_start": 34,
+        "line_end": 34,
+        "category": "rule",
+        "severity": "high",
+        "message": "`saveOrder(order)` is not awaited, so the handler can return 201 before the order is persisted. A failed save then becomes an unhandled rejection, and the client is told the order exists when it may not.",
+        "suggestion": "  await saveOrder(order);",
+        "evidence": "CONTRIBUTING.md:11",
+        "controls": []
+      },
+      {
+        "file": "src/server.ts",
+        "line_start": 31,
+        "line_end": 33,
+        "category": "security",
+        "severity": "high",
+        "message": "The express checkout handler creates an order without identifying the signed-in user or tying the order to them. Anyone can create orders that belong to no one, and later ownership checks on those orders cannot work.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:10",
+        "controls": []
+      },
+      {
+        "file": "src/server.ts",
+        "line_start": 32,
+        "line_end": 32,
+        "category": "security",
+        "severity": "medium",
+        "message": "`req.body` is cast to `Cart` with no validation, so malformed or attacker-chosen data goes straight into `orderFromCart`. This includes missing items, non-integer or negative amounts, and client-supplied prices. That can crash the handler or produce wrong totals.",
+        "suggestion": null,
+        "evidence": null,
+        "controls": []
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 3,
+  "seconds": 10.005534299998544,
+  "input_tokens": 4460,
+  "output_tokens": 1005,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "e9507e5f3308c9bc82c6c45df97f2ddb55359f3a352f7650521c363c26d65cb5",
+  "dropped_findings": 0
+}

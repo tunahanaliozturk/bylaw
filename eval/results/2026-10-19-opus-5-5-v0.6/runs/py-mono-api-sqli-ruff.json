@@ -1,0 +1,40 @@
+{
+  "case_id": "py-mono-api-sqli-ruff",
+  "result": {
+    "findings": [
+      {
+        "file": "packages/api/api/handlers.py",
+        "line_start": 24,
+        "line_end": 24,
+        "category": "security",
+        "severity": "critical",
+        "message": "The caller-supplied `status` is interpolated straight into the SQL string, so a value such as `x' OR '1'='1` changes the query (SQL injection). Pass it as a bound parameter instead.",
+        "suggestion": "    rows = connection.execute(\"SELECT id FROM orders WHERE status = ?\", (status,)).fetchall()",
+        "evidence": "ruff:S608",
+        "controls": []
+      },
+      {
+        "file": "packages/api/api/handlers.py",
+        "line_start": 24,
+        "line_end": 25,
+        "category": "rule",
+        "severity": "medium",
+        "message": "A database failure from `connection.execute` (for example `sqlite3.OperationalError`) propagates to the caller. The API rules require handlers to return a `Result` with `ok=False` and an error message instead of raising.",
+        "suggestion": "    try:\n        rows = connection.execute(\"SELECT id FROM orders WHERE status = ?\", (status,)).fetchall()\n    except sqlite3.Error as error:\n        return Result(ok=False, error=f\"could not list orders with status {status}: {error}\")\n    return Result(ok=True, value=[row[0] for row in rows])",
+        "evidence": "packages/api/AGENTS.md:3",
+        "controls": []
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 2,
+  "seconds": 8.858220199937932,
+  "input_tokens": 4785,
+  "output_tokens": 865,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "05d79034fe1a5ea110e7bedea587d0fea23259a74977e54a0f756e4c8f362227",
+  "dropped_findings": 0
+}
