@@ -77,7 +77,9 @@ def test_naming_neither_a_pull_request_nor_a_base_is_an_error(tmp_path: Path) ->
     assert "either pr or base" in _text(result)
 
 
-@pytest.mark.parametrize("repo", ["../../user", "acme/app/issues", "acme", "acme/app?x=1", ""])
+@pytest.mark.parametrize(
+    "repo", ["../../user", "acme/app/issues", "acme", "acme/app?x=1", "", "acme/.", "acme/.."]
+)
 def test_a_repository_that_is_not_owner_slash_name_is_refused(tmp_path: Path, repo: str) -> None:
     result = _call(make_server([tmp_path]), "context", {"repo": repo, "pr": 1})
 

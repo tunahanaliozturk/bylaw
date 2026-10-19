@@ -191,7 +191,8 @@ def make_server(roots: Sequence[Path], *, allow_post: bool = False) -> MCPServer
 
 
 def _repo(repo: str | None) -> str:
-    if not repo or not _REPO.fullmatch(repo):
+    # `.` and `..` fit the character set but walk the API path instead of naming a repository.
+    if not repo or not _REPO.fullmatch(repo) or repo.partition("/")[2] in {".", ".."}:
         raise ToolError(f"repo must be owner/name on GitHub, such as octo-org/app; got {repo!r}")
     return repo
 
