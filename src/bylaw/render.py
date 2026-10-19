@@ -8,6 +8,7 @@ import json
 import re
 from collections import Counter
 from collections.abc import Iterable
+from dataclasses import dataclass
 
 from pydantic import ValidationError
 
@@ -32,22 +33,41 @@ _CRITERION_CELL = 300
 _BACKTICKS = re.compile(r"`+")
 
 
-def inline_body(group: Group) -> str:
+@dataclass(frozen=True, slots=True)
+class InlineParts:
+    """An inline comment as rendered: the prose before the suggestion, the suggestion's own text, and the
+    prose after it. A host that writes suggestions differently (GitLab) builds the block from these."""
+
+    before: str
+    suggestion: str | None
+    after: str
+
+
+def inline_parts(group: Group) -> InlineParts:
     finding = group.finding
-    parts = [f"**{finding.category} · {finding.severity}** {_text(finding.message)}"]
+    before = [f"**{finding.category} · {finding.severity}** {_text(finding.message)}"]
     if finding.evidence:
-        parts.append(f"Evidence: {_code(finding.evidence)}")
-    if finding.suggestion is not None:
-        # The fence must be longer than any backtick run inside, or the suggestion closes it early.
-        longest = max((len(run) for run in _BACKTICKS.findall(finding.suggestion)), default=0)
-        fence = "`" * max(3, longest + 1)
-        parts.append(f"{fence}suggestion\n{finding.suggestion}\n{fence}")
+        before.append(f"Evidence: {_code(finding.evidence)}")
+    after: list[str] = []
     if group.others:
         places = ", ".join(_code(f"{other.file}:{other.line_start}") for other in group.others[:_MAX_PLACES])
         more = f" and {len(group.others) - _MAX_PLACES} more" if len(group.others) > _MAX_PLACES else ""
-        parts.append(f"Also at {places}{more}.")
-    parts.append(f"<!-- bylaw:fp={group.fingerprint} -->")
-    return "\n\n".join(parts)
+        after.append(f"Also at {places}{more}.")
+    after.append(f"<!-- bylaw:fp={group.fingerprint} -->")
+    return InlineParts("\n\n".join(before), finding.suggestion, "\n\n".join(after))
+
+
+def suggestion_block(text: str, info: str = "suggestion") -> str:
+    # The fence must be longer than any backtick run inside, or the suggestion closes it early.
+    longest = max((len(run) for run in _BACKTICKS.findall(text)), default=0)
+    fence = "`" * max(3, longest + 1)
+    return f"{fence}{info}\n{text}\n{fence}"
+
+
+def inline_body(group: Group) -> str:
+    parts = inline_parts(group)
+    block = suggestion_block(parts.suggestion) if parts.suggestion is not None else ""
+    return "\n\n".join(part for part in (parts.before, block, parts.after) if part)
 
 
 def review_body(plan: Plan) -> str:

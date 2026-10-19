@@ -21,7 +21,7 @@ from bylaw.diff import parse_patch
 from bylaw.github import ReviewComment, SummaryComment, newest_within
 from bylaw.model import ChangedFile
 from bylaw.plan import Thread, ThreadComment
-from bylaw.render import SUMMARY_MARKER
+from bylaw.render import SUMMARY_MARKER, suggestion_block
 from bylaw.source import ChangeInfo, Issue, IssueRef, SourceError
 
 _PAGE_SIZE = 100
@@ -485,7 +485,7 @@ class GitLabMergeRequest:
                 "new_path": comment.path,
                 "new_line": comment.line,
             }
-            text = _note_body(comment.body, comment.line - comment.start_line)
+            text = _note_body(comment)
             if (span := _line_range(file, comment)) is not None:
                 try:
                     self._post_discussion(text, {**position, "line_range": span})
@@ -583,40 +583,32 @@ def _old_counters(patch: str) -> dict[int, int]:
     return counters
 
 
-# The end of a body render.inline_body wrote: a suggestion's closing fence, "Also at", the fingerprint.
-_SUGGESTION_END = re.compile(r"\n(`{3,})\n\n(?:Also at [^\n]*\n\n)?<!-- bylaw:fp=[0-9a-f]{16} -->\Z")
-
-
-def _note_body(body: str, lines_above: int) -> str:
-    """An inline comment for GitLab. A suggestion must cover every line of the comment, which GitLab writes
-    `suggestion:-N+0` (https://docs.gitlab.com/user/project/merge_requests/reviews/suggestions/); every
-    other line is made inert."""
-    tail = _SUGGESTION_END.search(body)
-    if tail is None:
-        return _inert(body)
-    fence = tail[1]
-    # The suggestion holds no backtick run as long as its fence, so the last opener with it is bylaw's.
-    openers = list(re.finditer(rf"(?m)^{fence}suggestion$", body[: tail.start()]))
-    if not openers:
-        return _inert(body)
-    opener, close = openers[-1], tail.start() + 1 + len(fence)
-    offset = f":-{lines_above}+0" if lines_above > 0 else ""
-    return (
-        _inert(body[: opener.start()])
-        + body[opener.start() : opener.end()]
-        + offset
-        + body[opener.end() : close]
-        + _inert(body[close:])
-    )
+def _note_body(comment: ReviewComment) -> str:
+    """An inline comment for GitLab, built from what it was rendered from rather than parsed back out of
+    the body. A suggestion must cover every line of the comment, which GitLab writes `suggestion:-N+0`
+    (https://docs.gitlab.com/user/project/merge_requests/reviews/suggestions/); every other line is made
+    inert. A comment without its parts is all prose."""
+    parts = comment.parts
+    if parts is None or parts.suggestion is None:
+        return _inert(comment.body)
+    above = comment.line - comment.start_line
+    info = f"suggestion:-{above}+0" if above > 0 else "suggestion"
+    # GitLab deletes carriage returns before it reads the note, so the fence is measured without them:
+    # "``\r`" would otherwise become a closing fence and end the block early.
+    block = suggestion_block(parts.suggestion.replace("\r", ""), info)
+    return "\n\n".join(part for part in (_inert(parts.before), block, _inert(parts.after)) if part)
 
 
 def _inert(text: str) -> str:
     """GitLab runs a quick action (`/merge`, `/approve`, `/close`) from a note line that starts with a slash,
     as the token's user (https://docs.gitlab.com/user/project/quick_actions/). Text from a model or a merge
-    request reaches these lines, so a zero-width space goes in front of every one. Lines in a code block
-    need none, but telling a code block apart exactly as GitLab's Markdown does is where a mistake would
-    hide, so only bylaw's own suggestion is left as written; GitLab reads no quick action inside it."""
-    return "\n".join(f"&#8203;{line}" if line.startswith("/") else line for line in text.split("\n"))
+    request reaches these lines, so a zero-width space goes in front of every one. GitLab's extractor
+    deletes every carriage return first (lib/gitlab/quick_actions/extractor.rb), so this does too; a line
+    hidden behind one would otherwise start with a slash once GitLab has read it. Lines in a code block
+    need no space, but telling a code block apart exactly as GitLab's Markdown does is where a mistake
+    would hide, so only bylaw's own suggestion is left as written; GitLab reads no quick action inside it."""
+    lines = text.replace("\r", "").split("\n")
+    return "\n".join(f"&#8203;{line}" if line.startswith("/") else line for line in lines)
 
 
 def _changed(item: _Diff) -> ChangedFile:
