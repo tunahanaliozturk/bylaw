@@ -4,7 +4,7 @@ import os
 from collections.abc import Mapping, Sequence
 from pathlib import PurePosixPath
 
-from bylaw.config import Config, load_config
+from bylaw.config import Config, deprecations, load_config
 from bylaw.decisions import collect_decisions, is_adr
 from bylaw.editorconfig import EditorConfigResolver
 from bylaw.editorconfig_checks import check
@@ -88,7 +88,7 @@ def build_context(
     patterns = generated_patterns(source.read_base(".gitattributes"))
     all_files = source.changed_files()
     files = tuple(f for f in all_files if not is_skipped(f.path, patterns))
-    notes: list[str] = []
+    notes = list(deprecations(config))
     if info.file_count is not None and info.file_count > len(all_files):
         notes.append(
             f"GitHub lists at most 3000 files: {len(all_files)} of {info.file_count} changed files were read."

@@ -179,3 +179,27 @@ def _validate(data: dict[str, object], where: str) -> Config:
                 "tokens are read from the environment only."
             )
         raise ConfigError(message) from None
+
+
+# Keys that still work but go in the next major release, each with what to use instead. A key stays here,
+# working, for at least one minor release before it is removed (docs/compatibility.md). A key inside a
+# table is written with a dot, such as "app.model_review".
+DEPRECATED_KEYS: dict[str, str] = {}
+DEPRECATED = "Deprecated: "
+
+
+def deprecations(config: Config) -> tuple[str, ...]:
+    """A note for each deprecated key the configuration sets, for the summary and standard error."""
+    return tuple(
+        f"{DEPRECATED}`{key}` in .bylaw.toml still works, but goes in the next major release. {advice}"
+        for key, advice in DEPRECATED_KEYS.items()
+        if _sets(config, key)
+    )
+
+
+def _sets(model: BaseModel, key: str) -> bool:
+    head, _, rest = key.partition(".")
+    if head not in model.model_fields_set:
+        return False
+    inner = getattr(model, head)
+    return not rest or (isinstance(inner, BaseModel) and _sets(inner, rest))

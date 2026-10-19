@@ -1,6 +1,7 @@
 import pytest
 
-from bylaw.config import ConfigError, load_config
+from bylaw import config as config_module
+from bylaw.config import ConfigError, deprecations, load_config
 from bylaw.model import Severity
 
 ORG = """
@@ -118,3 +119,22 @@ def test_a_version_that_is_not_a_number_is_refused_without_repeating_it() -> Non
         load_config('version = "ghp_pasted_in_the_wrong_place"\n')
 
     assert "ghp_pasted" not in str(raised.value)
+
+
+def test_a_deprecated_key_keeps_working_and_gives_a_note_that_says_what_replaces_it(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # No key is deprecated yet, so two live ones stand in, one of them inside a table (docs/compatibility.md).
+    dummy = {"max_comments": "Use `dummy_limit` instead.", "app.model_review": "Use `dummy_gate` instead."}
+    monkeypatch.setattr(config_module, "DEPRECATED_KEYS", dummy)
+
+    config = load_config('max_comments = 3\n[app]\nmodel_review = "all"\n')
+
+    assert (config.max_comments, config.app.model_review) == (3, "all")
+    assert deprecations(config) == (
+        "Deprecated: `max_comments` in .bylaw.toml still works, but goes in the next major release. "
+        "Use `dummy_limit` instead.",
+        "Deprecated: `app.model_review` in .bylaw.toml still works, but goes in the next major release. "
+        "Use `dummy_gate` instead.",
+    )
+    assert deprecations(load_config('[app]\nmodel_review_label = "x"\n')) == ()
