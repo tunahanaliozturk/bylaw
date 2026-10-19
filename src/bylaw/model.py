@@ -160,6 +160,21 @@ class Finding(_Frozen):
     controls: tuple[str, ...] = ()
 
 
+class Suppression(BaseModel):
+    """A maintainer's decision, in `.bylaw.toml` on the base branch, that findings citing one rule in some
+    paths are not worth a comment (ADR 0022). It never hides a security finding."""
+
+    # Values stay out of errors: this comes from .bylaw.toml, and the errors reach the Actions log.
+    model_config = ConfigDict(frozen=True, extra="forbid", hide_input_in_errors=True)
+
+    # The evidence a finding cites, exactly: "ruff:S101", "CONTRIBUTING.md:41".
+    rule: str = Field(min_length=1, max_length=200)
+    # Globs of the files it covers, from the repository root.
+    paths: tuple[Annotated[str, Field(min_length=1)], ...] = Field(default=("**",), min_length=1)
+    # Why, shown in every summary it applies to.
+    reason: str = Field(min_length=1, max_length=300)
+
+
 class ReviewContext(_Frozen):
     schema_version: SchemaVersion = 1
     base_sha: str
@@ -183,6 +198,8 @@ class ReviewContext(_Frozen):
     # Whether `bylaw review` had the model answer for this commit; None when the result came from elsewhere,
     # such as a host model through `bylaw post` (ADR 0021).
     model_review: bool | None = None
+    # Suppressions from the base branch's .bylaw.toml, so every way of posting honours them (ADR 0022).
+    suppressions: tuple[Suppression, ...] = ()
 
 
 class CriterionStatus(StrEnum):

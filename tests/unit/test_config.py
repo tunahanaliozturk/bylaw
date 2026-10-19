@@ -162,3 +162,41 @@ def test_a_threshold_of_one_pull_request_is_refused() -> None:
     # One mute is a decision about one change, not a pattern.
     with pytest.raises(ConfigError, match=r"learn.threshold"):
         load_config("[learn]\nthreshold = 1\n")
+
+
+SUPPRESS = """
+[[suppress]]
+rule = "ruff:S101"
+paths = ["tests/**"]
+reason = "Tests use assert."
+"""
+
+
+def test_a_suppression_names_the_rule_the_paths_and_why() -> None:
+    (suppression,) = load_config(SUPPRESS).suppress
+
+    assert (suppression.rule, suppression.paths, suppression.reason) == (
+        "ruff:S101",
+        ("tests/**",),
+        "Tests use assert.",
+    )
+
+
+def test_a_suppression_without_paths_covers_every_file() -> None:
+    (suppression,) = load_config('[[suppress]]\nrule = "ruff:S101"\nreason = "r"\n').suppress
+
+    assert suppression.paths == ("**",)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        '[[suppress]]\nrule = "ruff:S101"\n',
+        '[[suppress]]\nrule = ""\nreason = "r"\n',
+        '[[suppress]]\nrule = "ruff:S101"\nreason = "r"\npaths = []\n',
+        '[[suppress]]\nrule = "ruff:S101"\nreason = "r"\ncategory = "security"\n',
+    ],
+)
+def test_a_suppression_without_a_reason_a_rule_or_a_path_or_with_an_unknown_key_is_refused(text: str) -> None:
+    with pytest.raises(ConfigError, match=r"suppress\.0"):
+        load_config(text)

@@ -22,7 +22,7 @@ from bylaw.model import (
     ReviewResult,
     Severity,
 )
-from bylaw.plan import Group, Plan, State
+from bylaw.plan import Group, Plan, State, suppressed_by
 
 SUMMARY_MARKER = "<!-- bylaw:summary -->"
 MAX_BODY = 65_536
@@ -103,11 +103,13 @@ def summary_body(context: ReviewContext, result: ReviewResult, plan: Plan) -> st
         _scope_creep(result),
         # Before the long sections: a trimmed summary must keep the notes the other sections point to.
         _notes((*context.notes, *plan.notes)),
+        _suppressions(context, plan),
         *_compliance(context, result, plan),
         _details("Other findings", plan.summary_only),
         _details("Resolved by the pull request's author but still present", plan.author_resolved),
         _details("Resolved by a reviewer but still present", plan.reviewer_resolved),
         _details("Muted with `bylaw: ignore`", plan.muted),
+        _details("Hidden by a suppression", plan.suppressed),
         _rule_sources(context),
         _footer(plan.state.review),
     ]
@@ -256,7 +258,8 @@ def _change_management(record: Evidence) -> str:
     tests = _listed([_code(t.path) for t in record.tests_changed if t.status != "removed"], ", ")
     removed = _listed([_code(t.path) for t in record.tests_changed if t.status == "removed"], ", ")
     accepted = [f for f in record.findings if f.status == "accepted"]
-    opened = len(record.findings) - len(accepted)
+    suppressed = sum(f.status == "suppressed" for f in record.findings)
+    opened = len(record.findings) - len(accepted) - suppressed
     threads = f"{record.threads_resolved} thread{'s' if record.threads_resolved != 1 else ''}"
     lines = [
         f"- Requirements: {requirements or 'none linked'}.",
@@ -264,6 +267,7 @@ def _change_management(record: Evidence) -> str:
         f"- Tests changed: {tests or 'none'}.",
         *([f"- Tests removed: {removed}."] if removed else []),
         f"- Findings: {opened} open, {len(accepted)} accepted, {threads} resolved as fixed this run.",
+        *([f"- Hidden by a suppression in `.bylaw.toml`: {suppressed}."] if suppressed else []),
     ]
     if accepted:
         lines.append("- Accepted: " + _listed([_acceptance(f) for f in accepted], "; ") + ".")
@@ -293,6 +297,30 @@ def _acceptance(finding: EvidenceFinding) -> str:
 def _listed(items: list[str], separator: str) -> str:
     more = f"{separator}and {len(items) - _MAX_PLACES} more" if len(items) > _MAX_PLACES else ""
     return separator.join(items[:_MAX_PLACES]) + more
+
+
+def _suppressions(context: ReviewContext, plan: Plan) -> str:
+    """ADR 0022: every suppression in force is listed, with how much it hid, so none works unseen."""
+    if not context.suppressions:
+        return ""
+    hidden = Counter(
+        suppressed_by(finding, context.suppressions)
+        for group in plan.suppressed
+        for finding in (group.finding, *group.others)
+    )
+    lines = []
+    for suppression in context.suppressions:
+        count = hidden[suppression]
+        paths = ", ".join(_code(path) for path in suppression.paths)
+        lines.append(
+            f"- {_code(suppression.rule)} in {paths}: {_text(suppression.reason)} "
+            f"Hid {count} finding{'s' if count != 1 else ''} this run."
+        )
+    return (
+        "### Suppressions\n\n`.bylaw.toml` on the base branch hides some findings. A suppression only "
+        "hides a finding that cites its rule in its paths, and never a security finding.\n\n"
+        + "\n".join(lines)
+    )
 
 
 def _details(title: str, groups: Iterable[Group]) -> str:

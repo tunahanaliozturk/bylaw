@@ -96,7 +96,7 @@ def review_change(  # noqa: PLR0913 - every argument is a distinct input
     checked = check(context, run.result, say)
     if not post:
         plan = first_plan(context, checked.result, config)
-        return PullReview(checked, checked.result.findings, context.head_sha, context, plan)
+        return PullReview(checked, remaining(plan), context.head_sha, context, plan)
     plan = publish(
         publisher,
         repo,

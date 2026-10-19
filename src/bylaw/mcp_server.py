@@ -18,7 +18,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import CallToolResult, TextContent, ToolAnnotations
 from pydantic import BaseModel, Field
 
-from bylaw.config import Config, ConfigError, load_config
+from bylaw.config import ConfigError, load_config, settings_from
 from bylaw.context import build_context
 from bylaw.engine import OutReview
 from bylaw.github import GitHubClient, GitHubError, GitHubSource
@@ -168,7 +168,7 @@ def make_server(roots: Sequence[Path], *, allow_post: bool = False) -> MCPServer
         """The Markdown bylaw would post for this result, after validation. Posts nothing."""
         context = read(repo, pr, base, path, again=False)
         checked = _validated(context, result)
-        settings = Config(severity_threshold=context.severity_threshold, max_comments=context.max_comments)
+        settings = settings_from(context)
         return Preview(
             markdown=preview_markdown(context, checked.result, settings), dropped=list(checked.dropped)
         )

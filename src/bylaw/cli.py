@@ -12,7 +12,7 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
-from bylaw.config import DEPRECATED, Config, ConfigError, load_config
+from bylaw.config import DEPRECATED, ConfigError, load_config, settings_from
 from bylaw.context import build_context
 from bylaw.engine import (
     PROVIDERS,
@@ -33,6 +33,7 @@ from bylaw.github import GitHubClient, GitHubError, GitHubSource
 from bylaw.gitlab import GitLabClient, GitLabMergeRequest
 from bylaw.local_git import LocalGitSource
 from bylaw.model import Finding, ReviewContext, ReviewResult, Severity
+from bylaw.plan import remaining
 from bylaw.prompt import render_input, system_prompt
 from bylaw.publish import first_plan, preview, publish
 from bylaw.pull_review import PullReview, check, review_change, review_pull_request, with_model_review
@@ -328,7 +329,7 @@ def _post(args: argparse.Namespace) -> None:
     for reason in checked.dropped:
         _say(f"dropped {reason}")
     if args.dry_run:
-        settings = Config(severity_threshold=context.severity_threshold, max_comments=context.max_comments)
+        settings = settings_from(context)
         _write(preview(context, checked.result, settings))
         return
     repo, token = _repo_and_token(args.repo)
@@ -397,9 +398,8 @@ def _review(args: argparse.Namespace) -> int:
         context = _read(ReviewContext, args.context)
         context, run = with_model_review(context, _reviewer(args), _say)
         checked = check(context, run.result, _say)
-        counted = checked.result.findings
-        settings = Config(severity_threshold=context.severity_threshold, max_comments=context.max_comments)
-        plan = first_plan(context, checked.result, settings)
+        plan = first_plan(context, checked.result, settings_from(context))
+        counted = remaining(plan)
     else:
         review, repo = _review_pull_request(args)
         checked, counted, context, plan = review.checked, review.counted, review.context, review.plan

@@ -406,3 +406,12 @@ def test_a_deprecated_key_on_the_base_branch_becomes_a_note_in_the_summary(
     context = build_context(FakeSource(base={".bylaw.toml": "max_comments = 3\n"}))
 
     assert any(note.startswith("Deprecated: `max_comments`") for note in context.notes)
+
+
+def test_the_context_carries_the_base_branch_suppressions_so_a_local_review_honours_them() -> None:
+    from bylaw.model import Suppression  # noqa: PLC0415
+
+    toml = '[[suppress]]\nrule = "ruff:S101"\nreason = "Tests use assert."\n'
+    context = build_context(FakeSource(base={".bylaw.toml": toml}))
+
+    assert context.suppressions == (Suppression(rule="ruff:S101", reason="Tests use assert."),)
