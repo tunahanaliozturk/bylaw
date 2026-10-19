@@ -31,6 +31,7 @@ from bylaw.evaluation.snapshot import snapshot_pull_request
 from bylaw.evidence import Evidence, build_evidence
 from bylaw.github import GitHubClient, GitHubError, GitHubSource
 from bylaw.gitlab import GitLabClient, GitLabMergeRequest
+from bylaw.learn import learn_from_pull_request
 from bylaw.local_git import LocalGitSource
 from bylaw.model import Finding, ReviewContext, ReviewResult, Severity
 from bylaw.plan import remaining
@@ -111,6 +112,11 @@ def _parser() -> argparse.ArgumentParser:
         default="none",
         help="exit 1 when a finding at or above this severity remains",
     )
+    learn = commands.add_parser(
+        "learn", help="record a closed pull request's outcomes on the bylaw-outcomes branch (ADR 0022)"
+    )
+    learn.add_argument("--pr", type=int, required=True, help="the closed pull request's number")
+    learn.add_argument("--repo", help="owner/name; defaults to GITHUB_REPOSITORY")
     _add_eval(commands.add_parser("eval", help="review the labelled evaluation set and score the result"))
     serve = commands.add_parser("mcp", help="serve the review tools to any MCP client over standard I/O")
     serve.add_argument(
@@ -182,6 +188,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             _write(f"{system_prompt()}\n---\n{text}", args.output)
         elif args.command == "eval":
             return _snapshot(args) if args.eval_command == "snapshot" else _eval(args)
+        elif args.command == "learn":
+            return _learn(args)
         elif args.command == "mcp":
             return _mcp(args)
         else:
@@ -412,6 +420,20 @@ def _review(args: argparse.Namespace) -> int:
         payload = {"result": checked.result.model_dump(mode="json"), "dropped": list(checked.dropped)}
         _write(json.dumps(payload, indent=2, ensure_ascii=False))
     return _exit_code(counted, args.fail_on)
+
+
+def _learn(args: argparse.Namespace) -> int:
+    if _without_secrets():
+        print(
+            "::notice title=bylaw::This pull_request run has a read-only token (a fork or Dependabot), so "
+            "bylaw could not record its outcomes. Record from pull_request_target (docs/learning.md)."
+        )
+        return 0
+    repo, token = _repo_and_token(args.repo)
+    api_url = os.environ.get("GITHUB_API_URL", "https://api.github.com")
+    with GitHubClient(token, api_url, os.environ.get("GITHUB_GRAPHQL_URL")) as client:
+        learn_from_pull_request(client, repo, args.pr, say=_say)
+    return 0
 
 
 def _review_pull_request(args: argparse.Namespace) -> tuple[PullReview, str]:

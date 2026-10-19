@@ -5,7 +5,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from functools import cached_property
 from http import HTTPStatus
-from typing import Self
+from typing import Any, Self
 from urllib.parse import quote
 
 import httpx
@@ -18,6 +18,8 @@ from bylaw.render import SUMMARY_MARKER, InlineParts
 from bylaw.source import ChangeInfo, Issue, IssueRef
 
 _PAGE_SIZE = 100
+# Tries at committing to a branch other writers may move at the same time, such as the outcome store.
+_COMMIT_ATTEMPTS = 5
 _MAX_FILE_PAGES = 30  # GitHub lists at most 3000 files for a pull request.
 _MAX_COMMIT_PAGES = 3  # and at most 250 commits.
 _UNREADABLE_ISSUE = frozenset(
@@ -63,6 +65,8 @@ class _RefRepo(_Model):
 
 class _Ref(_Model):
     sha: str
+    # The branch name.
+    ref: str = ""
     # None for the head of a pull request whose fork was deleted.
     repo: _RefRepo | None = None
 
@@ -80,6 +84,8 @@ class PullRequest(_Model):
     base: _Ref
     head: _Ref
     labels: tuple[_Label, ...] = ()
+    merged: bool = False
+    closed_at: str | None = None
 
     @property
     def from_fork(self) -> bool:
@@ -722,6 +728,63 @@ class GitHubClient:
 
     def set_thread_resolved(self, thread_id: str, *, resolved: bool) -> None:
         self._graphql(_RESOLVE if resolved else _UNRESOLVE, {"id": thread_id})
+
+    def branch_head(self, repo: str, branch: str) -> str | None:
+        """The commit a branch points at, None when there is no such branch."""
+        response = self._get_optional(f"/repos/{repo}/git/ref/heads/{quote(branch)}")
+        sha = response.json().get("object", {}).get("sha") if response is not None else None
+        return sha if isinstance(sha, str) else None
+
+    def commit_file(  # noqa: PLR0913 - every argument is a distinct input
+        self, repo: str, branch: str, path: str, text: str, message: str, *, start: str | None = None
+    ) -> str:
+        """Commit one file on `branch` through the Git Data API and return the commit.
+
+        A missing branch is created at `start`, or with no parent when `start` is None. The branch moves
+        only forward (no force), so when another writer got there first, GitHub refuses the update and
+        the commit is made again on top of theirs. A refusal that outlasts every attempt, such as a rule
+        that protects the branch, is raised with GitHub's message.
+        """
+        for attempt in range(1, _COMMIT_ATTEMPTS + 1):
+            head = self.branch_head(repo, branch)
+            parent = head or start
+            blob = {"path": path, "mode": "100644", "type": "blob", "content": text}
+            tree: dict[str, object] = {"tree": [blob]}
+            if parent:
+                commit = self._get(f"/repos/{repo}/git/commits/{parent}").json()
+                tree["base_tree"] = commit["tree"]["sha"]
+            tree_sha = self._post(f"/repos/{repo}/git/trees", tree)["sha"]
+            body = {"message": message, "tree": tree_sha, "parents": [parent] if parent else []}
+            sha = str(self._post(f"/repos/{repo}/git/commits", body)["sha"])
+            if head is None:
+                created = {"ref": f"refs/heads/{branch}", "sha": sha}
+                response = self._send("POST", f"{self._api_url}/repos/{repo}/git/refs", json=created)
+            else:
+                url = f"{self._api_url}/repos/{repo}/git/refs/heads/{quote(branch)}"
+                response = self._send("PATCH", url, json={"sha": sha, "force": False})
+            if response.status_code != HTTPStatus.UNPROCESSABLE_ENTITY or attempt == _COMMIT_ATTEMPTS:
+                _raise_for_status(response)
+                return sha
+        raise GitHubError(f"could not commit {path} on {branch}")  # not reached: the last attempt raises
+
+    def find_pull(self, repo: str, branch: str) -> bool:
+        """Whether any pull request, open or closed, was ever opened from `branch` of this repository."""
+        owner = repo.partition("/")[0]
+        params: Params = {"head": f"{owner}:{branch}", "state": "all", "per_page": 1}
+        return bool(self._get(f"/repos/{repo}/pulls", params).json())
+
+    def open_pull(self, repo: str, branch: str, base: str, title: str, body: str) -> str:
+        """Open a pull request from `branch` into `base` and return its address."""
+        data = {"title": title, "head": branch, "base": base, "body": body}
+        return str(self._post(f"/repos/{repo}/pulls", data)["html_url"])
+
+    def _post(self, path: str, body: object) -> dict[str, Any]:
+        response = self._send("POST", f"{self._api_url}{path}", json=body)
+        _raise_for_status(response)
+        data = response.json()
+        if not isinstance(data, dict):
+            raise GitHubError(f"GitHub returned no object for POST {path}")
+        return data
 
     def installation_token(
         self, installation_id: int, repositories: Sequence[str], permissions: Mapping[str, str]
