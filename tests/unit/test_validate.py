@@ -580,3 +580,32 @@ def test_a_long_unknown_control_id_is_cut_in_the_dropped_list() -> None:
     kept = validate(context, ReviewResult(findings=(_tagged("x" * 500),)))
 
     assert kept.dropped == (f"app.py:3 security: control {'x' * 20}... is not in the active profiles",)
+
+
+def test_an_oversized_finding_is_dropped_so_the_rest_of_the_review_still_posts() -> None:
+    # GitHub refuses the whole review when one comment is over its size limit.
+    long_message = _finding().model_copy(update={"message": "m" * 2001})
+    long_suggestion = _finding(start=4, end=4).model_copy(update={"suggestion": "s" * 10_001})
+    long_evidence = _finding(start=5, end=5, evidence="CONTRIBUTING.md:2" + "x" * 500)
+
+    assert _dropped(long_message, long_suggestion, long_evidence) == (
+        "app.py:3 security: message is longer than 2000 characters",
+        "app.py:4 security: suggestion is longer than 10000 characters",
+        "app.py:5 security: evidence is longer than 500 characters",
+    )
+
+
+def test_a_finding_at_every_limit_fits_one_github_comment_and_one_gitlab_note() -> None:
+    from bylaw.plan import Group  # noqa: PLC0415 - only this test renders
+    from bylaw.render import inline_body  # noqa: PLC0415
+
+    # The worst characters: `<` becomes `&lt;` and `@` gains a zero-width space entity.
+    finding = _finding(evidence="CONTRIBUTING.md:2").model_copy(
+        update={"message": "<@" * 1000, "suggestion": "`" * 10_000}
+    )
+    assert _dropped(finding) == ()
+    others = tuple(_finding(start=n) for n in (4, 5))
+
+    body = inline_body(Group(finding=finding, fingerprint="0" * 16, others=others))
+
+    assert len(body) < 65_536
