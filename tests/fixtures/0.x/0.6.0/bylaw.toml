@@ -1,0 +1,30 @@
+# Every key bylaw 0.6.0 reads, written before `version` existed.
+spec_globs = ["docs/specs/**", "**/REQUIREMENTS.md"]
+adr_globs = ["docs/adr/**"]
+severity_threshold = "low"
+max_comments = 10
+issue_repos = ["acme/roadmap"]
+input_token_budget = 200000
+incremental = false
+quote_trackers = false
+trackers_for_all_authors = true
+profiles = ["iso27001"]
+
+[budget]
+pr_tokens = 1000000
+
+[jira]
+url = "https://acme.atlassian.net"
+projects = ["PAY"]
+criteria_field = "customfield_10042"
+
+[azure_boards]
+organization = "acme"
+projects = ["Payments"]
+
+[linear]
+teams = ["ENG"]
+
+[app]
+model_review = "all"
+model_review_label = "bylaw: review"

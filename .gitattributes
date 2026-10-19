@@ -1,3 +1,5 @@
 * text=auto eol=lf
 # Planted tabs, trailing spaces and missing final newlines are labels: keep the bytes exactly.
 eval/** -text
+# Files older releases wrote; tests read them byte for byte.
+tests/fixtures/** -text

@@ -1,0 +1,76 @@
+{
+  "base_sha": "bc55d851fda2b9a8461e29b86ec9fbf966a7e330",
+  "head_sha": "38c125c95f1ecd4dea6fdcc7c7c4d41c114d7c46",
+  "title": "Confirm placed orders",
+  "files": [
+    {
+      "path": "OrderService.cs",
+      "status": "modified",
+      "previous_path": null,
+      "added_lines": [
+        {
+          "number": 21,
+          "text": ""
+        },
+        {
+          "number": 22,
+          "text": "    public async void NotifyAsync(Order order)"
+        },
+        {
+          "number": 23,
+          "text": "    {"
+        },
+        {
+          "number": 24,
+          "text": "        await db.Entry(order).ReloadAsync();"
+        },
+        {
+          "number": 25,
+          "text": "        logger.LogInformation(\"Order {OrderId} confirmed\", order.Id);"
+        },
+        {
+          "number": 26,
+          "text": "    }"
+        }
+      ],
+      "missing_final_newline": false,
+      "patch_omitted": false,
+      "patch": "@@ -18,4 +18,10 @@ public sealed class OrderService(OrdersDbContext db, ILogger<OrderService> logge\n         logger.LogInformation(\"Placed order {OrderId}\", order.Id);\n         return order;\n     }\n+\n+    public async void NotifyAsync(Order order)\n+    {\n+        await db.Entry(order).ReloadAsync();\n+        logger.LogInformation(\"Order {OrderId} confirmed\", order.Id);\n+    }\n }\n",
+      "changes": null
+    },
+    {
+      "path": "OrdersController.cs",
+      "status": "modified",
+      "previous_path": null,
+      "added_lines": [
+        {
+          "number": 22,
+          "text": "        orders.NotifyAsync(order);"
+        }
+      ],
+      "missing_final_newline": false,
+      "patch_omitted": false,
+      "patch": "@@ -19,6 +19,7 @@ public sealed class OrdersController(OrderService orders) : ControllerBase\n     public async Task<ActionResult<Order>> Place(PlaceOrder request, CancellationToken cancellationToken)\n     {\n         var order = await orders.PlaceAsync(request.Customer, request.Total, cancellationToken);\n+        orders.NotifyAsync(order);\n         return CreatedAtAction(nameof(Get), new { id = order.Id }, order);\n     }\n }\n",
+      "changes": null
+    }
+  ],
+  "rules": [
+    {
+      "path": ".editorconfig",
+      "kind": "editorconfig",
+      "text": "root = true\n\n[*]\ninsert_final_newline = true\ntrim_trailing_whitespace = true\n\n[*.cs]\nindent_style = space\nindent_size = 4\n"
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "kind": "prose",
+      "text": "# Contributing\n\nBuild with `dotnet build -warnaserror` and run `dotnet test` before opening a pull request.\n\n## Rules\n\n- Async all the way: never block on a task with `.Result` or `.Wait()`.\n- Log through `ILogger<T>`, never `Console.WriteLine`.\n- Raw SQL only through `FromSql` with interpolated parameters, never `FromSqlRaw` with a built string.\n- Controllers return `NotFound()` for a missing order, never `null`.\n"
+    }
+  ],
+  "requirements": [],
+  "findings": [],
+  "notes": [],
+  "severity_threshold": "medium",
+  "max_comments": 15,
+  "input_tokens": 300000,
+  "carried_over": []
+}

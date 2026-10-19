@@ -1,0 +1,14 @@
+[
+  {
+    "id": "PRRT_kept",
+    "path": "OrderService.cs",
+    "line": 22,
+    "body": "**bug · high** NotifyAsync is `async void`, so the caller cannot await it and any exception it throws (for example ObjectDisposedException once the request-scoped DbContext is disposed) is raised on the thread pool and crashes the process.\n\n```suggestion\n    public async Task NotifyAsync(Order order)\n```\n\n<!-- bylaw:fp=a63cf312c0387e11 -->"
+  },
+  {
+    "id": "PRRT_fixed",
+    "path": "OrdersController.cs",
+    "line": 22,
+    "body": "**bug · high** The call is fire-and-forget: the action returns while ReloadAsync is still running on the scoped DbContext, which races with the end of the request (disposal or concurrent use of the same context).\n\n```suggestion\n        await orders.NotifyAsync(order);\n```\n\n<!-- bylaw:fp=6d389a58ec0c8c2d -->"
+  }
+]
