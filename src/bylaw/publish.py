@@ -41,7 +41,7 @@ def publish(  # noqa: PLR0913 - one call site, every argument is a distinct inpu
     threads = client.review_threads(repo, number)
     if unread := sum(thread.older_replies_unread for thread in threads):
         note = (
-            f"{unread} long review thread(s) read without older replies: GitHub did not return them, "
+            f"{unread} long review thread(s) read without older replies: the host did not return them, "
             "so a `bylaw: ignore` among them is not seen this run."
         )
         context = context.model_copy(update={"notes": (*context.notes, note)})

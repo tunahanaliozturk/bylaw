@@ -80,6 +80,7 @@ def test_a_thread_read_without_its_older_replies_is_noted_in_the_summary() -> No
     publish(client, "octo/app", 5, context=CONTEXT, result=RESULT, config=Config())
 
     assert "1 long review thread(s) read without older replies" in client.summaries[-1][1]
+    assert "the host did not return them" in client.summaries[-1][1]
 
 
 def test_a_preview_shows_the_summary_and_each_new_comment() -> None:
