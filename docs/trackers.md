@@ -132,6 +132,23 @@ there, but a fork author is usually not a member, so work items are still not re
 
 From a terminal, set the same variables before `bylaw context` or `bylaw review --pr`.
 
+## When an agent picks the repository
+
+The site a token goes to comes from `.bylaw.toml`, and that file belongs to the repository being
+reviewed. In the Action that is your own repository. When an agent chooses the repository, it is not:
+a pull request can ask the agent to review `attacker/x`, whose `.bylaw.toml` names the attacker's Jira,
+and your token would go there. So in two places the site must also be pinned in the environment:
+
+- `bylaw mcp`, for pull requests and local branches alike;
+- `bylaw context --pr` with a `--repo` other than `GITHUB_REPOSITORY`, which is how the Claude Code and
+  Codex skill runs it.
+
+There, set `JIRA_URL` (for example `https://acme.atlassian.net`) and `AZURE_DEVOPS_ORGANIZATION` next to
+the tokens. A work item is read only when `.bylaw.toml` names that same site; otherwise, or when the
+variable is not set, it is left out with a note and the token is sent nowhere. Linear has one fixed host,
+so its key needs no pin. The GitHub App works the same way (ADR 0017); the MCP server and the skill's
+path are in ADR 0019.
+
 ## Keeping tracker text out of comments
 
 By default the summary quotes work item criteria like issue criteria. If your tracker is private and

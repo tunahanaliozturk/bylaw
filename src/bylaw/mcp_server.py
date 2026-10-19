@@ -105,7 +105,7 @@ def make_server(roots: Sequence[Path], *, allow_post: bool = False) -> MCPServer
         if base is not None and pr is None:
             directory = _inside(path, allowed)
             label = _repo(repo) if repo else None
-            return f"{directory}@{base}", lambda: build_context(LocalGitSource(directory, base, label))
+            return f"{directory}@{base}", lambda: _local_context(directory, base, label)
         raise ToolError(
             "name either pr or base: pr (with repo) for a pull request, base (with an optional path) for a "
             "local branch"
@@ -216,9 +216,15 @@ def _inside(path: str | None, allowed: Sequence[Path]) -> Path:
     raise ToolError(f"path {path or '.'!r} is outside the allowed roots or is not a git repository")
 
 
+# The agent picks the repository, and a pull request can ask it to pick one whose .bylaw.toml names an
+# attacker's Jira. So tracker tokens go only to the sites pinned in the server's environment (ADR 0019).
 def _pull_request_context(repo: str, pr: int) -> ReviewContext:
     with _github() as client:
-        return build_context(GitHubSource(client, repo, pr))
+        return build_context(GitHubSource(client, repo, pr), operator_sites=True)
+
+
+def _local_context(directory: Path, base: str, label: str | None) -> ReviewContext:
+    return build_context(LocalGitSource(directory, base, label), operator_sites=True)
 
 
 @contextmanager

@@ -98,8 +98,9 @@ def read_work_items(
 ) -> tuple[tuple[Requirement, ...], tuple[str, ...]]:
     """Requirements from the work items the texts reference, and notes on the ones left out.
 
-    With `operator_sites`, as in the GitHub App, the tokens in `env` belong to a whole installation, so
-    where they may go comes from `env` too (SITES): a tracker whose configured site differs is not read.
+    With `operator_sites`, the repository does not decide where the tokens in `env` go: in the GitHub App
+    they serve a whole installation, and in `bylaw mcp` or `bylaw context --repo` an agent picks the
+    repository. Where they may go comes from `env` too (SITES): a tracker whose site differs is not read.
     """
     refs = parse_work_item_refs(texts, config)
     if refs and not author_trusted and not config.trackers_for_all_authors:
@@ -185,8 +186,8 @@ def _off_site(tracker: Tracker, config: Config, env: Mapping[str, str], keys: li
     pinned = env.get(variable, "").strip().rstrip("/").lower()
     if not pinned:
         return (
-            f"{named} {was} not read from {_NAMES[tracker]}: the app's operator has not set {variable} "
-            "for this installation, so its token is not sent anywhere."
+            f"{named} {was} not read from {_NAMES[tracker]}: the operator has not set {variable} in "
+            "bylaw's environment, so the token is not sent anywhere."
         )
     configured = config.jira.url if tracker == "jira" and config.jira else ""
     if tracker == "azure_boards" and config.azure_boards:
@@ -195,8 +196,7 @@ def _off_site(tracker: Tracker, config: Config, env: Mapping[str, str], keys: li
         return None
     return (
         f"{named} {was} not read from {_NAMES[tracker]}: .bylaw.toml names {_SITE_KIND[tracker]} other "
-        f"than the one the app's operator set for this installation ({variable}), and the installation's "
-        "token goes only there."
+        f"than the one the operator set in bylaw's environment ({variable}), and the token goes only there."
     )
 
 

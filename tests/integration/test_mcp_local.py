@@ -11,6 +11,8 @@ from mcp import Client
 from mcp.client.stdio import StdioServerParameters
 from mcp.types import CallToolResult, TextContent
 
+from bylaw import mcp_server
+from bylaw.context import build_context
 from bylaw.mcp_server import make_server
 from bylaw.model import ReviewContext
 from bylaw.prompt import system_prompt
@@ -170,6 +172,24 @@ def test_a_base_that_looks_like_an_option_is_refused(repo: Path) -> None:
     assert result.is_error
     assert "not a ref" in _text(result)
     assert not (repo / "leak.txt").exists()
+
+
+def test_a_local_branch_sends_tracker_tokens_only_to_sites_pinned_in_the_environment(
+    repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    seen: list[bool] = []
+    real = build_context
+
+    def build(source: Any, *args: Any, operator_sites: bool = False, **kwargs: Any) -> ReviewContext:
+        seen.append(operator_sites)
+        return real(source, *args, operator_sites=operator_sites, **kwargs)
+
+    monkeypatch.setattr(mcp_server, "build_context", build)
+
+    result = _call(make_server([repo]), "brief", {"base": "main"})
+
+    assert not result.is_error, _text(result)
+    assert seen == [True]
 
 
 def test_bylaw_mcp_serves_the_tools_over_stdio(repo: Path) -> None:
