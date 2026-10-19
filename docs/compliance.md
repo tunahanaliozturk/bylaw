@@ -98,7 +98,9 @@ found nothing to tag, which is worth recording, but is not a statement that the 
   this run. When it did not, the Notes section says why: no key, the token budget, a fork in the app, or
   nothing changed since the last review, so the earlier model findings stand without a new call.
 - **Tests changed:** the changed files that look like tests by their path, such as `tests/`, `test_*.py`,
-  `*_test.go`, `*.test.ts`, Ruby's `spec/` and `*_spec.rb`, or `*Tests.cs`. A `testing` directory is not counted: several languages ship ordinary code under that name. Deleted tests are listed apart, as "Tests removed".
+  `*_test.go`, `*.test.ts`, Ruby's `spec/` and `*_spec.rb`, or `*Tests.cs`. A `testing` directory is
+  not counted: several languages ship ordinary code under that name. Deleted tests are listed apart, as
+  "Tests removed".
 - **Findings:** how many are open, how many were accepted, and how many threads bylaw resolved this run
   because the problem is gone from the code.
 - **Accepted:** each finding someone accepted, and how: muted by a maintainer's `bylaw: ignore` reply,

@@ -23,8 +23,9 @@ request switch the profile off for itself.
   its edition, and lists controls: an id, a short title and guidance for the reviewer, all in bylaw's own
   words. It may add severity rules (below). The first is `iso27001`, with the development related
   controls of ISO/IEC 27001:2022 Annex A: 5.17, 5.34, 8.2 to 8.5, 8.8 to 8.12, 8.15, 8.16, 8.24 to 8.29
-  and 8.31 to 8.33, the ones bylaw can look for in a diff. A repository cannot define or edit a profile: the controls and rules are part of bylaw's
-  version, reviewed like its code, so a change cannot redefine what a control means to pass.
+  and 8.31 to 8.33, the ones bylaw can look for in a diff. A repository cannot define or edit a
+  profile: the controls and rules are part of bylaw's version, reviewed like its code, so a change
+  cannot redefine what a control means to pass.
 - **The standard's text is never copied.** ISO/IEC 27001:2022 and ISO/IEC 27002:2022 are copyrighted
   by ISO and IEC. A profile carries the control numbers, a short title bylaw wrote for each and bylaw's
   own reviewer guidance, which says what to look for in code, not what the control says. Some short
@@ -71,10 +72,10 @@ request switch the profile off for itself.
   (ADR 0012), so turning a profile on, or a new edition of it, forces a full review.
 - **The summary.** With a profile on, the summary gets a "Controls touched" table, the controls the
   current findings name with where, and a "Change management evidence" list: the linked requirements and
-  their criteria, the commit reviewed and whether the model answered on this run (a flag the run sets, never read from
-  note text), the test files the change
-  touches, and the findings resolved, still open, or accepted, with who accepted them. Who comes from
-  data bylaw already reads: the login of the maintainer whose `bylaw: ignore` reply muted a finding, and
+  their criteria, the commit reviewed and whether the model answered on this run (a flag the run sets,
+  never read from note text), the test files the change touches or removes, and the findings resolved,
+  still open, or accepted, with who accepted them. The notes come before these sections, so a summary
+  cut to GitHub's size limit keeps them. Who comes from data bylaw already reads: the login of the maintainer whose `bylaw: ignore` reply muted a finding, and
   GitHub's `resolvedBy` on a thread a person resolved, one more field in the threads query bylaw already
   makes (GitLab's `resolved_by` on the thread's notes). A thread the pull request's own author resolved
   accepts nothing: resolving never mutes (ADR 0008), so such a finding stays open, counts for
@@ -84,8 +85,11 @@ request switch the profile off for itself.
   on, with a `schema_version` that changes when a field changes meaning or goes away; new fields may be
   added within a version. The Action passes `--evidence` and uploads the file as an artifact of the
   workflow run with `actions/upload-artifact`, pinned by commit like the Action's other steps, even when
-  `fail-on` fails the check. Without a profile no file is written and nothing is uploaded. The GitHub App
-  has nowhere to upload a file, so there the summary comment is the record.
+  `fail-on` fails the check. Without a profile no file is written and nothing is uploaded. With `--pr` or
+  `--gitlab-mr` the file needs `--post`, because only a posting run reads the threads that say what was
+  muted or resolved. A fork's or Dependabot's run without secrets is skipped whole, evidence included.
+  The summary and the file read the same plan, notes included. The GitHub App has nowhere to upload a
+  file, so there the summary comment is the record.
 
 ## Consequences
 
