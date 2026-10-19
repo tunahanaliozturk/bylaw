@@ -16,27 +16,41 @@ threshold = 3        # pull requests in which maintainers dismissed the same kin
 suggest = ["rule"]   # what a suggestion may cover: rule, bug. Never security.
 ```
 
-Then let the workflow run when a pull request closes, with write access to contents and pull requests:
+Then let the workflow run when a pull request closes. Give the review and the learning step a job each,
+so only the step that writes to the repository gets write access to contents:
 
 ```yaml
 name: bylaw
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review, closed]
-permissions:
-  contents: write        # the bylaw-outcomes branch, and suggestion branches
-  pull-requests: write
-  issues: read
+permissions: {}
 jobs:
   review:
+    if: github.event.action != 'closed'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: read
     steps:
       - uses: tunahanaliozturk/bylaw@v0
         with:
           api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+  learn:
+    if: github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write        # the bylaw-outcomes branch, and suggestion branches
+      pull-requests: write   # suggestion pull requests
+      issues: read
+    steps:
+      - uses: tunahanaliozturk/bylaw@v0
 ```
 
-On every event but `closed` the Action reviews as before. On `closed` it runs `bylaw learn` instead.
+On every event but `closed` the Action reviews as before. On `closed` it runs `bylaw learn` instead, and
+needs no model key. The review job reads text the pull request's author wrote and sends it to a model, so
+it keeps `contents: read`: a review that went wrong can comment, never push.
 
 A fork's `pull_request` run gets a read-only token, so its outcomes cannot be written and bylaw skips it
 with a notice. To record fork pull requests too, run the closing step from `pull_request_target`, which
@@ -110,8 +124,8 @@ reads the newest 500 records.
 The Action writes it when you set its `report` input, on a closed pull request or on a run that has no
 pull request, such as a schedule:
 
-- `report: artifact` uploads the page as the workflow artifact `bylaw-report`. This works from the same
-  workflow as the review, with the permissions above.
+- `report: artifact` uploads the page as the workflow artifact `bylaw-report`. Set it on the `learn` job
+  above; it needs no other permission.
 - `report: pages` publishes it to GitHub Pages. Set the repository's Pages source to GitHub Actions. The
   `github-pages` environment deploys only from the default branch, so publish from a workflow of its own:
 
