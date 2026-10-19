@@ -14,6 +14,7 @@ from bylaw.evidence import (
     Evidence,
     EvidenceControl,
     EvidenceCriterion,
+    EvidenceFile,
     EvidenceFinding,
     EvidenceProfile,
     EvidenceRequirement,
@@ -45,7 +46,7 @@ def test_a_posted_review_with_a_profile_leaves_an_evidence_file_for_the_pull_req
     assert (record.repository, record.pull_request, record.head_sha) == (REPO, NUMBER, HEAD_SHA)
     assert record.model_review is False
     assert [f.file for f in record.findings] == ["app.py"]
-    assert record.files_changed == ("app.py",)
+    assert [(f.path, f.status) for f in record.files_changed] == [("app.py", "added")]
     assert "### Change management evidence" in github.comments[0]["body"]
 
 
@@ -119,6 +120,7 @@ def test_the_evidence_schema_is_documented_field_by_field() -> None:
         EvidenceRequirement,
         EvidenceCriterion,
         EvidenceProfile,
+        EvidenceFile,
     )
     fields = {name for model in models for name in model.model_fields}
 

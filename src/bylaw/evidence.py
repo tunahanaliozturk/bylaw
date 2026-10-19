@@ -16,6 +16,7 @@ from bylaw.compliance import load_profile
 from bylaw.model import (
     Category,
     CriterionStatus,
+    FileStatus,
     Finding,
     ReviewContext,
     ReviewResult,
@@ -73,6 +74,11 @@ class EvidenceFinding(_Frozen):
     by: str | None = None
 
 
+class EvidenceFile(_Frozen):
+    path: str
+    status: FileStatus
+
+
 class EvidenceControl(_Frozen):
     id: str
     title: str
@@ -95,8 +101,9 @@ class Evidence(_Frozen):
     # None when the result came from outside `bylaw review`, such as a host model.
     model_review: bool | None
     requirements: tuple[EvidenceRequirement, ...]
-    files_changed: tuple[str, ...]
-    tests_changed: tuple[str, ...]
+    files_changed: tuple[EvidenceFile, ...]
+    # The changed files that look like tests, with their status: a removed test is not new coverage.
+    tests_changed: tuple[EvidenceFile, ...]
     findings: tuple[EvidenceFinding, ...]
     controls: tuple[EvidenceControl, ...]
     # Threads bylaw resolved this run because their finding is gone from the code.
@@ -127,7 +134,7 @@ def build_evidence(context: ReviewContext, result: ReviewResult, plan: Plan) -> 
         for profile in profiles
         for control in profile.controls
     ]
-    changed = tuple(f.path for f in context.files)
+    changed = tuple(EvidenceFile(path=f.path, status=f.status) for f in context.files)
     return Evidence(
         bylaw_version=version("bylaw"),
         title=context.title,
@@ -137,7 +144,7 @@ def build_evidence(context: ReviewContext, result: ReviewResult, plan: Plan) -> 
         model_review=context.model_review,
         requirements=_requirements(context, result),
         files_changed=changed,
-        tests_changed=tuple(path for path in changed if is_test(path)),
+        tests_changed=tuple(f for f in changed if is_test(f.path)),
         findings=tuple(flat),
         controls=tuple(control for control in controls if control.findings),
         threads_resolved=len(plan.resolve),

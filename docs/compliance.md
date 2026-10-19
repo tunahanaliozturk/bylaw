@@ -90,7 +90,7 @@ found nothing to tag, which is worth recording, but is not a statement that the 
   this run. When it did not, the Notes section says why: no key, the token budget, a fork in the app, or
   nothing changed since the last review, so the earlier model findings stand without a new call.
 - **Tests changed:** the changed files that look like tests by their path, such as `tests/`, `test_*.py`,
-  `*_test.go`, `*.test.ts` or `*Tests.cs`.
+  `*_test.go`, `*.test.ts` or `*Tests.cs`. Deleted tests are listed apart, as "Tests removed".
 - **Findings:** how many are open, how many were accepted, and how many threads bylaw resolved this run
   because the problem is gone from the code.
 - **Accepted:** each finding someone accepted, and how: muted by a maintainer's `bylaw: ignore` reply,
@@ -138,8 +138,8 @@ field can be added within a version, so a reader should ignore fields it does no
 | `profiles` | The profiles that were on: `name` and `standard`, such as `ISO/IEC 27001:2022, Annex A`. |
 | `model_review` | Whether the model answered on this run. False when it was not called or failed, including when nothing changed since the last review and the earlier model findings were kept; `notes` says which. Null when the result came from outside `bylaw review`, such as a host model through `bylaw post`. |
 | `requirements` | The linked requirements: `source`, such as `issue#12` or `PROJ-7`, and `criteria`, each a `key` and a `status` (`met`, `partial`, `missing` or `not assessed`). A requirement's title and text are never copied here. |
-| `files_changed` | Every changed file bylaw read, by path. |
-| `tests_changed` | The changed files that look like tests. |
+| `files_changed` | Every changed file bylaw read, each a `path` and its `status`: `added`, `modified`, `renamed` or `removed`. |
+| `tests_changed` | The changed files that look like tests, in the same form. A `removed` test is coverage taken away, not added; the summary lists those as "Tests removed". |
 | `findings` | Every current finding: `file`, `line_start`, `line_end`, `category`, `severity`, `message`, `evidence` (the rule line or criterion it cites, or null), `controls`, `status` (`open`, `accepted`, or `resolved_by_author` for one whose thread the pull request's author resolved, which still counts as open), and for one a person closed `how` (`muted` or `resolved`) and `by` (a login, or null when the host does not say). |
 | `controls` | The controls the findings touch: `id`, `title` (bylaw's) and `findings`, each as `file:line`. |
 | `threads_resolved` | Review threads bylaw resolved this run because their problem is gone from the code. |
@@ -161,8 +161,11 @@ A shortened example:
   "profiles": [{"name": "iso27001", "standard": "ISO/IEC 27001:2022, Annex A"}],
   "model_review": true,
   "requirements": [{"source": "issue#12", "criteria": [{"key": "issue#12/AC-1", "status": "met"}]}],
-  "files_changed": ["app/auth.py", "tests/test_auth.py"],
-  "tests_changed": ["tests/test_auth.py"],
+  "files_changed": [
+    {"path": "app/auth.py", "status": "modified"},
+    {"path": "tests/test_auth.py", "status": "modified"}
+  ],
+  "tests_changed": [{"path": "tests/test_auth.py", "status": "modified"}],
   "findings": [
     {
       "file": "app/auth.py", "line_start": 31, "line_end": 31, "category": "security", "severity": "high",

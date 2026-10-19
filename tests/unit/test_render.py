@@ -552,3 +552,24 @@ def test_the_evidence_takes_the_model_review_from_the_run_not_from_the_notes() -
     assert "without calling the model on it" in summary_body(carried, ReviewResult(), _plan())
     assert build_evidence(hosted, ReviewResult(), _plan()).model_review is None
     assert "the result came from outside `bylaw review`" in summary_body(hosted, ReviewResult(), _plan())
+
+
+def test_a_deleted_test_is_recorded_as_removed_not_as_a_test_change() -> None:
+    context = PROFILED.model_copy(
+        update={
+            "files": (
+                ChangedFile(path="tests/test_app.py", status="modified"),
+                ChangedFile(path="tests/test_old.py", status="removed"),
+            )
+        }
+    )
+
+    record = build_evidence(context, ReviewResult(), _plan())
+    section = summary_body(context, ReviewResult(), _plan()).split("### Change management evidence")[1]
+
+    assert [(t.path, t.status) for t in record.tests_changed] == [
+        ("tests/test_app.py", "modified"),
+        ("tests/test_old.py", "removed"),
+    ]
+    assert "- Tests changed: `tests/test_app.py`." in section
+    assert "- Tests removed: `tests/test_old.py`." in section

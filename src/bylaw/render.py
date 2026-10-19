@@ -252,7 +252,8 @@ def _change_management(record: Evidence) -> str:
         None: "and the result came from outside `bylaw review`, such as a host model, so bylaw cannot say "
         "whether a model read it",
     }[record.model_review]
-    tests = _listed([_code(path) for path in record.tests_changed], ", ")
+    tests = _listed([_code(t.path) for t in record.tests_changed if t.status != "removed"], ", ")
+    removed = _listed([_code(t.path) for t in record.tests_changed if t.status == "removed"], ", ")
     accepted = [f for f in record.findings if f.status == "accepted"]
     opened = len(record.findings) - len(accepted)
     threads = f"{record.threads_resolved} thread{'s' if record.threads_resolved != 1 else ''}"
@@ -260,6 +261,7 @@ def _change_management(record: Evidence) -> str:
         f"- Requirements: {requirements or 'none linked'}.",
         f"- Reviewed: {_code(record.head_sha[:7])} against {_code(record.base_sha[:7])}, {model}.",
         f"- Tests changed: {tests or 'none'}.",
+        *([f"- Tests removed: {removed}."] if removed else []),
         f"- Findings: {opened} open, {len(accepted)} accepted, {threads} resolved as fixed this run.",
     ]
     if accepted:
