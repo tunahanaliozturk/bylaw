@@ -9,7 +9,7 @@ import pytest
 
 from bylaw import cli, mcp_server
 from bylaw.mcp_server import make_server
-from bylaw.model import ReviewContext
+from bylaw.model import Finding, ReviewContext
 from tests.unit.test_mcp_server import READ_ONLY_TOOLS, _call, _text, _tools
 
 CONTEXT = ReviewContext.model_validate(
@@ -108,6 +108,29 @@ def test_bylaw_mcp_allows_posting_only_with_the_allow_post_flag(
     assert cli.main(["mcp", "--root", str(tmp_path)]) == 0
     assert cli.main(["mcp", "--root", str(tmp_path), "--allow-post"]) == 0
     assert started == [False, "stdio", True, "stdio"]
+
+
+def test_a_validated_result_fed_back_in_comes_back_clean(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # validate returns bylaw's own findings with the agent's, and the agent sends that result on.
+    monkeypatch.setenv("GITHUB_TOKEN", "t")
+    own = Finding.model_validate({**FINDING, "message": "found by bylaw's own checks"})
+    context = CONTEXT.model_copy(update={"findings": (own,)})
+    monkeypatch.setattr(mcp_server, "build_context", lambda _source, **_: context)
+    server = make_server([tmp_path])
+    target = {"repo": "acme/app", "pr": 7}
+
+    first = _call(server, "validate", {**target, "result": {"findings": [FINDING]}})
+    assert first.structured_content is not None
+    checked = first.structured_content["result"]
+    again = _call(server, "validate", {**target, "result": checked})
+    shown = _call(server, "preview", {**target, "result": checked})
+
+    assert len(checked["findings"]) == 2
+    assert again.structured_content == {"result": checked, "dropped": []}
+    assert shown.structured_content is not None
+    assert shown.structured_content["dropped"] == []
 
 
 def _capture_sites(monkeypatch: pytest.MonkeyPatch) -> list[bool]:

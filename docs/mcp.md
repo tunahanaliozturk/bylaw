@@ -25,6 +25,10 @@ branch or ref) and an optional `path` for a local branch. A local review covers 
 read for the same target. If the pull request gets a new push while the agent is reviewing, its findings
 are still checked against the lines it was shown; call `brief` again to review the new push.
 
+`validate` returns the result with bylaw's own deterministic findings, such as `.editorconfig` breaks,
+added to the agent's. That result can go straight back into `validate`, `preview` or `post`: bylaw adds
+its own findings only when they are missing, so nothing is dropped as a duplicate.
+
 The server tells the agent the order when it connects: brief, review, validate until nothing it meant to
 keep is dropped, then preview. So a request such as "review pull request 12 in octo-org/app with bylaw" or
 "review this branch against main with bylaw" is enough to start.
