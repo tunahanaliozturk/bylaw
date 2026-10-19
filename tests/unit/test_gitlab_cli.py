@@ -106,6 +106,8 @@ def test_the_gitlab_ci_recipe_runs_on_merge_request_pipelines_and_its_command_wo
     server.post(f"{P}/merge_requests/5/discussions").mock(return_value=httpx.Response(201, json={}))
 
     assert job["rules"] == [{"if": '$CI_PIPELINE_SOURCE == "merge_request_event"'}]
+    # bylaw reads everything through the API; no checkout means uv finds no configuration from the branch.
+    assert job["variables"]["GIT_STRATEGY"] == "none"
     (command,) = job["script"]
     variables = {"CI_MERGE_REQUEST_IID": "5", "CI_MERGE_REQUEST_PROJECT_ID": "42", **job["variables"]}
     argv = shlex.split(Template(command).substitute(variables))

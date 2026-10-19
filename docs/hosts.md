@@ -10,7 +10,9 @@ The Action calls a model with your own key. Copy `docs/recipes/pull-request.yml`
 
 bylaw reviews GitLab merge requests the same way: inline discussions on the changed lines and one summary note, edited on every run. Copy the `bylaw` job from `docs/recipes/gitlab-ci.yml` into your `.gitlab-ci.yml` and add two masked CI/CD variables:
 
-- `GITLAB_TOKEN`: a project access token with the Developer role and the `api` scope. bylaw posts as its bot user. The job token (`CI_JOB_TOKEN`) cannot read a merge request's diff or post a note, so it is not enough. Leave "Protect variable" off, because merge request pipelines run on the source branch and a protected variable only reaches protected branches.
+- `GITLAB_TOKEN`: a project access token with the Developer role and the `api` scope. bylaw posts as its bot user. The job token (`CI_JOB_TOKEN`) cannot read a merge request's diff or post a note, so it is not enough. Leave "Protect variable" off unless your setup lets it through: since GitLab 18.1 a protected variable reaches a merge request pipeline only when a Maintainer allows it and both branches are protected and in the same project ([Control access to protected variables](https://docs.gitlab.com/ci/pipelines/merge_request_pipelines/#control-access-to-protected-variables-and-runners)). Feature branches usually are not protected, and a fork's pipeline never gets one.
+
+The job sets `GIT_STRATEGY: none`. bylaw reads the change, the rules and the issues through the API, so there is nothing to check out, and the merge request's files never land in the job's directory.
 - `ANTHROPIC_API_KEY`, optional, for the model review.
 
 Comments from Developers, Maintainers and Owners count as trusted, the GitLab peer of GitHub's write access: their `bylaw: ignore` mutes a finding, and their issue comments join the requirements. Internal notes and confidential issues are never quoted. Details and trade-offs: [ADR 0020](adr/0020-gitlab.md).
