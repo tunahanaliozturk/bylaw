@@ -43,7 +43,9 @@ people see. And tool results go into the agent's context window, which is the sc
   ReviewResult inside the tool rather than in the input schema, so the long result schema is listed once,
   by `schema`.
 - **Local paths stay inside allowed roots.** `bylaw mcp --root DIR`, repeatable, names the directories
-  local reviews may read; without it, the server's working directory is the only root. A relative `path`
+  local reviews may read. Without it, the root is `CLAUDE_PROJECT_DIR` from the server's own environment,
+  which Claude Code sets to the project and does not expand in arguments, and otherwise the working
+  directory. A filesystem or drive root is refused, because Claude Desktop may start the server there. A relative `path`
   is resolved against the first root, symlinks followed, and the directory must be inside a root. Then
   the work tree, the git directory and the common git directory git uses from there (`git rev-parse
   --path-format=absolute --show-toplevel --absolute-git-dir --git-common-dir`) must all be inside the

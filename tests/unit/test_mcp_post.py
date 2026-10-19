@@ -133,6 +133,31 @@ def test_bylaw_mcp_allows_posting_only_with_the_allow_post_flag(
     assert started == [False, "stdio", True, "stdio"]
 
 
+@pytest.mark.parametrize("project", [True, False], ids=["Claude Code project", "no project"])
+def test_without_root_bylaw_mcp_reads_claude_project_dir_from_its_own_environment(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, project: bool
+) -> None:
+    # Claude Code sets CLAUDE_PROJECT_DIR only in the server's environment, so ${...} in args sees nothing.
+    roots: list[list[Path]] = []
+
+    class Server:
+        def run(self, transport: str) -> None:
+            pass
+
+    def make(given: list[Path], **_options: bool) -> Server:
+        roots.append(given)
+        return Server()
+
+    monkeypatch.setattr(mcp_server, "make_server", make)
+    if project:
+        monkeypatch.setenv("CLAUDE_PROJECT_DIR", str(tmp_path))
+    else:
+        monkeypatch.delenv("CLAUDE_PROJECT_DIR", raising=False)
+
+    assert cli.main(["mcp"]) == 0
+    assert roots == [[tmp_path if project else Path.cwd()]]
+
+
 def test_a_validated_result_fed_back_in_comes_back_clean(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
