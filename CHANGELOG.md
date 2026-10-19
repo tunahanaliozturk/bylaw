@@ -11,7 +11,10 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 - GitLab closing patterns: `Closes #12`, `Fixes group/sub/lib#3`, `Implements lib#4`, lists such as `Fix #1, #2 and #3` and issue links on the same instance, plus what GitLab's own `closes_issues` reports. Other projects still need `issue_repos` (ADR 0007). Confidential issues, internal notes and system notes are never quoted.
 - Numbered task lists (`1. [ ] ...`) count as acceptance criteria, and GitLab's inapplicable tasks (`- [~] ...`) do not.
 - `docs/recipes/gitlab-ci.yml` runs bylaw on merge request pipelines with `uvx`; a fork's pipeline, which has no token, gets a note and a clean exit.
-- The note for a diff too large to show no longer names GitHub.
+- The note for a diff too large to show, the trimmed-summary line and the unread-replies note no longer name GitHub.
+- On GitLab, a carriage return cannot hide a quick action from bylaw: they are deleted first, as GitLab does, and a suggestion's fence is measured without them.
+- On GitLab, bylaw edits only a summary note its own account wrote, and posts a new one otherwise; a Developer's note that starts with the marker is left alone.
+- On GitLab, the shas and the diff are read as one, so a push during a run cannot put comments on the wrong lines, and a finding whose line GitLab refuses is posted as a discussion that names the line.
 
 ## 0.5.0 - 2026-10-19
 
