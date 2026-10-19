@@ -1,6 +1,8 @@
 """LRN-3: once maintainers have dismissed the same rule often enough, bylaw opens a pull request that adds a
 suppression to `.bylaw.toml`, and never applies it itself (ADR 0022)."""
 
+import hashlib
+
 import pytest
 import respx
 
@@ -129,3 +131,33 @@ def test_a_rule_too_long_for_a_suppression_is_not_suggested_and_the_record_still
 
     assert github.opened == []
     assert "pulls/5.json" in (github.files(STORE_BRANCH) or {})
+
+
+def test_declined_suggestions_do_not_use_up_the_slots_of_new_ones() -> None:
+    def other(number: int, rule: str) -> Record:
+        record = _earlier(number)
+        return record.model_copy(update={"findings": (record.findings[0].model_copy(update={"rule": rule}),)})
+
+    # Four rules past the threshold; the three dismissed most were suggested before and declined.
+    earlier = [other(n, f"CONTRIBUTING.md:{r}") for r in (1, 2, 3) for n in range(10 * r, 10 * r + 5)]
+    earlier += [_earlier(1), _earlier(2)]
+    github = _closed_with_a_mute(*earlier)
+    for r in (1, 2, 3):
+        key = hashlib.sha256(f"rule\0CONTRIBUTING.md:{r}".encode()).hexdigest()[:12]
+        github.opened.append({"head": f"bylaw/suppress-{key}", "state": "closed", "number": r})
+
+    assert _run(github, "learn") == 0
+
+    assert [p["title"] for p in github.opened[3:]] == [f"Suppress {RULE}? (suggested by bylaw)"]
+
+
+def test_a_suppression_added_on_the_base_branch_since_the_pull_request_was_opened_is_respected() -> None:
+    github = _closed_with_a_mute(_earlier(1), _earlier(2))
+    # main moved on: a maintainer suppressed the rule by hand after this pull request's base commit.
+    toml = TOML + f'\n[[suppress]]\nrule = "{RULE}"\nreason = "Done by hand."\n'
+    github.put_branch("later", {**github.base, ".bylaw.toml": toml})
+    github.branches["main"] = github.branches.pop("later")
+
+    assert _run(github, "learn") == 0
+
+    assert github.opened == []

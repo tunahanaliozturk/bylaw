@@ -51,7 +51,7 @@ inputs:
     required: false
     default: ""
   report:
-    description: Publish the per-repository report from the bylaw-outcomes branch when a pull request closes or the workflow runs without one, such as on a schedule. none (default), artifact (the workflow artifact bylaw-report) or pages (GitHub Pages; the job needs pages and id-token write and environment github-pages). See docs/learning.md.
+    description: Publish the per-repository report from the bylaw-outcomes branch when a pull request closes or the workflow runs without one, such as on a schedule. none (default), artifact (the workflow artifact bylaw-report) or pages (GitHub Pages, only on a run without a pull request, from the default branch; the job needs pages and id-token write and environment github-pages). See docs/learning.md.
     required: false
     default: none
   linear-api-key:
@@ -154,10 +154,10 @@ runs:
     # GitHub Pages needs `pages: write`, `id-token: write` and `environment: github-pages` on the job, and
     # the github-pages environment deploys from the default branch only, so run this on a schedule.
     - name: Stage the report for GitHub Pages
-      if: ${{ steps.report.outputs.dir != '' && inputs.report == 'pages' }}
+      if: ${{ steps.report.outputs.dir != '' && inputs.report == 'pages' && !github.event.pull_request }}
       uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
       with:
         path: ${{ steps.report.outputs.dir }}
     - name: Publish the report to GitHub Pages
-      if: ${{ steps.report.outputs.dir != '' && inputs.report == 'pages' }}
+      if: ${{ steps.report.outputs.dir != '' && inputs.report == 'pages' && !github.event.pull_request }}
       uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

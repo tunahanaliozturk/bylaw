@@ -224,3 +224,15 @@ def test_an_added_line_keeps_its_outcome_key_stable_when_the_line_moves() -> Non
     )
 
     assert [o.status for o in read_state(client.summaries[-1][1]).outcomes.values()] == ["open"]
+
+
+def test_a_resolve_the_reviewer_takes_back_no_longer_counts() -> None:
+    client = FakeClient()
+    _run(client, ReviewResult(findings=(RULE,)))
+    client.threads = [_thread(client, resolved_by="reviewer")]
+    _run(client, ReviewResult(findings=(RULE,)))
+    client.threads = [_thread(client)]
+
+    state = _run(client, ReviewResult(findings=(RULE,)))
+
+    assert [o.status for o in state.outcomes.values()] == ["open"]

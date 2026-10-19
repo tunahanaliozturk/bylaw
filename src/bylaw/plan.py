@@ -284,8 +284,9 @@ def track_outcomes(
 ) -> dict[str, Outcome]:
     """What happened to each finding so far: this run's plan over the last run's outcomes (ADR 0022).
 
-    A mute or a resolve stays, even when the code changes later: the maintainer's call was made. A
-    finding that is gone counts as fixed only when the model read its file this run (ADR 0012).
+    A mute or a resolve stays when the finding later goes away: the maintainer's call was made. One taken
+    back while the finding is still there no longer counts. A finding that is gone counts as fixed only
+    when the model read its file this run (ADR 0012).
     """
     current: dict[str, Outcome] = {}
     by_status: tuple[tuple[OutcomeStatus, tuple[Group, ...]], ...] = (
@@ -300,7 +301,7 @@ def track_outcomes(
             by = group.by if status in ("muted", "resolved") else None
             current[group.fingerprint] = Outcome(status, finding.category, finding.evidence, finding.file, by)
     for fp, old in previous.items():
-        if fp in current and not (old.status in ("muted", "resolved") and current[fp].status == "open"):
+        if fp in current:  # a decision taken back, such as a thread reopened, no longer counts
             continue
         gone = old.status == "open" and old.file not in unreviewed
         current[fp] = replace(old, status="fixed") if gone else old
