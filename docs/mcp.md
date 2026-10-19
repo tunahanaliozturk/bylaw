@@ -68,11 +68,14 @@ token goes nowhere. Linear has one fixed host and needs no pin.
 
 A local review runs git in the directory the agent names, so the server only accepts directories inside
 an allowed root. A relative `path` is read from the first root. The directory must be inside a root, and
-so must the repository it belongs to: git looks for a repository in the parent folders too, and a folder
-in a root can belong to a repository above it. Symlinks are followed before the check.
+so must the repository git finds from it: its work tree, its git directory and, for a worktree, the
+repository the worktree belongs to. git looks for a repository in the parent folders too, and a `.git`
+file can point anywhere, so a folder in a root could otherwise hand out a repository elsewhere. Symlinks
+are followed before the check.
 
 Point the roots at repositories you trust as much as running git in them yourself, because git applies a
-repository's own configuration.
+repository's own configuration. One thing the check does not follow is alternates: a repository whose
+`.git/objects/info/alternates` names another directory reads objects from there too.
 
 ## Claude Code
 

@@ -166,6 +166,29 @@ def test_a_folder_in_the_root_that_belongs_to_a_repository_above_it_is_refused(r
     assert "outside the allowed roots" in _text(result)
 
 
+def test_a_git_file_in_the_root_that_points_at_a_repository_outside_it_is_refused(tmp_path: Path) -> None:
+    outside = _repository(tmp_path / "outside")
+    linked = tmp_path / "root" / "linked"
+    linked.mkdir(parents=True)
+    (linked / ".git").write_text(f"gitdir: {(outside / '.git').as_posix()}\n", encoding="utf-8")
+
+    result = _call(make_server([tmp_path / "root"]), "context", {"base": "main", "path": "linked"})
+
+    assert result.is_error
+    assert "outside the allowed roots" in _text(result)
+
+
+def test_a_worktree_in_the_root_of_a_repository_outside_it_is_refused(tmp_path: Path) -> None:
+    outside = _repository(tmp_path / "outside")
+    (tmp_path / "root").mkdir()
+    _git(outside, "worktree", "add", "-b", "elsewhere", str(tmp_path / "root" / "wt"))
+
+    result = _call(make_server([tmp_path / "root"]), "context", {"base": "main", "path": "wt"})
+
+    assert result.is_error
+    assert "outside the allowed roots" in _text(result)
+
+
 def test_a_base_that_looks_like_an_option_is_refused(repo: Path) -> None:
     result = _call(make_server([repo]), "context", {"base": "--output=leak.txt"})
 

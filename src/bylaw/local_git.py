@@ -97,5 +97,12 @@ class LocalGitSource:
         return result.stdout.decode("utf-8", errors="replace")
 
     def _run(self, *args: str) -> subprocess.CompletedProcess[bytes]:
-        # git is resolved from PATH on purpose; arguments are a list, so nothing goes through a shell.
-        return subprocess.run(["git", *args], cwd=self._dir, capture_output=True, check=False)  # noqa: S603, S607
+        # git is resolved from PATH on purpose; arguments are a list, so nothing goes through a shell. No
+        # stdin: under `bylaw mcp` it is the protocol channel, and a git that prompts must not read it.
+        return subprocess.run(  # noqa: S603
+            ["git", *args],  # noqa: S607
+            cwd=self._dir,
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            check=False,
+        )

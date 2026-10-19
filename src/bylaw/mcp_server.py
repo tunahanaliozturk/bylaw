@@ -200,20 +200,42 @@ def _inside(path: str | None, allowed: Sequence[Path]) -> Path:
     """The repository directory, refused unless it and the repository it belongs to are in an allowed root."""
     directory = (allowed[0] / path if path else allowed[0]).resolve()
     if directory.is_dir() and any(directory.is_relative_to(root) for root in allowed):
-        # git walks up from the directory, so a folder inside a root can belong to a repository above it.
-        top = subprocess.run(
-            ["git", "rev-parse", "--show-toplevel"],  # noqa: S607 - git from PATH, as LocalGitSource runs it
+        found = _repository_paths(directory)
+        if found and any(all(p.is_relative_to(root) for p in (directory, *found)) for root in allowed):
+            return directory
+    raise ToolError(f"path {path or '.'!r} is outside the allowed roots or is not a git repository")
+
+
+# git from PATH, as LocalGitSource runs it. --path-format applies to the options after it.
+_WHERE_GIT_LOOKS = [
+    "git",
+    "rev-parse",
+    "--path-format=absolute",
+    "--show-toplevel",
+    "--absolute-git-dir",
+    "--git-common-dir",
+]
+
+
+def _repository_paths(directory: Path) -> tuple[Path, ...] | None:
+    """The work tree, the git directory and the common git directory git uses from `directory`. git walks up
+    from a folder, and a `.git` file or a worktree keeps the repository itself somewhere else, so all three
+    must be in the root. Alternates can still borrow objects from elsewhere; docs/mcp.md says so."""
+    try:
+        done = subprocess.run(  # noqa: S603 - a fixed list of arguments, no shell
+            _WHERE_GIT_LOOKS,
             cwd=directory,
+            stdin=subprocess.DEVNULL,
             capture_output=True,
             text=True,
             check=False,
         )
-        repository = Path(top.stdout.strip()).resolve()
-        if top.returncode == 0 and any(
-            directory.is_relative_to(root) and repository.is_relative_to(root) for root in allowed
-        ):
-            return directory
-    raise ToolError(f"path {path or '.'!r} is outside the allowed roots or is not a git repository")
+    except OSError as error:
+        raise ToolError(f"could not run git: {error.strerror or error}") from error
+    lines = done.stdout.splitlines()
+    if done.returncode != 0 or len(lines) != 3:  # noqa: PLR2004 - one line per option asked for
+        return None
+    return tuple(Path(line).resolve() for line in lines)
 
 
 # The agent picks the repository, and a pull request can ask it to pick one whose .bylaw.toml names an
