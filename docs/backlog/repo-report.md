@@ -8,7 +8,7 @@ Show what bylaw found and what happened to it: findings by category, fix rate, c
 
 ## Items
 
-- [ ] **RPT-1** (M) Report data from the outcome store. Done when: tests.
+- [x] **RPT-1** (M) Report data from the outcome store. Done when: tests.
 - [ ] **RPT-2** (M) Static HTML report. Done when: snapshot test.
 - [ ] **RPT-3** (S) Action option to publish to GitHub Pages or as an artifact. Done when: demo repository report.
 

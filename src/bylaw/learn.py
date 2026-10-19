@@ -167,6 +167,24 @@ class Suggestion:
     fixed: int
 
 
+def tally(records: Iterable[Record]) -> dict[tuple[str, str], tuple[dict[int, tuple[str, str]], int]]:
+    """Per category and rule: the pull requests that dismissed it, with who and on which file, and the
+    number of pull requests that fixed it. A finding that cites no rule is not counted."""
+    dismissed: dict[tuple[str, str], dict[int, tuple[str, str]]] = {}
+    fixed: dict[tuple[str, str], set[int]] = {}
+    for record in records:
+        for f in record.findings:
+            if f.rule is None:
+                continue
+            key = (f.category, f.rule)
+            if f.outcome == "fixed":
+                fixed.setdefault(key, set()).add(record.pull_request)
+            # A dismissal counts only with a login, and never the pull request author's own (ADR 0008).
+            elif f.outcome in ("muted", "resolved") and f.by and f.by != record.author:
+                dismissed.setdefault(key, {})[record.pull_request] = (f.by, f.file)
+    return {key: (by_pull, len(fixed.get(key, ()))) for key, by_pull in dismissed.items()}
+
+
 def suggestions(records: Iterable[Record], learn: Learn, suppress: Iterable[Suppression]) -> list[Suggestion]:
     """Rules maintainers dismissed in at least `threshold` pull requests, more often than they were fixed.
 
@@ -176,21 +194,10 @@ def suggestions(records: Iterable[Record], learn: Learn, suppress: Iterable[Supp
     """
     allowed = set(learn.suggest) - {Category.SECURITY.value}
     suppressed = {s.rule for s in suppress}
-    dismissed: dict[tuple[str, str], dict[int, tuple[str, str]]] = {}
-    fixed: dict[tuple[str, str], set[int]] = {}
-    for record in records:
-        for f in record.findings:
-            if f.rule is None or f.category not in allowed or f.rule in suppressed:
-                continue
-            key = (f.category, f.rule)
-            if f.outcome == "fixed":
-                fixed.setdefault(key, set()).add(record.pull_request)
-            # A dismissal counts only with a login, and never the pull request author's own (ADR 0008).
-            elif f.outcome in ("muted", "resolved") and f.by and f.by != record.author:
-                dismissed.setdefault(key, {})[record.pull_request] = (f.by, f.file)
     found = []
-    for (category, rule), by_pull in dismissed.items():
-        fixes = len(fixed.get((category, rule), ()))
+    for (category, rule), (by_pull, fixes) in tally(records).items():
+        if category not in allowed or rule in suppressed:
+            continue
         if len(by_pull) < learn.threshold or len(by_pull) <= fixes:
             continue
         numbers = tuple(sorted(by_pull))
