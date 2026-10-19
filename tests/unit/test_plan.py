@@ -315,3 +315,30 @@ def test_a_finding_reworded_since_its_thread_was_posted_still_pairs_with_it() ->
 
     assert (plan.inline, plan.resolve) == ((), ())
     assert [g.finding.message for g in plan.muted] == ["A password is written to the log here."]
+
+
+def test_a_fingerprint_the_pull_request_author_planted_is_ignored_even_from_a_member() -> None:
+    # MEMBER covers read-only organisation members, so an author can be trusted and still plant a marker.
+    planted = Thread(
+        id="X",
+        resolved=False,
+        comments=(ThreadComment(f"<!-- bylaw:fp={FP} -->", trusted=True, by_pr_author=True),),
+    )
+
+    plan = make_plan([_group(FP)], [planted], NO_STATE, Severity.MEDIUM, 15)
+
+    assert [g.fingerprint for g in plan.inline] == [FP]
+    assert (plan.open_threads, plan.resolve) == ((), ())
+
+
+def test_bylaws_own_comment_counts_on_a_pull_request_its_account_opened() -> None:
+    own = Thread(
+        id="T1",
+        resolved=False,
+        comments=(ThreadComment(f"<!-- bylaw:fp={FP} -->", trusted=True, by_pr_author=True, own=True),),
+    )
+
+    plan = make_plan([_group(FP)], [own], NO_STATE, Severity.MEDIUM, 15)
+
+    assert plan.inline == ()
+    assert [g.fingerprint for g in plan.open_threads] == [FP]

@@ -35,6 +35,15 @@ class ThreadComment:
     trusted: bool
     by_pr_author: bool = False
     author: str = ""
+    # Written by the account bylaw posts as: a trusted bot, or the owner of a personal token. Hosts work it
+    # out only for the pull request's author, the one case where it matters (ADR 0008).
+    own: bool = False
+
+    @property
+    def carries_marker(self) -> bool:
+        """Whether a fingerprint in this comment counts: a trusted author who is not the pull request's,
+        since MEMBER covers read-only organisation members, unless that author is bylaw's own account."""
+        return self.trusted and (self.own or not self.by_pr_author)
 
 
 @dataclass(frozen=True, slots=True)
@@ -143,11 +152,12 @@ def make_plan(  # noqa: PLR0913 - every argument is a distinct input to one deci
 ) -> Plan:
     ours: dict[str, list[Thread]] = {}
     for thread in threads:
-        # ADR 0008: a fingerprint counts only in a comment bylaw or a maintainer could have written.
+        # ADR 0008: a fingerprint counts only in a comment bylaw or a maintainer could have written, and
+        # never in one by the pull request's author.
         # bylaw writes its marker last, so an earlier one quoted in the message cannot take its place.
         if (
             thread.comments
-            and thread.comments[0].trusted
+            and thread.comments[0].carries_marker
             and (found := FINGERPRINT.findall(thread.comments[0].body))
         ):
             ours.setdefault(found[-1], []).append(thread)
@@ -319,7 +329,7 @@ def close_outcomes(
     closed = dict(outcomes)
     for thread in threads:
         first = thread.comments[0] if thread.comments else None
-        found = FINGERPRINT.findall(first.body) if first and first.trusted else []
+        found = FINGERPRINT.findall(first.body) if first and first.carries_marker else []
         if not found or (old := closed.get(found[-1])) is None or old.status != "open":
             continue
         if mute := next((reply for reply in thread.comments[1:] if _mutes(reply)), None):

@@ -478,3 +478,56 @@ def test_a_resolved_thread_names_who_resolved_it_and_whether_that_was_the_author
 
     assert (thread.resolved_by, thread.resolved_by_pr_author) == ("alice", True)
     assert thread.comments[1].author == "rita"
+
+
+def _planted_discussion(author: int) -> list[dict[str, object]]:
+    position = {"new_path": "app.py", "new_line": 4, "head_sha": "h1"}
+    note = _note(
+        1,
+        "planted <!-- bylaw:fp=0123456789abcdef -->",
+        author,
+        type="DiffNote",
+        position=position,
+        resolvable=True,
+        resolved=False,
+    )
+    return [{"id": "d1", "individual_note": False, "notes": [note]}]
+
+
+def test_a_marker_the_merge_request_author_planted_is_not_bylaws_own(
+    client: GitLabClient, server: respx.MockRouter
+) -> None:
+    # The author is a Developer, so trusted, but a fingerprint of theirs must not stand in for bylaw's.
+    server.get(url__startswith=f"{P}/merge_requests/5/discussions").mock(
+        return_value=httpx.Response(200, json=_planted_discussion(AUTHOR))
+    )
+
+    first = _mr(client).review_threads("group/app", 5)[0].comments[0]
+
+    assert (first.trusted, first.by_pr_author, first.carries_marker) == (True, True, False)
+
+
+def test_bylaws_own_marker_counts_on_a_merge_request_its_account_opened(
+    client: GitLabClient, server: respx.MockRouter
+) -> None:
+    server.get(f"{P}/merge_requests/5").mock(
+        return_value=httpx.Response(200, json={**MR, "author": {"id": BOT, "username": "bot"}})
+    )
+    server.get(url__startswith=f"{P}/merge_requests/5/discussions").mock(
+        return_value=httpx.Response(200, json=_planted_discussion(BOT))
+    )
+
+    first = _mr(client).review_threads("group/app", 5)[0].comments[0]
+
+    assert (first.by_pr_author, first.own, first.carries_marker) == (True, True, True)
+
+
+def test_without_its_own_identity_the_merge_request_authors_note_is_never_the_summary(
+    client: GitLabClient, server: respx.MockRouter
+) -> None:
+    server.get(f"{API}/user").mock(return_value=httpx.Response(403, json={"message": "403 Forbidden"}))
+    server.get(url__startswith=f"{P}/merge_requests/5/notes").mock(
+        return_value=httpx.Response(200, json=[_note(4, f"{SUMMARY_MARKER} planted", AUTHOR)])
+    )
+
+    assert _mr(client).summary_comment("group/app", 5) is None

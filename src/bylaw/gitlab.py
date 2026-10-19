@@ -446,6 +446,7 @@ class GitLabMergeRequest:
                         trusted=self._trusted(note.author),
                         by_pr_author=note.author is not None and note.author.id == author,
                         author=note.author.username if note.author else "",
+                        own=note.author is not None and note.author.id == author == self._own_id,
                     )
                     for note in notes
                 )
@@ -473,10 +474,12 @@ class GitLabMergeRequest:
 
         Once bylaw knows its account, a marker note by anyone else is never its summary: bylaw would edit a
         person's note, and with a Developer token every run would end on a 403. A first run posts a new
-        note instead. Only a token that cannot say who it is falls back to a Developer's note, as the
-        GitHub Action does, and that note's review memory is never trusted.
+        note instead. Only a token that cannot say who it is falls back to a Developer's note other than
+        the merge request author's, and that note's review memory is never trusted.
         """
         own = self._own_id
+        # Never the merge request author's: a Developer could plant a summary on their own change.
+        author = self._mr.author.id if self._mr.author else None
         fallback: SummaryComment | None = None
         params = {"sort": "asc", "order_by": "created_at"}
         for page in self._client.pages(f"{self._mr_path}/notes", params):
@@ -486,7 +489,7 @@ class GitLabMergeRequest:
                 if own is not None:
                     if note.author.id == own:
                         return SummaryComment(id=note.id, body=note.body, bot=True)
-                elif fallback is None and self._trusted(note.author):
+                elif fallback is None and note.author.id != author and self._trusted(note.author):
                     fallback = SummaryComment(id=note.id, body=note.body)
         return fallback
 
