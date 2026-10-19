@@ -6,9 +6,14 @@ from pydantic import ValidationError
 from bylaw.compliance import Profile, available, load_profile
 from bylaw.model import Severity
 
-# The development related Annex A 2022 controls the backlog asks for (CMP-2).
+# The development related Annex A 2022 controls the backlog asks for (CMP-2), and four more a code change
+# can touch: credentials, privileged access, deletion and monitoring.
 ISO27001_CONTROLS = {
+    "5.17",
     "5.34",
+    "8.2",
+    "8.10",
+    "8.16",
     "8.3",
     "8.4",
     "8.5",
