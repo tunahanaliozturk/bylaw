@@ -70,6 +70,9 @@ class Plan:
     state: State
     # Resolved by the pull request's author while the finding is still there: open all the same (ADR 0008).
     author_resolved: tuple[Group, ...] = ()
+    # Notes publishing adds, such as threads read without their older replies: the summary and the
+    # evidence read them from here, so both say the same.
+    notes: tuple[str, ...] = ()
 
 
 def added_text(context: ReviewContext) -> dict[str, dict[int, str]]:

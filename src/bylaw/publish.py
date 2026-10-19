@@ -39,13 +39,13 @@ def publish(  # noqa: PLR0913 - one call site, every argument is a distinct inpu
     summary = client.summary_comment(repo, number)
     state = read_state(summary.body) if summary else State(auto_resolved=frozenset())
     threads = client.review_threads(repo, number)
+    plan = _plan(context, result, config, threads, state, unreviewed=unreviewed)
     if unread := sum(thread.older_replies_unread for thread in threads):
         note = (
             f"{unread} long review thread(s) read without older replies: the host did not return them, "
             "so a `bylaw: ignore` among them is not seen this run."
         )
-        context = context.model_copy(update={"notes": (*context.notes, note)})
-    plan = _plan(context, result, config, threads, state, unreviewed=unreviewed)
+        plan = replace(plan, notes=(*plan.notes, note))
     if memory is None and state.review is not None:
         # A run that keeps no memory (bylaw post, no key) still keeps the pull request's token count.
         memory = tokens_only(state.review)
@@ -69,8 +69,14 @@ def publish(  # noqa: PLR0913 - one call site, every argument is a distinct inpu
     except Exception:
         # The summary holds the state of which threads bylaw resolved. Record what really happened before
         # the error goes up, so the next run does not mistake bylaw's own resolves for a maintainer's.
-        actual = _state_after(plan, done)
-        body = summary_body(context, result, replace(plan, state=actual))
+        # The summary counts only the threads really resolved or reopened.
+        actual = replace(
+            plan,
+            state=_state_after(plan, done),
+            resolve=tuple(thread_id for thread_id, closed in done if closed),
+            unresolve=tuple(thread_id for thread_id, closed in done if not closed),
+        )
+        body = summary_body(context, result, actual)
         client.upsert_summary(repo, number, summary.id if summary else None, body)
         raise
     client.upsert_summary(repo, number, summary.id if summary else None, summary_body(context, result, plan))
