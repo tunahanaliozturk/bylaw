@@ -542,18 +542,20 @@ _KEYWORD = (
     r"(?:[Cc]los(?:e[sd]?|ing)|\b[Ff]ix(?:e[sd]|ing)?|\b[Rr]esolv(?:e[sd]?|ing)|\b[Ii]mplement(?:s|ed|ing)?)"
 )
 _LINK = r"https?://[^\s>]{1,300}(?<![?!.,:])"
-_REF = r"(?:[\w.-]+(?:/[\w.-]+)*)?#\d+"
+_REF = r"(?:[\w.-]+(?:/[\w.-]+)*)?#\d+(?!\w)"
 _CLOSING = re.compile(
     rf"\b{_KEYWORD}:? +(?:(?:issues? +)?(?:{_LINK}|{_REF})(?: *,? +and +| *,? *)?|[A-Z][A-Z0-9_]+-\d+)+"
 )
 _LINK_IN = re.compile(_LINK)
-_REF_IN = re.compile(r"(?<![\w/.#-])(?P<path>[\w.-]+(?:/[\w.-]+)*)?#(?P<iid>\d+)\b")
+_REF_IN = re.compile(r"(?<![\w/.#-])(?P<path>[\w.-]+(?:/[\w.-]+)*)?#(?P<iid>\d+)(?!\w)")
 
 
 def closing_refs(texts: Sequence[str], project: str, web_url: str) -> tuple[IssueRef, ...]:
     """Issues named in closing statements. `#12` is in this project, `lib#12` in a sibling project of the
     same namespace, `group/lib#12` anywhere, and a link only on this GitLab instance."""
-    issue_link = re.compile(rf"{re.escape(web_url)}/(?P<path>[\w.-]+(?:/[\w.-]+)+)/-/issues/(?P<iid>\d+)$")
+    issue_link = re.compile(
+        rf"{re.escape(web_url)}/(?P<path>[\w.-]+(?:/[\w.-]+)+)/-/issues/(?P<iid>\d+)(?:[/?#]\S*)?$"
+    )
     namespace = project.rpartition("/")[0]
     refs: list[IssueRef] = []
     for text in texts:
