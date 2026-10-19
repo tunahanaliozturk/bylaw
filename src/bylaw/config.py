@@ -6,6 +6,7 @@ from urllib.parse import urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
+from bylaw.compliance import available
 from bylaw.model import Severity
 
 # A Jira project key or a Linear team key: upper case, so `utf-8` in prose never reads as one.
@@ -102,6 +103,16 @@ class Config(BaseModel):
     # anyone else could name allowed keys to pull their text into a comment (ADR 0014).
     trackers_for_all_authors: bool = False
     app: App = App()
+    # Compliance profiles shipped with bylaw, such as "iso27001" (ADR 0021).
+    profiles: tuple[str, ...] = ()
+
+    @field_validator("profiles")
+    @classmethod
+    def _known_profiles(cls, names: tuple[str, ...]) -> tuple[str, ...]:
+        # A typo must fail loudly: a team relying on a profile must never be reviewed without it.
+        if any(name not in available() for name in names):
+            raise ValueError(f"unknown compliance profile; bylaw has {', '.join(available())}")
+        return tuple(dict.fromkeys(names))
 
     @model_validator(mode="after")
     def _one_tracker_per_key(self) -> Self:
@@ -120,12 +131,18 @@ def load_config(text: str | None, defaults: str | None = None) -> Config:
     """The base branch's settings over the organisation's `defaults` (GitHub App, ADR 0017).
 
     A key the repository sets wins. A table such as `[jira]` counts as one key and is replaced whole, so a
-    tracker site from one file never pairs with an allow list from the other.
+    tracker site from one file never pairs with an allow list from the other. `profiles` is the exception:
+    the repository's add to the organisation's, so a repository cannot drop one (ADR 0021).
     """
     org = _parse(defaults, _DEFAULTS)
     if org:
         _validate(org, _DEFAULTS)
-    return _validate({**org, **_parse(text, _BASE)}, _BASE)
+    repo = _parse(text, _BASE)
+    merged = {**org, **repo}
+    floor, added = org.get("profiles"), repo.get("profiles")
+    if isinstance(floor, list) and isinstance(added, list):
+        merged["profiles"] = [*floor, *added]
+    return _validate(merged, _BASE)
 
 
 def _parse(text: str | None, where: str) -> dict[str, object]:
