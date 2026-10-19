@@ -50,9 +50,8 @@ def test_without_posting_allowed_a_call_to_post_is_refused(tmp_path: Path) -> No
     assert "Unknown tool" in _text(result)
 
 
-def test_post_publishes_the_validated_result_with_the_config_from_the_base_branch(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def _stub_github(monkeypatch: pytest.MonkeyPatch, head: str = "h") -> dict[str, Any]:
+    """The pull request reads as CONTEXT, now has `head`, and publishing is recorded instead of sent."""
     monkeypatch.setenv("GITHUB_TOKEN", "t")
     published: dict[str, Any] = {}
 
@@ -63,6 +62,9 @@ def test_post_publishes_the_validated_result_with_the_config_from_the_base_branc
         def read_base(self, path: str) -> str | None:
             return "max_comments = 3\n" if path == ".bylaw.toml" else None
 
+        def pull_request(self) -> SimpleNamespace:
+            return SimpleNamespace(head=SimpleNamespace(sha=head))
+
     def publish(_client: object, repo: str, number: int, **parts: Any) -> SimpleNamespace:
         published.update(parts, repo=repo, number=number)
         return SimpleNamespace(inline=("one",), resolve=(), unresolve=())
@@ -70,6 +72,27 @@ def test_post_publishes_the_validated_result_with_the_config_from_the_base_branc
     monkeypatch.setattr(mcp_server, "build_context", lambda _source, **_: CONTEXT)
     monkeypatch.setattr(mcp_server, "GitHubSource", BaseBranch)
     monkeypatch.setattr(mcp_server, "publish", publish)
+    return published
+
+
+def test_post_refuses_a_pull_request_that_moved_since_the_brief(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    published = _stub_github(monkeypatch, head="pushed-later")
+
+    result = _call(
+        make_server([tmp_path], allow_post=True), "post", {"repo": "acme/app", "pr": 7, "result": {}}
+    )
+
+    assert result.is_error
+    assert "run brief again" in _text(result)
+    assert published == {}
+
+
+def test_post_publishes_the_validated_result_with_the_config_from_the_base_branch(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    published = _stub_github(monkeypatch)
     elsewhere = {**FINDING, "file": "other.py"}
 
     result = _call(

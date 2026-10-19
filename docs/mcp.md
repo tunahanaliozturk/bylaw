@@ -220,7 +220,9 @@ Posting is off unless you start the server with `--allow-post`; without it the `
 listed, so an agent cannot call it by mistake or because a pull request told it to. With it, `post` takes
 `repo`, `pr` and the result, validates the result against the context the brief showed, reads
 `.bylaw.toml` from the base branch and publishes the review exactly as `bylaw post --pr` does: inline
-comments, the summary comment, and resolving the threads of findings that were fixed.
+comments, the summary comment, and resolving the threads of findings that were fixed. If the pull
+request got new commits after the brief, `post` refuses and asks the agent to run `brief` again, so no
+comment lands on lines the reviewer never saw.
 
 `post` is marked as not read-only, so clients that ask before running such tools will ask. Codex's
 `default_tools_approval_mode = "writes"` does exactly that. Posting needs a token that can write pull
