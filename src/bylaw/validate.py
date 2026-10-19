@@ -28,6 +28,12 @@ _INFERRED = re.compile(r"IC-([1-9][0-9]*)")
 
 
 _SHOWN = 20
+# A finding becomes one comment, and GitHub refuses the whole review when one comment passes 65,536
+# characters. With escaping a message can grow eightfold, so these keep a finding at every limit well
+# inside one GitHub comment, and far inside GitLab's million-character note.
+MAX_MESSAGE = 2_000
+MAX_SUGGESTION = 10_000
+MAX_EVIDENCE = 500
 
 
 def _control_id(text: str) -> str:
@@ -134,6 +140,14 @@ class _Checker:
         return location.file in self._added and location.line >= 1
 
     def finding_problem(self, finding: Finding) -> str | None:
+        # First, so an oversized evidence string never reaches a drop reason in the log.
+        for name, text, limit in (
+            ("message", finding.message, MAX_MESSAGE),
+            ("suggestion", finding.suggestion, MAX_SUGGESTION),
+            ("evidence", finding.evidence, MAX_EVIDENCE),
+        ):
+            if text is not None and len(text) > limit:
+                return f"{name} is longer than {limit} characters"
         if finding.file not in self._added:
             return "file is not part of the change"
         if finding.line_start > finding.line_end:
