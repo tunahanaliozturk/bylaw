@@ -18,7 +18,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, ValidationError
 
 from bylaw.config import ConfigError, Learn, load_config
-from bylaw.github import GitHubClient, GitHubError, GitHubSource
+from bylaw.github import GitHubClient, GitHubError
 from bylaw.model import Category, Suppression
 from bylaw.plan import OutcomeStatus, close_outcomes
 from bylaw.render import code_span, read_state
@@ -73,8 +73,14 @@ def record_path(number: int) -> str:
 
 
 def learn_from_pull_request(client: GitHubClient, repo: str, number: int, *, say: Say) -> Record | None:
-    """Record a closed pull request's outcomes, when `[learn]` on its base branch says so."""
-    config = load_config(GitHubSource(client, repo, number).read_base(".bylaw.toml"))
+    """Record a closed pull request's outcomes, when `[learn]` on its base branch says so.
+
+    The settings are read from the base branch as it is now, not at the commit the pull request was
+    based on: a pull request opened long ago must not record after learning was turned off, nor suggest
+    a suppression a maintainer has added since.
+    """
+    pull = client.pull(repo, number)
+    config = load_config(client.file_text(repo, ".bylaw.toml", pull.base.ref))
     if not config.learn.enabled:
         say("learning is off ([learn] enabled = false in .bylaw.toml), so nothing was recorded.")
         return None
@@ -85,7 +91,6 @@ def learn_from_pull_request(client: GitHubClient, repo: str, number: int, *, say
         return None
     state = read_state(summary.body)
     outcomes = close_outcomes(state.outcomes, client.review_threads(repo, number), state.auto_resolved)
-    pull = client.pull(repo, number)
     record = Record(
         pull_request=number,
         author=pull.user.login if pull.user else "",
@@ -103,8 +108,10 @@ def learn_from_pull_request(client: GitHubClient, repo: str, number: int, *, say
     )
     write_record(client, repo, record)
     say(f"recorded {len(record.findings)} outcome(s) of pull request {number} on {STORE_BRANCH}.")
-    found = suggestions(read_records(client, repo), config.learn, config.suppress)
-    for suggestion in found[:MAX_SUGGESTIONS]:
+    opened = 0
+    for suggestion in suggestions(read_records(client, repo), config.learn, config.suppress):
+        if opened == MAX_SUGGESTIONS:
+            break
         try:
             url = open_suggestion(client, repo, pull.base.ref, suggestion)
         except GitHubError as error:
@@ -116,6 +123,7 @@ def learn_from_pull_request(client: GitHubClient, repo: str, number: int, *, say
                 error.status,
             ) from error
         if url:
+            opened += 1
             say(f"suggested a suppression of {suggestion.rule} in {url}.")
     return record
 
@@ -240,9 +248,14 @@ def open_suggestion(client: GitHubClient, repo: str, base: str, suggestion: Sugg
         return None  # never propose a file bylaw itself would refuse, such as a rule past 200 characters
     message = f"bylaw: suggest suppressing {suggestion.rule}"
     client.commit_file(repo, branch, ".bylaw.toml", text, message, start=head)
-    return client.open_pull(
-        repo, branch, base, f"Suppress {suggestion.rule}? (suggested by bylaw)", _body(suggestion)
-    )
+    try:
+        return client.open_pull(
+            repo, branch, base, f"Suppress {suggestion.rule}? (suggested by bylaw)", _body(suggestion)
+        )
+    except GitHubError as error:
+        if error.status != HTTPStatus.UNPROCESSABLE_ENTITY:
+            raise
+        return None  # another pull request closing at the same time opened it first
 
 
 def _suppression_toml(suggestion: Suggestion) -> str:

@@ -219,7 +219,7 @@ def _lede(data: ReportData) -> str:
     repository = f"<code>{escape(data.repository)}</code>"
     if not data.pulls:
         return f"No pull request has been recorded yet for {repository}. Records start once learning is on."
-    when = f" between {data.first} and {data.last}" if data.first else ""
+    when = f" between {escape(data.first)} and {escape(data.last or data.first)}" if data.first else ""
     return f"{repository}: {data.pulls} pull requests closed{when}, {data.merged} of them merged."
 
 

@@ -93,7 +93,11 @@ def test_the_report_is_published_with_official_actions_pinned_by_commit(action: 
 
     sha = str(step["uses"]).partition("@")[2].partition(" ")[0]
     assert len(sha) == 40 and all(c in "0123456789abcdef" for c in sha)
-    assert step["if"] == f"${{{{ steps.report.outputs.dir != '' && inputs.report == '{mode}' }}}}"
+    condition = f"steps.report.outputs.dir != '' && inputs.report == '{mode}'"
+    # Pages deploys from the default branch only, never from a pull request's run (docs/learning.md).
+    if mode == "pages":
+        condition += " && !github.event.pull_request"
+    assert step["if"] == f"${{{{ {condition} }}}}"
 
 
 @pytest.mark.skipif(shutil.which("bash") is None, reason="the Action's step is a bash script")

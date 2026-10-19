@@ -75,7 +75,7 @@ to make the rule clearer; bylaw never opens the same suggestion twice.
 Opening one needs `pull-requests: write` and the repository setting **Allow GitHub Actions to create and
 approve pull requests** (Settings, Actions, General), which is off by default; without it the closing run
 fails with a message that says so, after the outcomes are recorded. At most three suggestions are opened
-per closed pull request. A pull request opened with `GITHUB_TOKEN` does not start other workflows, so the
+per closed pull request; earlier ones, merged or declined, do not take a place. A pull request opened with `GITHUB_TOKEN` does not start other workflows, so the
 suggestion's own CI runs once someone pushes to it, or closes and reopens it.
 
 Security findings are never suggested, and a suppression never hides one.
@@ -91,7 +91,8 @@ paths = ["tests/**"]         # optional: every file when left out
 reason = "Tests use assert."
 ```
 
-A finding that cites that rule in those paths is not posted and does not count for `fail-on`. Every
+A finding that cites that rule in those paths, whatever its category except security, is not posted and
+does not count for `fail-on`. Every
 summary lists the suppressions in force, with their reason and how many findings each hid, and lists the
 hidden findings in a collapsed section, so nothing disappears unseen. A suppression of a rule line, such
 as `CONTRIBUTING.md:41`, stops matching when that file's lines move, and the findings come back; update

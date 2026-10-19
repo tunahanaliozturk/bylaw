@@ -25,8 +25,9 @@ it cites (the rule, as a suppression would name it) and its file. The statuses a
 the finding is gone on a run in which the model read its file (a finding on a file the model skipped
 stays open, as in ADR 0012); `muted` with the login of the maintainer whose `bylaw: ignore` counted;
 `resolved` with the login of whoever resolved the thread while the finding was still there; and
-`suppressed`. A mute or resolve stays once made, even when the code changes later, because the
-maintainer's call was about that finding. The pull request author's resolve accepts nothing (ADR 0008),
+`suppressed`. A mute or resolve stays when the finding later goes away, because the maintainer's
+call was about that finding; one taken back while the finding is still there (a thread reopened, a
+reply deleted) no longer counts. The pull request author's resolve accepts nothing (ADR 0008),
 so such a finding stays `open`. The state also keeps how many criteria the last run found met, partial,
 missing and not assessed. Like the review memory, outcomes are carried from one run to the next only
 from a summary a bot wrote: a member with read access could otherwise post a summary claiming that
@@ -84,8 +85,8 @@ are the deepest directory the dismissed findings share (every file when they sha
 says how many pull requests dismissed it, and the body lists them and who dismissed each, with logins
 in code spans so nobody is notified. The branch is `bylaw/suppress-<hash of the group>`. If any pull
 request, open or closed, was ever opened from that branch, bylaw does not open another: closing a
-suggestion unmerged is the maintainers' answer, and bylaw respects it. At most three suggestions open per
-run. The body says that a rule clarification may be the better fix, in which case the maintainer closes
+suggestion unmerged is the maintainers' answer, and bylaw respects it. At most three suggestions are
+opened per run; one made before, merged or declined, does not take a place. The body says that a rule clarification may be the better fix, in which case the maintainer closes
 the suggestion and edits the rule.
 
 **Security findings are never suggested away.** `suggest` accepts `rule` and `bug` only, so a
@@ -94,13 +95,18 @@ even when it names the rule the finding cites. Waving away a security finding is
 specific change; a pattern of such decisions is a reason to look harder, not to stop looking.
 
 **`[learn]` is read from the base branch (LRN-4)**, like every setting (ADR 0004): `enabled` (false),
-`threshold` (3) and `suggest` (`["rule"]`).
+`threshold` (3) and `suggest` (`["rule"]`). When a pull request closes, `bylaw learn` reads the base
+branch as it is then, not at the commit the pull request was based on, so a pull request opened long
+ago neither records after learning was turned off nor suggests a suppression a maintainer has since
+added by hand. A pull request still cannot change it: the file is read from the base branch.
 
 **Suppressions are part of the configuration, and always visible (LRN-5).** A `[[suppress]]` entry names
 a rule exactly as findings cite it, the paths it covers (every file when left out) and a required
 `reason`. Validation of `.bylaw.toml` refuses an entry without a rule or a reason, with an empty path
 list, or with any other key. A suppression hides only a finding that cites its rule in one of its paths,
-and never a security finding. Hidden findings are not posted and do not count for `fail-on`, but the
+and never a security finding. It names no category: a `bug` finding that cites the same rule line is
+the same rule's business, so a suppression hides it too, while a suggestion counts only the
+categories `suggest` allows. Hidden findings are not posted and do not count for `fail-on`, but the
 summary lists every suppression in force with its reason and how many findings it hid on this run, says
 in one line what a suppression can and cannot hide, and lists the hidden findings in a collapsed
 section. The compliance evidence (ADR 0021) marks them `suppressed`. The suppressions travel in the
@@ -132,8 +138,10 @@ closes or the workflow runs on a schedule or by hand.
 - Cost: a repository gets one more branch. Its files are small, but a busy repository adds one commit
   per closed pull request.
 - Cost: a mute made after the pull request closed is not seen; there is no event for it to run on.
-- Cost: outcomes kept with a personal token are never carried forward, because its summary is not a
-  bot's, so `fixed` is never recorded with one. Mutes still are, when the pull request closes.
+- Cost: with a personal token the summary is not a bot's, so its outcomes are never carried forward
+  and `bylaw learn` records nothing for the pull request.
+- Cost: two pull requests that close at the same moment can reach the same suggestion; the second
+  finds the pull request already open (GitHub answers 422) and leaves it at that.
 - Not covered yet: the GitHub App, whose installation token is read-only on contents (ADR 0017), and
   GitLab. Both would need their own store and permissions decision.
 - The report is only as good as the records. A repository that turned learning on last week has a
