@@ -48,3 +48,11 @@ def test_under_a_trusted_ceiling_the_gate_does_not_suggest_opening_the_review_to
     assert why is not None
     assert 'model_review = "all"' not in why
     assert "organisation's `[ceiling]`" in why
+
+
+def test_the_app_budget_with_a_ceiling_and_no_repository_cap_is_the_smaller_of_the_two() -> None:
+    high = load_config(None, defaults="[ceiling]\npr_tokens = 2000000\n")
+    low = load_config(None, defaults="[ceiling]\npr_tokens = 200000\n")
+
+    assert with_app_budget(high).budget.pr_tokens == APP_PR_TOKENS
+    assert with_app_budget(low).budget.pr_tokens == 200_000

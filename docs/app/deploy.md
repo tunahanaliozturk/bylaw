@@ -186,11 +186,14 @@ model_review = "trusted"   # no repository can open the model review to every pu
 pr_tokens = 200000         # no pull request in any repository may use more model tokens
 ```
 
-A repository's settings are cut to the ceiling: `model_review = "all"` reads as `"trusted"`, and its
-`pr_tokens` is the smaller of its own value and the ceiling, or the ceiling when it sets none. A
-`model_review_label` still works, because a maintainer adds that label to one pull request at a time.
-Only the organisation's file sets a ceiling; a `[ceiling]` table in a repository's own `.bylaw.toml` is
-ignored, so it can neither lift nor replace the organisation's.
+A repository's settings are cut to the ceiling. Under `model_review = "trusted"`, a repository's `"all"`
+reads as `"trusted"`, and `model_review_label` comes from the organisation's file only: a repository's
+label is ignored, because a label that an auto-labeller adds to every pull request would open the review
+to every fork. Set the label in the defaults if maintainers should be able to unlock one pull request at
+a time. A repository's `pr_tokens` is the smaller of its own value and the ceiling; one that sets none
+gets the smaller of the app's default of 500,000 and the ceiling, so a high ceiling never raises the
+default. Only the organisation's file sets a ceiling; a `[ceiling]` table in a repository's own
+`.bylaw.toml` is ignored, so it can neither lift nor replace the organisation's.
 
 ## 5. Model keys per installation
 

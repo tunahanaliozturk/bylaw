@@ -174,14 +174,18 @@ larger `[budget] pr_tokens` over the organisation's defaults, spending the insta
 fork pull request.
 
 **Fix.** A `[ceiling]` table, read only from the organisation's `.bylaw.toml`, caps `model_review` and
-`pr_tokens` for every repository. A repository's own `[ceiling]` is ignored. ADR 0017 and the deploy
-guide document it.
+`pr_tokens` for every repository. Under a `"trusted"` ceiling, `model_review_label` comes from the
+organisation's file only, since a repository could name a label an auto-labeller adds to every pull
+request. With no repository budget the app uses the smaller of its 500,000 default and the ceiling. A
+repository's own `[ceiling]` is ignored. ADR 0017 and the deploy guide document it.
 
 **Tests.** `test_a_repository_cannot_raise_the_organisations_ceiling`,
+`test_under_a_trusted_ceiling_only_the_organisation_names_the_review_label`,
+`test_the_app_budget_with_a_ceiling_and_no_repository_cap_is_the_smaller_of_the_two`,
 `test_a_repositorys_own_ceiling_can_neither_lift_nor_replace_the_organisations`,
 `test_under_a_trusted_ceiling_the_gate_does_not_suggest_opening_the_review_to_all`.
 
-**Status.** Fixed in `782f0ea`.
+**Status.** Fixed in `782f0ea`; the label and the default budget were closed in review of the fix.
 
 ## Checked and found sound
 
