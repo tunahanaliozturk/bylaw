@@ -41,7 +41,10 @@ people see. And tool results go into the agent's context window, which is the sc
   output would send the large JSON twice. The small tools (`schema`, `validate`, `preview`) return
   structured content with an output schema. A result is passed as an object and checked against
   ReviewResult inside the tool rather than in the input schema, so the long result schema is listed once,
-  by `schema`.
+  by `schema`. Claude Code moves any text result over 50,000 characters to a file unless the tool sets
+  `anthropic/maxResultSizeChars` in its listing; `brief` sets the ceiling of 500,000, because the
+  reviewer must read all of it, and `context` does not, because an agent that wants raw data rarely needs
+  all of it at once. Other clients ignore the key.
 - **Local paths stay inside allowed roots.** `bylaw mcp --root DIR`, repeatable, names the directories
   local reviews may read. Without it, the root is `CLAUDE_PROJECT_DIR` from the server's own environment,
   which Claude Code sets to the project and does not expand in arguments, and otherwise the working

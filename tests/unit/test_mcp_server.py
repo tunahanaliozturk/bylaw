@@ -56,6 +56,14 @@ def test_every_tool_says_what_it_is_for(tmp_path: Path) -> None:
     assert all(t.description for t in tools.values())
 
 
+def test_the_brief_asks_claude_code_to_keep_up_to_its_ceiling_in_the_conversation(tmp_path: Path) -> None:
+    # Without it Claude Code moves any text result over 50,000 characters to a file.
+    tools = _tools(make_server([tmp_path]))
+
+    assert (tools["brief"].meta or {}).get("anthropic/maxResultSizeChars") == 500_000
+    assert "anthropic/maxResultSizeChars" not in (tools["context"].meta or {})
+
+
 def test_the_schema_tool_returns_the_shape_a_result_must_follow(tmp_path: Path) -> None:
     result = _call(make_server([tmp_path]), "schema")
 

@@ -114,9 +114,12 @@ instead (`--scope project` writes the same thing):
 }
 ```
 
-Claude Code warns when a tool returns more than 10,000 tokens and saves anything above 25,000 to a file
-that Claude then reads. A brief for a large pull request can pass both; the review still works, and
-`MAX_MCP_OUTPUT_TOKENS` raises the limit if you would rather keep it in the conversation.
+Claude Code warns when a tool returns more than 10,000 tokens, and moves a text result to a file that
+Claude then reads in parts once it is over 50,000 characters, whatever `MAX_MCP_OUTPUT_TOKENS` says. A
+tool can raise that threshold with `anthropic/maxResultSizeChars`, up to 500,000 characters. `brief` does,
+because the reviewer has to read all of it, so a brief stays in the conversation up to about 500,000
+characters and only a larger one goes to a file. `context` does not: it is raw data an agent rarely
+needs whole, and a file is the better place for it. Either way the review works.
 
 ## Claude Desktop
 
