@@ -1,0 +1,17 @@
+{
+  "case_id": "py-clean-docs",
+  "result": {
+    "findings": [],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 0,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "no-model",
+  "case_digest": "13789334eedaf1f92c5cd9a6f07a7e802ffd54458bcec82d0040373d05d2c99e",
+  "dropped_findings": 0
+}

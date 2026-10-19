@@ -1,0 +1,17 @@
+{
+  "case_id": "py-page-off-by-one",
+  "result": {
+    "findings": [],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 0,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "no-model",
+  "case_digest": "08791fbd4b6e58b1b668974059b9f613bda08ad083b883f25cfba573d823b735",
+  "dropped_findings": 0
+}

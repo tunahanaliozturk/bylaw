@@ -1,0 +1,17 @@
+{
+  "case_id": "py-mono-worker-default-ruff",
+  "result": {
+    "findings": [],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 0,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "no-model",
+  "case_digest": "d4d203a5ebe2a3174346b19c9f044042902b2605d9dc238396474a6888ad15af",
+  "dropped_findings": 0
+}

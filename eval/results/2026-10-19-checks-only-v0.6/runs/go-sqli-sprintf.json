@@ -1,0 +1,17 @@
+{
+  "case_id": "go-sqli-sprintf",
+  "result": {
+    "findings": [],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 0,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "no-model",
+  "case_digest": "e02e8561cb050097db5d16deb072089f6c1a6823939008599eddc1c4affd468e",
+  "dropped_findings": 0
+}

@@ -1,0 +1,17 @@
+{
+  "case_id": "py-creep-token-lifetime",
+  "result": {
+    "findings": [],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 0,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "no-model",
+  "case_digest": "32473cf27923d7a4b771597bf57806e4bf388650d45c073a7ca5e221ad525666",
+  "dropped_findings": 0
+}

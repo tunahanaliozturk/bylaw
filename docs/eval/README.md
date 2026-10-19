@@ -80,7 +80,7 @@ Host models (Claude Code, Codex) review without an API key: `bylaw eval prepare 
 
 Prices are given on the command line, never stored in the code, because they change. Cost is per reviewed case and approximate: cached input is priced as plain input, and failed attempts are not counted. Latency is only reported for model runs; replayed host answers and `--no-model` have none.
 
-Committed results live in `eval/results/<name>/`: the per-case runs and `report.md`. The runs of 15, 16 and 18 October 2026 were made before the five `py-mono` cases were added, so they cover the other 50. No committed model run includes the two `py-ledger` cases yet, nor the three `py-payments` cases.
+Committed results live in `eval/results/<name>/`: the per-case runs and `report.md`. The runs of 15, 16 and 18 October 2026 were made before the five `py-mono` cases were added, so they cover the other 50. No committed model run includes the two `py-ledger` cases yet, nor the three `py-payments` cases; the checks-only baseline of 19 October 2026 (`eval/results/2026-10-19-checks-only-v0.6`) covers all 60.
 
 ## Real pull requests
 

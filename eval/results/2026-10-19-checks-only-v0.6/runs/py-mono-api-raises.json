@@ -1,0 +1,17 @@
+{
+  "case_id": "py-mono-api-raises",
+  "result": {
+    "findings": [],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 0,
+  "seconds": null,
+  "input_tokens": null,
+  "output_tokens": null,
+  "error": null,
+  "reviewer": "no-model",
+  "case_digest": "49a09ff48706ed2e1630a39896f6b2341447ee5f0ee2fd5159fc9673a01481c9",
+  "dropped_findings": 0
+}
