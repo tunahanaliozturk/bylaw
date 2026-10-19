@@ -5,9 +5,10 @@ from pathlib import Path
 
 import pytest
 
-from bylaw import cli
+from bylaw import cli, pull_review
 from bylaw.cli import main
 from bylaw.model import ReviewContext
+from bylaw.source import SourceError
 
 
 def test_version_flag_prints_the_installed_version(capsys: pytest.CaptureFixture[str]) -> None:
@@ -229,6 +230,40 @@ def test_context_for_another_repository_sends_tracker_tokens_only_to_pinned_site
     code = main(["context", "--pr", "1", *repo, "--output", str(tmp_path / "context.json")])
 
     assert code == 0
+    assert seen == [pinned]
+
+
+@pytest.mark.parametrize(
+    ("repo_arg", "pinned"),
+    [(None, False), ("Acme/App", False), ("attacker/x", True)],
+    ids=["own repository", "own repository, other case", "another repository"],
+)
+def test_review_of_another_repository_sends_tracker_tokens_only_to_pinned_sites(
+    monkeypatch: pytest.MonkeyPatch, repo_arg: str | None, pinned: bool
+) -> None:
+    # HRD-37: the same rule as `bylaw context`, through the real review flow up to the context.
+    seen: list[bool] = []
+
+    class Source:
+        def __init__(self, *_args: object) -> None: ...
+
+        def read_base(self, _path: str) -> str | None:
+            return None
+
+    def build(_source: object, *_args: object, operator_sites: bool = False, **_kw: object) -> object:
+        seen.append(operator_sites)
+        raise SourceError("stop after the context")
+
+    monkeypatch.setattr(pull_review, "GitHubSource", Source)
+    monkeypatch.setattr(pull_review, "build_context", build)
+    monkeypatch.setenv("GITHUB_TOKEN", "t")
+    monkeypatch.setenv("GITHUB_REPOSITORY", "acme/app")
+    monkeypatch.delenv("GITHUB_EVENT_NAME", raising=False)
+    repo = ["--repo", repo_arg] if repo_arg else []
+
+    code = main(["review", "--pr", "1", *repo])
+
+    assert code == 2
     assert seen == [pinned]
 
 

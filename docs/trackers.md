@@ -137,11 +137,13 @@ From a terminal, set the same variables before `bylaw context` or `bylaw review 
 The site a token goes to comes from `.bylaw.toml`, and that file belongs to the repository being
 reviewed. In the Action that is your own repository. When an agent chooses the repository, it is not:
 a pull request can ask the agent to review `attacker/x`, whose `.bylaw.toml` names the attacker's Jira,
-and your token would go there. So in two places the site must also be pinned in the environment:
+and your token would go there. So in three places the site must also be pinned in the environment:
 
 - `bylaw mcp`, for pull requests and local branches alike;
 - `bylaw context --pr` with a `--repo` other than `GITHUB_REPOSITORY`, which is how the Claude Code and
-  Codex skill runs it.
+  Codex skill runs it;
+- `bylaw review --pr` with a `--repo` other than `GITHUB_REPOSITORY`, for the same reason: whoever
+  picks the repository is not its owner.
 
 There, set `JIRA_URL` (for example `https://acme.atlassian.net`) and `AZURE_DEVOPS_ORGANIZATION` next to
 the tokens. A work item is read only when `.bylaw.toml` names that same site; otherwise, or when the
