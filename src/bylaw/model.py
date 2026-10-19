@@ -136,6 +136,8 @@ class Finding(_Frozen):
     message: str
     suggestion: str | None = None
     evidence: str | None = None
+    # Ids of the compliance profile controls the finding touches, such as "8.28" (ADR 0021).
+    controls: tuple[str, ...] = ()
 
 
 class ReviewContext(_Frozen):

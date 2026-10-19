@@ -3,6 +3,7 @@
 import secrets
 from importlib.resources import files
 
+from bylaw.compliance import load_profile
 from bylaw.diff import numbered_patch
 from bylaw.linters import describe
 from bylaw.model import ChangedFile, Decision, Finding, Requirement, ReviewContext, RuleSource, text_lines
@@ -32,6 +33,7 @@ def render_input(
             _block(tag, "pull_request", f"title: {context.title}"),
             _block(tag, "rules", _rules(context) or "(none)"),
             _block(tag, "decisions", "\n\n".join(_decision(d) for d in context.decisions) or "(none)"),
+            *_profiles(tag, context),
             _block(
                 tag, "requirements", "\n\n".join(_requirement(r) for r in context.requirements) or "(none)"
             ),
@@ -52,6 +54,16 @@ def render_input(
     body = "\n\n".join(_file(f) for f in reviewable if f.path in chosen) or "(no reviewable changes)"
     closing = "Return your review as the JSON object described in your instructions."
     return f"{head}\n\n{_block(tag, 'changes', body)}\n\n{closing}", left_out
+
+
+def _profiles(tag: str, context: ReviewContext) -> list[str]:
+    """Only when a profile is on, so every other repository's brief stays as it was (ADR 0021)."""
+    parts: list[str] = []
+    for name in context.profiles:
+        profile = load_profile(name)
+        controls = "\n".join(f"- {c.id} {c.title}: {c.guidance}" for c in profile.controls)
+        parts.append(f"Profile {name}, {profile.standard}. Controls, with what to look for:\n{controls}")
+    return [_block(tag, "profiles", "\n\n".join(parts))] if parts else []
 
 
 def _carried(tag: str, context: ReviewContext) -> list[str]:

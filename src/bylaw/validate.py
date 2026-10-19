@@ -4,6 +4,7 @@ import re
 from dataclasses import dataclass
 
 from bylaw import linters
+from bylaw.compliance import load_profile
 from bylaw.model import (
     Category,
     CriterionResult,
@@ -47,7 +48,7 @@ def validate(context: ReviewContext, result: ReviewResult) -> Validated:
             dropped.append(f"{finding.file}:{finding.line_start} {finding.category}: {problem}")
             continue
         seen.add(key)
-        findings.append(finding)
+        findings.append(checker.with_known_controls(finding, dropped))
 
     criteria: list[CriterionResult] = []
     assessed: set[str] = set()
@@ -87,6 +88,15 @@ class _Checker:
         self._decisions = {d.path: d for d in context.decisions}
         self.criteria = frozenset(f"{r.source}/{c.key}" for r in context.requirements for c in r.criteria)
         self._prose = frozenset(r.source for r in context.requirements if r.inferable)
+        self._controls = frozenset(c.id for name in context.profiles for c in load_profile(name).controls)
+
+    def with_known_controls(self, finding: Finding, dropped: list[str]) -> Finding:
+        """A wrong tag is the least certain part of a finding, so only the tag goes (ADR 0021)."""
+        kept = tuple(dict.fromkeys(c for c in finding.controls if c in self._controls))
+        for control in dict.fromkeys(c for c in finding.controls if c not in self._controls):
+            where = f"{finding.file}:{finding.line_start} {finding.category}"
+            dropped.append(f"{where}: control {control} is not in the active profiles")
+        return finding if kept == finding.controls else finding.model_copy(update={"controls": kept})
 
     def inferred_problem(self, item: CriterionResult) -> str | None:
         """None when the item is a valid inferred criterion (ADR 0011)."""

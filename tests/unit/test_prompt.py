@@ -329,3 +329,26 @@ def test_rule_and_decision_lines_are_numbered_as_github_numbers_them() -> None:
 
     assert "   1| One\u2028still one.\n   2| Two.\n" in text
     assert "  12| A\x0cB.\n  13| C." in text
+
+
+def test_a_profile_that_is_on_reaches_the_reviewer_with_its_controls_and_guidance() -> None:
+    text, _ = render_input(CONTEXT.model_copy(update={"profiles": ("iso27001",)}), nonce="feedc0de")
+
+    block = text.split('<data-feedc0de kind="profiles">')[1].split("</data-feedc0de>")[0]
+    assert "ISO/IEC 27001:2022, Annex A" in block
+    assert "- 8.28 Secure coding: " in block
+    assert "- 8.15 Logs: " in block
+    assert len(block) < 6_000
+
+
+def test_without_a_profile_the_brief_has_no_profiles_block() -> None:
+    text, _ = render_input(CONTEXT, nonce="feedc0de")
+
+    assert 'kind="profiles"' not in text
+
+
+def test_the_system_prompt_explains_how_to_tag_a_finding_with_controls() -> None:
+    prompt = system_prompt()
+
+    assert "`profiles`" in prompt
+    assert "`controls`" in prompt

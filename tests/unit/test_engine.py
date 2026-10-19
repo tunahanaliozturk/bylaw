@@ -6,7 +6,7 @@ import httpx2
 import openai
 import pytest
 
-from bylaw.engine import ReviewError, Usage, api_key_for, make_reviewer
+from bylaw.engine import OutReview, ReviewError, Usage, api_key_for, make_reviewer
 from bylaw.engine_anthropic import AnthropicReviewer
 from bylaw.engine_openai import OpenAIReviewer
 
@@ -21,6 +21,7 @@ REVIEW = {
             "message": "SQL built from a string.",
             "suggestion": None,
             "evidence": "CONTRIBUTING.md:3",
+            "controls": ["8.28"],
         }
     ],
     "criteria": [
@@ -465,3 +466,12 @@ def test_a_key_can_come_from_a_given_mapping_instead_of_the_environment(
 
     assert api_key_for("anthropic", {"BYLAW_API_KEY": "installation"}) == "installation"
     assert api_key_for("anthropic", {}) is None
+
+
+def test_the_model_schema_asks_for_controls_on_every_finding_and_keeps_them() -> None:
+    schema = OutReview.model_json_schema()
+    finding = schema["$defs"]["OutFinding"]
+
+    assert "controls" in finding["required"]
+    assert set(finding["required"]) == set(finding["properties"])
+    assert OutReview.model_validate(REVIEW).to_result().findings[0].controls == ("8.28",)

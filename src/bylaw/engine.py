@@ -57,6 +57,8 @@ class OutFinding(_Strict):
     message: str
     suggestion: str | None
     evidence: str | None
+    # Required like every field: an empty list when no profile is on or no control applies (ADR 0021).
+    controls: list[str]
 
 
 class OutLocation(_Strict):
