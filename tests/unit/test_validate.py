@@ -532,3 +532,34 @@ def test_a_finding_validated_twice_keeps_its_controls() -> None:
     once = validate(context, ReviewResult(findings=(_tagged("8.24"),))).result
 
     assert validate(context, once).result == once
+
+
+def _severity_after(
+    severity: Severity, category: Category, *controls: str, profiled: bool = True
+) -> Severity:
+    context = CONTEXT.model_copy(update={"profiles": ("iso27001",) if profiled else ()})
+    finding = _tagged(*controls).model_copy(update={"severity": severity, "category": category})
+    return validate(context, ReviewResult(findings=(finding,))).result.findings[0].severity
+
+
+def test_personal_data_in_a_log_is_at_least_high_under_iso27001() -> None:
+    assert _severity_after(Severity.LOW, Category.SECURITY, "8.15", "8.11") == Severity.HIGH
+    assert _severity_after(Severity.SUGGESTION, Category.BUG, "8.11", "8.15") == Severity.HIGH
+
+
+def test_a_rule_needs_every_one_of_its_controls() -> None:
+    assert _severity_after(Severity.LOW, Category.SECURITY, "8.15") == Severity.LOW
+
+
+def test_a_cryptography_weakness_is_at_least_high_but_a_cryptography_bug_is_not_raised() -> None:
+    assert _severity_after(Severity.MEDIUM, Category.SECURITY, "8.24") == Severity.HIGH
+    assert _severity_after(Severity.MEDIUM, Category.BUG, "8.24") == Severity.MEDIUM
+
+
+def test_a_severity_rule_never_lowers_a_finding() -> None:
+    assert _severity_after(Severity.CRITICAL, Category.SECURITY, "8.15", "8.11") == Severity.CRITICAL
+
+
+def test_without_the_profile_no_severity_is_raised() -> None:
+    # The tags are dropped too, so nothing is left for a rule to match.
+    assert _severity_after(Severity.LOW, Category.SECURITY, "8.15", "8.11", profiled=False) == Severity.LOW
