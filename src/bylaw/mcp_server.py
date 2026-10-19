@@ -271,5 +271,8 @@ def _tool_errors() -> Iterator[None]:
 def _validated(context: ReviewContext, result: dict[str, Any]) -> Validated:
     with _tool_errors():
         parsed = ReviewResult.model_validate(result)
-    # The deterministic findings travel in the context; merged so a result with none still shows them.
-    return validate(context, parsed.model_copy(update={"findings": (*context.findings, *parsed.findings)}))
+    # The deterministic findings travel in the context; merged so a result with none still shows them. A
+    # result that validate returned already holds them, so they are added only when missing: otherwise
+    # sending that result on would drop each one as a duplicate and the loop would never come back clean.
+    missing = tuple(f for f in context.findings if f not in parsed.findings)
+    return validate(context, parsed.model_copy(update={"findings": (*missing, *parsed.findings)}))
