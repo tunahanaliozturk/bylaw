@@ -9,6 +9,8 @@ import tomllib
 from pathlib import Path
 from typing import cast
 
+from ruamel.yaml import YAML
+
 from bylaw.cli import _parser
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -191,3 +193,17 @@ def test_the_fork_recipe_never_cancels_a_review_in_progress() -> None:
     assert "cancel-in-progress: false" in recipe
     assert "cancel-in-progress: true" not in recipe
     assert "pr_tokens" in recipe
+
+
+def test_the_learning_recipe_gives_write_access_to_contents_only_to_the_closing_job() -> None:
+    # The review job reads the author's text and sends it to a model; it must not be able to push.
+    text = (ROOT / "docs" / "learning.md").read_text(encoding="utf-8")
+    block = text.split("```yaml\n", 1)[1].split("```", 1)[0]
+    workflow = YAML(typ="safe").load(block)
+    jobs = workflow["jobs"]
+
+    assert workflow["permissions"] == {}
+    assert jobs["review"]["if"] == "github.event.action != 'closed'"
+    assert jobs["review"]["permissions"]["contents"] == "read"
+    assert jobs["learn"]["if"] == "github.event.action == 'closed'"
+    assert jobs["learn"]["permissions"]["contents"] == "write"
