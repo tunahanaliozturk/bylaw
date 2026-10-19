@@ -79,6 +79,18 @@ class App(BaseModel):
     model_review_label: str | None = Field(default=None, min_length=1, max_length=50)
 
 
+class Ceiling(BaseModel):
+    """Limits the organisation's defaults set for every repository in the GitHub App (ADR 0017). Only the
+    organisation's file sets them; a repository's settings are cut to them, never the other way round."""
+
+    model_config = _SETTINGS
+
+    # "trusted" keeps every repository from opening the model review to all pull requests.
+    model_review: Literal["trusted", "all"] = "all"
+    # The most model tokens any pull request may use, whatever its repository's `[budget]` says.
+    pr_tokens: int | None = Field(default=None, ge=1_000)
+
+
 # The `.bylaw.toml` versions this bylaw reads (ADR 0023). A file without `version` is version 1.
 CONFIG_VERSIONS = (1,)
 
@@ -112,6 +124,8 @@ class Config(BaseModel):
     # On a new push, send the model only the files whose change differs from the last run (ADR 0012).
     incremental: bool = True
     budget: Budget = Budget()
+    # Set by the organisation's defaults only (GitHub App, ADR 0017); see `load_config`.
+    ceiling: Ceiling | None = None
     # Work item trackers, each an opt-in with an allow list, like issue_repos (ADR 0007, ADR 0014).
     jira: Jira | None = None
     azure_boards: AzureBoards | None = None
@@ -172,17 +186,33 @@ def load_config(text: str | None, defaults: str | None = None) -> Config:
 
     A key the repository sets wins. A table such as `[jira]` counts as one key and is replaced whole, so a
     tracker site from one file never pairs with an allow list from the other. `profiles` is the exception:
-    the repository's add to the organisation's, so a repository cannot drop one (ADR 0021).
+    the repository's add to the organisation's, so a repository cannot drop one (ADR 0021). `[ceiling]` is
+    the organisation's alone: one in the repository's file is ignored, and the merged settings are cut to
+    the organisation's, so a repository cannot raise `[app] model_review` or `[budget] pr_tokens` past it.
     """
     org = _parse(defaults, _DEFAULTS)
     if org:
         _validate(org, _DEFAULTS)
     repo = _parse(text, _BASE)
+    repo.pop("ceiling", None)
     merged = {**org, **repo}
     floor, added = org.get("profiles"), repo.get("profiles")
     if isinstance(floor, list) and isinstance(added, list):
         merged["profiles"] = [*floor, *added]
-    return _validate(merged, _BASE)
+    return _under_ceiling(_validate(merged, _BASE))
+
+
+def _under_ceiling(config: Config) -> Config:
+    ceiling = config.ceiling
+    if ceiling is None:
+        return config
+    app, budget = config.app, config.budget
+    if ceiling.model_review == "trusted":
+        app = app.model_copy(update={"model_review": "trusted"})
+    if ceiling.pr_tokens is not None:
+        cap = ceiling.pr_tokens if budget.pr_tokens is None else min(budget.pr_tokens, ceiling.pr_tokens)
+        budget = budget.model_copy(update={"pr_tokens": cap})
+    return config.model_copy(update={"app": app, "budget": budget})
 
 
 def _parse(text: str | None, where: str) -> dict[str, object]:

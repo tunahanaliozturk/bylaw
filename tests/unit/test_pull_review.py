@@ -38,3 +38,13 @@ def test_forks_and_other_authors_are_held_back_unless_a_label_or_the_setting_let
     assert model_gate(_pull(head="stranger/app", labels=("other",)), labelled) is not None
     assert model_gate(_pull(head="stranger/app", labels=("bylaw: review",)), labelled) is None
     assert model_gate(_pull(head=None), load_config('[app]\nmodel_review = "all"\n')) is None
+
+
+def test_under_a_trusted_ceiling_the_gate_does_not_suggest_opening_the_review_to_all() -> None:
+    config = load_config('[app]\nmodel_review = "all"\n', defaults='[ceiling]\nmodel_review = "trusted"\n')
+
+    why = model_gate(_pull(head="stranger/app"), config)
+
+    assert why is not None
+    assert 'model_review = "all"' not in why
+    assert "organisation's `[ceiling]`" in why

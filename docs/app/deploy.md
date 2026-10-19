@@ -173,6 +173,25 @@ access or more can add labels, which a fork's author cannot. In the app a pull r
 most 500,000 model tokens across its runs unless `[budget] pr_tokens` says otherwise, roughly a hundred
 small reviews or one or two of the largest.
 
+### Limits a repository cannot raise
+
+A default is only a default: a repository's `.bylaw.toml` can set `[app] model_review = "all"` or a
+larger `[budget] pr_tokens`, and anyone who can merge to its default branch can do that. To hold every
+repository to a limit, add a `[ceiling]` table to the organisation's defaults:
+
+```toml
+# acme/.github, .bylaw.toml
+[ceiling]
+model_review = "trusted"   # no repository can open the model review to every pull request
+pr_tokens = 200000         # no pull request in any repository may use more model tokens
+```
+
+A repository's settings are cut to the ceiling: `model_review = "all"` reads as `"trusted"`, and its
+`pr_tokens` is the smaller of its own value and the ceiling, or the ceiling when it sets none. A
+`model_review_label` still works, because a maintainer adds that label to one pull request at a time.
+Only the organisation's file sets a ceiling; a `[ceiling]` table in a repository's own `.bylaw.toml` is
+ignored, so it can neither lift nor replace the organisation's.
+
 ## 5. Model keys per installation
 
 Each organisation that installs the app is an installation with a number, shown at the end of the URL

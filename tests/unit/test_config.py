@@ -200,3 +200,26 @@ def test_a_suppression_without_paths_covers_every_file() -> None:
 def test_a_suppression_without_a_reason_a_rule_or_a_path_or_with_an_unknown_key_is_refused(text: str) -> None:
     with pytest.raises(ConfigError, match=r"suppress\.0"):
         load_config(text)
+
+
+CEILING = '[ceiling]\nmodel_review = "trusted"\npr_tokens = 200000\n'
+
+
+def test_a_repository_cannot_raise_the_organisations_ceiling() -> None:
+    repo = '[app]\nmodel_review = "all"\n[budget]\npr_tokens = 900000\n'
+
+    config = load_config(repo, defaults=CEILING)
+
+    assert (config.app.model_review, config.budget.pr_tokens) == ("trusted", 200_000)
+
+
+def test_under_the_ceiling_a_repository_still_lowers_its_budget_and_gets_the_ceiling_by_default() -> None:
+    assert load_config("[budget]\npr_tokens = 100000\n", defaults=CEILING).budget.pr_tokens == 100_000
+    assert load_config(None, defaults=CEILING).budget.pr_tokens == 200_000
+
+
+def test_a_repositorys_own_ceiling_can_neither_lift_nor_replace_the_organisations() -> None:
+    repo = '[ceiling]\nmodel_review = "all"\npr_tokens = 900000\n[budget]\npr_tokens = 900000\n'
+
+    assert load_config(repo, defaults=CEILING).budget.pr_tokens == 200_000
+    assert load_config(repo).budget.pr_tokens == 900_000

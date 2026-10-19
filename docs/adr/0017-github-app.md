@@ -194,3 +194,26 @@ durable queue can come later without changing the review.
   front.
 - **An HMAC over the summary state.** Not needed now: with a fixed identity, trusting only the app's own
   login gives the same protection without a key to rotate.
+
+## Amendment, 2026-10-19: a ceiling the organisation sets
+
+The 1.0 security review noted that the organisation's defaults were only defaults: a repository could
+set `[app] model_review = "all"` or raise `[budget] pr_tokens`, and so spend the installation's key on
+every fork pull request or on one very large one, with nothing the organisation could do about it short
+of reading every repository's `.bylaw.toml`.
+
+We add a `[ceiling]` table that only the organisation's `.bylaw.toml` sets, with `model_review` and
+`pr_tokens`. After the files are merged, the settings are cut to it: `model_review = "trusted"` in the
+ceiling turns a repository's `"all"` into `"trusted"`, and `pr_tokens` in the ceiling is the most any pull
+request may use, whatever the repository sets, and its budget when it sets none. A repository's own
+`[ceiling]` is ignored.
+
+- Why a table of its own rather than reading the organisation's values of these keys as maxima: that
+  would have changed what existing defaults mean, and an organisation that wants a default its
+  repositories can raise still writes it the old way.
+- `model_review_label` stays usable under the ceiling: a maintainer adds the label to one pull request at
+  a time, which is the decision ADR 0006 asks for. The gate's note names the ceiling instead of advising
+  `model_review = "all"`.
+- Cost: an organisation that wants the limit has to know the table exists; the deploy guide shows it next
+  to the model review settings.
+
