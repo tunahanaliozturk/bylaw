@@ -265,13 +265,13 @@ def test_a_carriage_return_cannot_close_the_suggestion_early(
     client: GitLabClient, server: respx.MockRouter
 ) -> None:
     create = server.post(f"{P}/merge_requests/5/discussions").mock(return_value=httpx.Response(201, json={}))
-    comment = _rendered("new.py", 1, 1, message="m\r\n\r/close", suggestion="x``\r`\n/merge\nafter")
+    comment = _rendered("new.py", 1, 1, message="m\r\n\r/close", suggestion="x``\r`\nmerge\nafter")
 
     _mr(client).create_review("group/app", 5, "h1", "", [comment])
 
     sent = json.loads(create.calls.last.request.content)["body"]
     assert _quick_actions(sent) == []
-    assert "````suggestion\nx```\n/merge\nafter\n````" in sent
+    assert "````suggestion\nx```\nmerge\nafter\n````" in sent
 
 
 def test_a_single_line_comment_is_a_discussion_on_the_new_line(
@@ -531,3 +531,19 @@ def test_without_its_own_identity_the_merge_request_authors_note_is_never_the_su
     )
 
     assert _mr(client).summary_comment("group/app", 5) is None
+
+
+def test_a_suggestion_that_needs_a_long_fence_and_has_a_slash_line_is_left_out(
+    client: GitLabClient, server: respx.MockRouter
+) -> None:
+    # An older GitLab may not read a four-backtick fence as a code block, and would then run `/close`.
+    create = server.post(f"{P}/merge_requests/5/discussions").mock(return_value=httpx.Response(201, json={}))
+    comment = _rendered("new.py", 1, 1, message="m", suggestion="```\n/close")
+
+    _mr(client).create_review("group/app", 5, "h1", "", [comment])
+
+    sent = json.loads(create.calls.last.request.content)["body"]
+    assert "````suggestion" not in sent
+    assert "/close" not in sent
+    assert "The suggested change is left out" in sent
+    assert _quick_actions(sent) == []

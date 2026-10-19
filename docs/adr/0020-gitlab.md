@@ -59,7 +59,10 @@ The core (context, validation, the plan, the summary and its state) is unchanged
   slash once GitLab had read it. The suggestion's fence is measured after that deletion, since `` ``\r` ``
   would otherwise become a closing fence. Only bylaw's own suggestion block is left as written: it is
   always a fenced code block, where GitLab reads no quick action. Other code blocks get the space too,
-  because telling them apart exactly as GitLab's Markdown does is where a mistake would hide.
+  because telling them apart exactly as GitLab's Markdown does is where a mistake would hide. Since the
+  1.0 security review (2026-10-19), a suggestion that holds three backticks in a row, so its fence must be
+  longer, and that has a line starting with a slash is left out with a note: an older GitLab whose
+  extractor knows only three-backtick fences would run that line.
 - **Summary note.** One note that starts with the summary marker, edited in place with `PUT`, with the
   hidden state at its end (ADR 0005). GitLab strips trailing whitespace and carriage returns from a note
   body; the state block does not depend on either. Once bylaw knows its account, only a note that account
