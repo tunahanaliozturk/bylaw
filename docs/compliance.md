@@ -96,6 +96,9 @@ found nothing to tag, which is worth recording, but is not a statement that the 
   with their login, or its thread resolved by a person while the problem is still in the code, with the
   login GitHub reports. Only owners, members and collaborators can mute a finding, and never on their own
   pull request.
+- **Still open:** each finding whose thread the pull request's own author resolved. Resolving never
+  mutes (ADR 0008), and an author cannot accept a finding on their own change, so these stay open: they
+  count for `fail-on` and the evidence marks them `resolved_by_author`.
 
 ## The evidence file
 
@@ -136,7 +139,7 @@ field can be added within a version, so a reader should ignore fields it does no
 | `requirements` | The linked requirements: `source`, such as `issue#12` or `PROJ-7`, and `criteria`, each a `key` and a `status` (`met`, `partial`, `missing` or `not assessed`). A requirement's title and text are never copied here. |
 | `files_changed` | Every changed file bylaw read, by path. |
 | `tests_changed` | The changed files that look like tests. |
-| `findings` | Every current finding: `file`, `line_start`, `line_end`, `category`, `severity`, `message`, `evidence` (the rule line or criterion it cites, or null), `controls`, `status` (`open` or `accepted`), and for an accepted one `accepted_how` (`muted` or `resolved`) and `accepted_by` (a GitHub login, or null when GitHub does not say). |
+| `findings` | Every current finding: `file`, `line_start`, `line_end`, `category`, `severity`, `message`, `evidence` (the rule line or criterion it cites, or null), `controls`, `status` (`open`, `accepted`, or `resolved_by_author` for one whose thread the pull request's author resolved, which still counts as open), and for one a person closed `how` (`muted` or `resolved`) and `by` (a login, or null when the host does not say). |
 | `controls` | The controls the findings touch: `id`, `title` (bylaw's) and `findings`, each as `file:line`. |
 | `threads_resolved` | Review threads bylaw resolved this run because their problem is gone from the code. |
 | `notes` | The summary's notes: files skipped, rules read from the base branch, why the model review did not run. |
@@ -163,7 +166,7 @@ A shortened example:
     {
       "file": "app/auth.py", "line_start": 31, "line_end": 31, "category": "security", "severity": "high",
       "message": "The password is written to the log.", "evidence": null, "controls": ["8.15", "8.11"],
-      "status": "open", "accepted_how": null, "accepted_by": null
+      "status": "open", "how": null, "by": null
     }
   ],
   "controls": [
@@ -187,7 +190,8 @@ For a sampled change:
    rules bylaw can check without a model, not secure coding.
 4. Read `findings`. An open finding at `high` or above on a merged change, or an accepted one, should have
    a reason somewhere the team can show you: the thread on GitHub, a risk acceptance, a follow-up issue.
-   `accepted_by` tells you whom to ask.
+   `by` tells you whom to ask. A `resolved_by_author` finding was closed by the person who wrote the
+   change; treat it as open.
 5. Read `tests_changed` next to the code that changed. Security relevant code with no test change is
    worth a question, not a finding by itself.
 6. Read who approved the pull request on GitHub. bylaw does not record it.

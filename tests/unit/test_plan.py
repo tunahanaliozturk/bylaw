@@ -270,3 +270,13 @@ def test_a_finding_a_reviewer_resolved_names_who_resolved_the_thread() -> None:
     plan = make_plan([_group(FP)], [thread], NO_STATE, Severity.MEDIUM, 15)
 
     assert [g.by for g in plan.reviewer_resolved] == ["dave"]
+
+
+def test_a_thread_the_pull_request_author_resolved_still_counts_for_fail_on() -> None:
+    # ADR 0008: resolving never mutes, and the author cannot accept a finding on their own change.
+    thread = replace(_ours(FP, "T1", True), resolved_by="alice", resolved_by_pr_author=True)
+    plan = make_plan([_group(FP)], [thread], NO_STATE, Severity.MEDIUM, 15)
+
+    assert plan.reviewer_resolved == ()
+    assert [g.by for g in plan.author_resolved] == ["alice"]
+    assert remaining(plan) == (_finding(),)

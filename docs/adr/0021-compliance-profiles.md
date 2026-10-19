@@ -73,7 +73,10 @@ request switch the profile off for itself.
   touches, and the findings resolved, still open, or accepted, with who accepted them. Who comes from
   data bylaw already reads: the login of the maintainer whose `bylaw: ignore` reply muted a finding, and
   GitHub's `resolvedBy` on a thread a person resolved, one more field in the threads query bylaw already
-  makes.
+  makes (GitLab's `resolved_by` on the thread's notes). A thread the pull request's own author resolved
+  accepts nothing: resolving never mutes (ADR 0008), so such a finding stays open, counts for
+  `fail-on`, and is marked `resolved_by_author`. Before this, an author could take a finding out of
+  `fail-on` by resolving its thread; that gap is closed for every repository, profile or not.
 - **The evidence file.** `bylaw review --evidence PATH` writes the same record as JSON when a profile is
   on, with a `schema_version` that changes when a field changes meaning or goes away; new fields may be
   added within a version. The Action passes `--evidence` and uploads the file as an artifact of the

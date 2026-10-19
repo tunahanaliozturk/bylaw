@@ -54,6 +54,9 @@ class EvidenceRequirement(_Frozen):
     criteria: tuple[EvidenceCriterion, ...]
 
 
+_Status = Literal["open", "accepted", "resolved_by_author"]
+
+
 class EvidenceFinding(_Frozen):
     file: str
     line_start: int
@@ -63,10 +66,12 @@ class EvidenceFinding(_Frozen):
     message: str
     evidence: str | None
     controls: tuple[str, ...]
-    status: Literal["open", "accepted"]
-    # For an accepted finding: how, and the login of who accepted it when GitHub says.
-    accepted_how: Literal["muted", "resolved"] | None = None
-    accepted_by: str | None = None
+    # "resolved_by_author": the pull request's author resolved its thread, which accepts nothing (ADR 0008),
+    # so it still counts as open, for `--fail-on` too.
+    status: _Status
+    # How a person closed it, muted or resolved, and their login when the host says.
+    how: Literal["muted", "resolved"] | None = None
+    by: str | None = None
 
 
 class EvidenceControl(_Frozen):
@@ -109,6 +114,7 @@ def build_evidence(context: ReviewContext, result: ReviewResult, plan: Plan) -> 
         *(_open(g) for g in (*plan.inline, *plan.open_threads, *plan.summary_only)),
         *(_accepted(g, "muted") for g in plan.muted),
         *(_accepted(g, "resolved") for g in plan.reviewer_resolved),
+        *(_closed(g, "resolved_by_author", "resolved") for g in plan.author_resolved),
     ]
     flat = [entry for group in findings for entry in group]
     profiles = [load_profile(name) for name in context.profiles]
@@ -156,13 +162,17 @@ def _open(group: Group) -> list[EvidenceFinding]:
 
 
 def _accepted(group: Group, how: Literal["muted", "resolved"]) -> list[EvidenceFinding]:
+    return _closed(group, "accepted", how)
+
+
+def _closed(group: Group, status: _Status, how: Literal["muted", "resolved"]) -> list[EvidenceFinding]:
     return [
-        _entry(f, "accepted").model_copy(update={"accepted_how": how, "accepted_by": group.by})
+        _entry(f, status).model_copy(update={"how": how, "by": group.by})
         for f in (group.finding, *group.others)
     ]
 
 
-def _entry(finding: Finding, status: Literal["open", "accepted"]) -> EvidenceFinding:
+def _entry(finding: Finding, status: _Status) -> EvidenceFinding:
     return EvidenceFinding(
         file=finding.file,
         line_start=finding.line_start,
