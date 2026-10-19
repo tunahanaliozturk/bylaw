@@ -79,8 +79,11 @@ Out of scope:
 - Someone who already has write access to the repository, the organisation's `.github` repository, the
   workflow files or the CI/CD variables. They can change what bylaw runs or read its secrets without
   bylaw.
-- A bot account the repository chose to install writing bylaw's markers (ADR 0008 trusts bots by account
-  type).
+- A bot account the repository chose to install writing bylaw's markers. Where bylaw knows the bot it
+  posts as, only that bot counts: the GitHub App's own, or `github-actions[bot]` when the Action posts
+  with the workflow token. With another token any bot counts, so a bot that repeats pull request text,
+  or a workflow that echoes it as `github-actions[bot]`, could plant a marker. That is a known limit
+  ([ADR 0008](docs/adr/0008-trusted-authors-carry-state.md)).
 - The model provider, GitHub, GitLab or a tracker misbehaving, and denial of service against the
   operator's own GitHub App server by an installation the operator accepted.
 - Pointing `bylaw mcp` at a repository you do not trust: git applies a repository's own configuration,

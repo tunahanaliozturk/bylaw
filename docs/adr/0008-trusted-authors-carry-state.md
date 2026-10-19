@@ -71,7 +71,17 @@ Consequences:
 - A pull request's author can still post comments with markers; they are ordinary comments.
 - With a personal token on a pull request its owner opened, bylaw's comments are the author's comments.
   It tells them apart by asking who the token is, which costs one call, made only when such a comment
-  carries a marker.
+  carries a marker. Only a 401, a 404 or a 403 that is not a rate limit reads as "this token has no
+  user"; any other failure of that call ends the run, because reading it as no identity would post a
+  second summary and repost every open finding.
+- Bots a pull request's author can steer. Trusting any bot means a bot that writes what a pull request
+  asks for, such as a review bot that quotes the pull request or a workflow that echoes its text as
+  `github-actions[bot]`, could plant a fingerprint or a summary. Where bylaw knows the bot it posts as,
+  only that bot counts: the GitHub App names its own, and the Action sets `BYLAW_BOT_LOGIN` to
+  `github-actions[bot]` when it posts with the workflow token. A workflow echoing pull request text as
+  `github-actions[bot]` is still trusted then, so do not run one next to bylaw. With any other token, a
+  personal token or an app token from another action, bylaw cannot name its bot and any bot counts;
+  that is a known limit.
 - Cost: a repository that ran bylaw with a personal token on 0.x and a person other than the token's
   owner wrote its summary gets a new summary comment on the first 1.0 run.
 

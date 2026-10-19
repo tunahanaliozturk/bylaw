@@ -267,7 +267,7 @@ def _snapshot(args: argparse.Namespace) -> int:
         _say('eval snapshot needs GITHUB_TOKEN or GH_TOKEN, for example GH_TOKEN="$(gh auth token)"')
         return 2
     api_url = os.environ.get("GITHUB_API_URL", "https://api.github.com")
-    with GitHubClient(token, api_url, os.environ.get("GITHUB_GRAPHQL_URL")) as client:
+    with github_client(token, api_url) as client:
         pull = snapshot_pull_request(client, args.repo, args.pr, args.comment, root / "cases" / args.id)
     _say(f"froze {pull.url} at {pull.head_sha[:12]} into {root / 'cases' / args.id}; label it in case.toml")
     return 0
@@ -321,7 +321,7 @@ def _context(args: argparse.Namespace) -> ReviewContext:
         return build_context(LocalGitSource(Path(args.path), args.base, args.repo))
     repo, token = _repo_and_token(args.repo)
     api_url = os.environ.get("GITHUB_API_URL", "https://api.github.com")
-    with GitHubClient(token, api_url, os.environ.get("GITHUB_GRAPHQL_URL")) as client:
+    with github_client(token, api_url) as client:
         return build_context(GitHubSource(client, repo, args.pr), operator_sites=_pin_sites(repo))
 
 
@@ -350,7 +350,7 @@ def _post(args: argparse.Namespace) -> None:
         return
     repo, token = _repo_and_token(args.repo)
     api_url = os.environ.get("GITHUB_API_URL", "https://api.github.com")
-    with GitHubClient(token, api_url, os.environ.get("GITHUB_GRAPHQL_URL")) as client:
+    with github_client(token, api_url) as client:
         # Read again rather than trusting the context file: the config must come from the base branch.
         config = load_config(GitHubSource(client, repo, args.pr).read_base(".bylaw.toml"))
         plan = publish(client, repo, args.pr, context=context, result=checked.result, config=config)
@@ -439,7 +439,7 @@ def _learn(args: argparse.Namespace) -> int:
         return 0
     repo, token = _repo_and_token(args.repo)
     api_url = os.environ.get("GITHUB_API_URL", "https://api.github.com")
-    with GitHubClient(token, api_url, os.environ.get("GITHUB_GRAPHQL_URL")) as client:
+    with github_client(token, api_url) as client:
         learn_from_pull_request(client, repo, args.pr, say=_say)
     return 0
 
@@ -447,7 +447,7 @@ def _learn(args: argparse.Namespace) -> int:
 def _report(args: argparse.Namespace) -> None:
     repo, token = _repo_and_token(args.repo)
     api_url = os.environ.get("GITHUB_API_URL", "https://api.github.com")
-    with GitHubClient(token, api_url, os.environ.get("GITHUB_GRAPHQL_URL")) as client:
+    with github_client(token, api_url) as client:
         records = read_records(client, repo)
     out = Path(args.output)
     out.mkdir(parents=True, exist_ok=True)
@@ -461,7 +461,7 @@ def _review_pull_request(args: argparse.Namespace) -> tuple[PullReview, str]:
     """Review a pull request; the review holds the findings `--fail-on` counts (muted ones excluded)."""
     repo, token = _repo_and_token(args.repo)
     api_url = os.environ.get("GITHUB_API_URL", "https://api.github.com")
-    with GitHubClient(token, api_url, os.environ.get("GITHUB_GRAPHQL_URL")) as client:
+    with github_client(token, api_url) as client:
         review = review_pull_request(
             client,
             repo,
@@ -540,6 +540,18 @@ def _exit_code(findings: Sequence[Finding], fail_on: str) -> int:
         _say(f"{len(failing)} finding(s) at or above {fail_on}.")
         return 1
     return 0
+
+
+def github_client(token: str, api_url: str) -> GitHubClient:
+    """A GitHub client; `BYLAW_BOT_LOGIN` names the bot bylaw posts as, when the caller knows it. The Action
+    sets it to github-actions[bot] when it posts with the workflow token, so no other bot carries bylaw's
+    state there (ADR 0008)."""
+    return GitHubClient(
+        token,
+        api_url,
+        os.environ.get("GITHUB_GRAPHQL_URL"),
+        bot_login=os.environ.get("BYLAW_BOT_LOGIN") or None,
+    )
 
 
 def _without_secrets() -> bool:
