@@ -6,8 +6,10 @@
 #                      the merge request, posts as the token's bot user, and trusts its review memory only
 #                      in notes that user wrote. CI_JOB_TOKEN will not do: it can read a merge request but
 #                      not its diff, and it cannot post a note.
-#                      Leave "Protect variable" off. Merge request pipelines run on the source branch,
-#                      which is usually unprotected, and a protected variable never reaches them.
+#                      Leave "Protect variable" off unless you know your setup lets it through: since
+#                      GitLab 18.1 a protected variable reaches a merge request pipeline only when a
+#                      Maintainer allows it and both branches are protected and in this project. Feature
+#                      branches usually are not, and a fork's pipeline never gets one.
 #   ANTHROPIC_API_KEY  Optional. Without it bylaw still runs its own checks; with it a model reviews too.
 #
 # Merge requests from forks run their pipeline in the fork, without these variables, so bylaw prints a
@@ -21,6 +23,10 @@ bylaw:
   # A newer push makes this run pointless, and GitLab can cancel it when the project allows that.
   interruptible: true
   variables:
+    # No checkout: bylaw reads the change, the rules and the issues through the API, so cloning the merge
+    # request's branch only costs time and puts its files in the job's directory, where nothing should
+    # read them. (uvx already ignores a uv.toml or pyproject.toml there; this keeps it that way.)
+    GIT_STRATEGY: none
     # The first release with GitLab support; pin it so an update is a change you review.
     BYLAW_VERSION: "0.6.0"
   script:
