@@ -332,6 +332,21 @@ def test_a_position_gitlab_refuses_becomes_a_discussion_that_names_the_line(
     assert "<!-- bylaw:fp=0123456789abcdef -->" in sent["body"]
 
 
+def test_the_line_named_in_an_unpositioned_discussion_cannot_run_a_quick_action(
+    client: GitLabClient, server: respx.MockRouter
+) -> None:
+    def serve(request: httpx.Request) -> httpx.Response:
+        if "position" in json.loads(request.content):
+            return httpx.Response(400, json={"message": "400 Bad request"})
+        return httpx.Response(201, json={})
+
+    create = server.post(f"{P}/merge_requests/5/discussions").mock(side_effect=serve)
+
+    _mr(client).create_review("group/app", 5, "h1", "", [_rendered("odd\r\n/merge.py", 1, 1)])
+
+    assert _quick_actions(json.loads(create.calls.last.request.content)["body"]) == []
+
+
 def test_a_rejected_line_range_falls_back_to_a_single_line(
     client: GitLabClient, server: respx.MockRouter
 ) -> None:
