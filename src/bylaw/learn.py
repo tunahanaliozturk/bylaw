@@ -17,7 +17,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, ValidationError
 
-from bylaw.config import Learn, load_config
+from bylaw.config import ConfigError, Learn, load_config
 from bylaw.github import GitHubClient, GitHubError, GitHubSource
 from bylaw.model import Category, Suppression
 from bylaw.plan import OutcomeStatus, close_outcomes
@@ -234,7 +234,10 @@ def open_suggestion(client: GitHubClient, repo: str, base: str, suggestion: Sugg
         return None
     current = client.file_text(repo, ".bylaw.toml", head) or ""
     text = (current.rstrip("\n") + "\n\n" if current.strip() else "") + _suppression_toml(suggestion)
-    load_config(text)  # never propose a file bylaw itself would refuse
+    try:
+        load_config(text)
+    except ConfigError:
+        return None  # never propose a file bylaw itself would refuse, such as a rule past 200 characters
     message = f"bylaw: suggest suppressing {suggestion.rule}"
     client.commit_file(repo, branch, ".bylaw.toml", text, message, start=head)
     return client.open_pull(

@@ -113,3 +113,19 @@ def test_a_token_that_may_not_open_pull_requests_fails_and_says_what_to_allow(
     error = capsys.readouterr().err
     assert "pull-requests: write" in error
     assert "allows GitHub Actions to create pull requests" in error
+
+
+def test_a_rule_too_long_for_a_suppression_is_not_suggested_and_the_record_still_lands() -> None:
+    long_rule = "x" * 201
+    earlier = [
+        _earlier(n).model_copy(
+            update={"findings": tuple(f.model_copy(update={"rule": long_rule}) for f in _earlier(n).findings)}
+        )
+        for n in (1, 2, 3)
+    ]
+    github = _closed_with_a_mute(*earlier)
+
+    assert _run(github, "learn") == 0
+
+    assert github.opened == []
+    assert "pulls/5.json" in (github.files(STORE_BRANCH) or {})
