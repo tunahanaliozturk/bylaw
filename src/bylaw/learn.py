@@ -6,17 +6,22 @@ per-repository report. Nothing here changes a review: a suggestion is a pull req
 or closes.
 """
 
-from collections.abc import Callable, Mapping
+import hashlib
+import json
+from collections.abc import Callable, Iterable, Mapping
+from dataclasses import dataclass
 from http import HTTPStatus
 from importlib.metadata import version
+from pathlib import PurePosixPath
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, ValidationError
 
-from bylaw.config import load_config
+from bylaw.config import Learn, load_config
 from bylaw.github import GitHubClient, GitHubError, GitHubSource
+from bylaw.model import Category, Suppression
 from bylaw.plan import OutcomeStatus, close_outcomes
-from bylaw.render import read_state
+from bylaw.render import code_span, read_state
 
 STORE_BRANCH = "bylaw-outcomes"
 SCHEMA_VERSION: Literal[1] = 1
@@ -24,6 +29,9 @@ SCHEMA_VERSION: Literal[1] = 1
 # pull requests stop counting; a store that outgrows this needs an index file on the branch.
 MAX_RECORDS = 500
 _BATCH = 100
+# ponytail: a cap on suggestion pull requests per closed pull request, so turning learning on in a repository
+# with a long history cannot open dozens at once; the rest come on later runs.
+MAX_SUGGESTIONS = 3
 _WRITE_REFUSED = frozenset({HTTPStatus.FORBIDDEN, HTTPStatus.NOT_FOUND})
 
 Say = Callable[[str], None]
@@ -95,6 +103,20 @@ def learn_from_pull_request(client: GitHubClient, repo: str, number: int, *, say
     )
     write_record(client, repo, record)
     say(f"recorded {len(record.findings)} outcome(s) of pull request {number} on {STORE_BRANCH}.")
+    found = suggestions(read_records(client, repo), config.learn, config.suppress)
+    for suggestion in found[:MAX_SUGGESTIONS]:
+        try:
+            url = open_suggestion(client, repo, pull.base.ref, suggestion)
+        except GitHubError as error:
+            if error.status not in _WRITE_REFUSED:
+                raise
+            raise GitHubError(
+                f"{error} Opening a suggestion needs `contents: write` and `pull-requests: write`, and the "
+                "repository setting that allows GitHub Actions to create pull requests (docs/learning.md).",
+                error.status,
+            ) from error
+        if url:
+            say(f"suggested a suppression of {suggestion.rule} in {url}.")
     return record
 
 
@@ -131,6 +153,117 @@ def read_records(client: GitHubClient, repo: str) -> list[Record]:
     for start in range(0, len(paths), _BATCH):
         texts |= client.files_text(repo, STORE_BRANCH, paths[start : start + _BATCH])
     return parse_records(texts)
+
+
+@dataclass(frozen=True, slots=True)
+class Suggestion:
+    category: str
+    rule: str
+    # The deepest directory every dismissed finding shares, as a glob; every file when they share none.
+    paths: tuple[str, ...]
+    # The pull requests that dismissed it, oldest first, and who did in each.
+    pull_requests: tuple[int, ...]
+    by: tuple[str, ...]
+    fixed: int
+
+
+def suggestions(records: Iterable[Record], learn: Learn, suppress: Iterable[Suppression]) -> list[Suggestion]:
+    """Rules maintainers dismissed in at least `threshold` pull requests, more often than they were fixed.
+
+    Findings are grouped by category and the exact rule they cite: a fingerprint includes the code, so it
+    never repeats across pull requests, and a model's message is no stable key. A finding that cites
+    nothing is never grouped, and a security finding is never suggested (ADR 0022).
+    """
+    allowed = set(learn.suggest) - {Category.SECURITY.value}
+    suppressed = {s.rule for s in suppress}
+    dismissed: dict[tuple[str, str], dict[int, tuple[str, str]]] = {}
+    fixed: dict[tuple[str, str], set[int]] = {}
+    for record in records:
+        for f in record.findings:
+            if f.rule is None or f.category not in allowed or f.rule in suppressed:
+                continue
+            key = (f.category, f.rule)
+            if f.outcome == "fixed":
+                fixed.setdefault(key, set()).add(record.pull_request)
+            # A dismissal counts only with a login, and never the pull request author's own (ADR 0008).
+            elif f.outcome in ("muted", "resolved") and f.by and f.by != record.author:
+                dismissed.setdefault(key, {})[record.pull_request] = (f.by, f.file)
+    found = []
+    for (category, rule), by_pull in dismissed.items():
+        fixes = len(fixed.get((category, rule), ()))
+        if len(by_pull) < learn.threshold or len(by_pull) <= fixes:
+            continue
+        numbers = tuple(sorted(by_pull))
+        common = _shared_directory(by_pull[n][1] for n in numbers)
+        found.append(
+            Suggestion(
+                category=category,
+                rule=rule,
+                paths=(f"{'/'.join(common)}/**",) if common else ("**",),
+                pull_requests=numbers,
+                by=tuple(dict.fromkeys(by_pull[n][0] for n in numbers)),
+                fixed=fixes,
+            )
+        )
+    return sorted(found, key=lambda s: (-len(s.pull_requests), s.rule))
+
+
+def _shared_directory(files: Iterable[str]) -> tuple[str, ...]:
+    shared: list[str] = []
+    for column in zip(*(PurePosixPath(f).parent.parts for f in files), strict=False):
+        if len(set(column)) != 1:
+            break
+        shared.append(column[0])
+    return tuple(shared)
+
+
+def open_suggestion(client: GitHubClient, repo: str, base: str, suggestion: Suggestion) -> str | None:
+    """Open a pull request that adds the suppression to `.bylaw.toml` on `base`; None when one was ever
+    opened for this rule before, open or closed: closing it unmerged is the maintainers' answer."""
+    key = hashlib.sha256(f"{suggestion.category}\0{suggestion.rule}".encode()).hexdigest()[:12]
+    branch = f"bylaw/suppress-{key}"
+    head = client.branch_head(repo, base)
+    if head is None or client.find_pull(repo, branch):
+        return None
+    current = client.file_text(repo, ".bylaw.toml", head) or ""
+    text = (current.rstrip("\n") + "\n\n" if current.strip() else "") + _suppression_toml(suggestion)
+    load_config(text)  # never propose a file bylaw itself would refuse
+    message = f"bylaw: suggest suppressing {suggestion.rule}"
+    client.commit_file(repo, branch, ".bylaw.toml", text, message, start=head)
+    return client.open_pull(
+        repo, branch, base, f"Suppress {suggestion.rule}? (suggested by bylaw)", _body(suggestion)
+    )
+
+
+def _suppression_toml(suggestion: Suggestion) -> str:
+    pulls = len(suggestion.pull_requests)
+    reason = f"Maintainers dismissed this without a change in {pulls} pull requests."
+    return (
+        "[[suppress]]\n"
+        "# Suggested by bylaw learn (docs/learning.md).\n"
+        f"rule = {json.dumps(suggestion.rule)}\n"
+        f"paths = [{', '.join(json.dumps(p) for p in suggestion.paths)}]\n"
+        f"reason = {json.dumps(reason)}\n"
+    )
+
+
+def _body(suggestion: Suggestion) -> str:
+    numbers = [f"#{n}" for n in suggestion.pull_requests]
+    listed = ", ".join(numbers[:-1]) + f" and {numbers[-1]}" if len(numbers) > 1 else numbers[0]
+    # Logins in code spans, so listing them notifies nobody.
+    people = ", ".join(code_span(login) for login in suggestion.by)
+    fixed = f"fixed in {suggestion.fixed} pull request(s)" if suggestion.fixed else "never fixed"
+    paths = ", ".join(code_span(p) for p in suggestion.paths)
+    return (
+        f"Maintainers muted or resolved {suggestion.category} findings that cite "
+        f"{code_span(suggestion.rule)} without changing the code in {len(numbers)} pull requests: {listed}, "
+        f"dismissed by {people}. It was {fixed} in the pull requests bylaw has records of.\n\n"
+        f"This pull request adds a suppression for it to `.bylaw.toml`, for {paths}. "
+        "Nothing changes until a maintainer merges it, and every summary lists the suppression and what it "
+        "hid. Edit the paths or the reason before merging, or close this pull request: bylaw will not "
+        "suggest this rule again. If the rule itself is unclear, clarifying it may be the better change.\n\n"
+        "bylaw never suggests hiding a security finding, and a suppression never hides one (ADR 0022)."
+    )
 
 
 def parse_records(texts: Mapping[str, str | None]) -> list[Record]:

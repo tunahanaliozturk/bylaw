@@ -431,3 +431,8 @@ def _code(text: str) -> str:
     if "`" in text or "<" in text or "\n" in text:
         return _text(text)
     return f"`{text}`"
+
+
+def code_span(text: str) -> str:
+    """`_code` for the other Markdown bylaw writes, such as a suggestion pull request's body."""
+    return _code(text)

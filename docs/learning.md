@@ -72,8 +72,11 @@ for that rule exists yet, bylaw opens a pull request that adds one to `.bylaw.to
 requests and maintainers that led to it in its body. Close it if you disagree, or if the better answer is
 to make the rule clearer; bylaw never opens the same suggestion twice.
 
-A pull request opened with `GITHUB_TOKEN` does not start other workflows, so the suggestion's own CI runs
-once someone pushes to it, or closes and reopens it.
+Opening one needs `pull-requests: write` and the repository setting **Allow GitHub Actions to create and
+approve pull requests** (Settings, Actions, General), which is off by default; without it the closing run
+fails with a message that says so, after the outcomes are recorded. At most three suggestions are opened
+per closed pull request. A pull request opened with `GITHUB_TOKEN` does not start other workflows, so the
+suggestion's own CI runs once someone pushes to it, or closes and reopens it.
 
 Security findings are never suggested, and a suppression never hides one.
 
