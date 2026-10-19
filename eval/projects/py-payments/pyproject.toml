@@ -1,0 +1,8 @@
+[project]
+name = "payments-service"
+version = "2.1.0"
+requires-python = ">=3.13"
+dependencies = []
+
+[dependency-groups]
+dev = ["pytest>=9.1.1"]

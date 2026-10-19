@@ -1,0 +1,15 @@
+project = "py-payments"
+kind = "security"
+title = "Faster sign-in"
+message = "Hash passwords with salted MD5"
+
+[[findings]]
+file = "app/accounts.py"
+lines = [21, 21]
+categories = ["security"]
+note = "stores passwords as a fast MD5 hash instead of scrypt"
+controls = ["8.24"]
+
+[[allowed]]
+file = "app/accounts.py"
+lines = [20, 21]

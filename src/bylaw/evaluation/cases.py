@@ -38,6 +38,8 @@ class ExpectedFinding(Span):
     deterministic: bool = False
     # Other places where a reviewer may fairly anchor the same defect, such as the call of a broken method.
     also: tuple[Span, ...] = ()
+    # Profile controls a right answer may tag, in a project with a compliance profile on (ADR 0021).
+    controls: tuple[str, ...] = ()
 
 
 class ExpectedCreep(_Frozen):

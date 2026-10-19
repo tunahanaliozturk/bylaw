@@ -1,0 +1,15 @@
+project = "py-payments"
+kind = "security"
+title = "Log failed sign-ins"
+message = "Log failed sign-ins for the fraud team"
+
+[[findings]]
+file = "app/accounts.py"
+lines = [42, 42]
+categories = ["security"]
+note = "writes the password of a failed sign-in to the log"
+controls = ["8.15", "8.11"]
+
+[[allowed]]
+file = "app/accounts.py"
+lines = [42, 42]

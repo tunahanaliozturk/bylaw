@@ -85,6 +85,8 @@ def _section(
         f"- Other remarks on {kind} code, not scored: {score.ignored} ({score.ignored_inline} at medium "
         "or above).",
         f"- Rule findings citing the right rule line: {score.citations_correct} of {score.citations_total}.",
+        f"- Profile findings tagged with a labelled control: {score.controls_correct} of "
+        f"{score.controls_total}.",
         f"- Acceptance criteria judged correctly: {score.criteria_correct} of {score.criteria_total}.",
         f"- Scope creep found: {score.creep_found} of {score.creep_expected}, "
         f"with {score.creep_extra} extra.",
