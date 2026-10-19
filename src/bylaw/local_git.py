@@ -89,6 +89,7 @@ class LocalGitSource:
         return None
 
     def _show(self, revision: str, path: str) -> str | None:
+        # git applies no textconv to `show <rev>:<path>` unless asked; --no-textconv keeps it that way.
         result = self._run("show", "--no-textconv", f"{revision}:{path}")
         return result.stdout.decode("utf-8", errors="replace") if result.returncode == 0 else None
 
@@ -102,8 +103,9 @@ class LocalGitSource:
     def _run(self, *args: str) -> subprocess.CompletedProcess[bytes]:
         # git is resolved from PATH on purpose; arguments are a list, so nothing goes through a shell. No
         # stdin: under `bylaw mcp` it is the protocol channel, and a git that prompts must not read it.
-        # core.fsmonitor names a program git may start for any command that looks at the work tree; the
-        # repository's own config must not run one through bylaw.
+        # core.fsmonitor names a program git starts for commands that look at the work tree. None of
+        # bylaw's do (checked with git 2.54: only commands such as `status` start it), so this is a guard
+        # for a later git, not a fix with a test.
         return subprocess.run(  # noqa: S603
             ["git", "-c", "core.fsmonitor=false", *args],  # noqa: S607
             cwd=self._dir,
