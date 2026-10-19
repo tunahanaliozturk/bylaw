@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "bylaw_version": "0.6.0",
+  "disclaimer": "bylaw records what its review saw: the tags are the reviewer's judgement, and this is evidence for an audit, not a compliance verdict.",
+  "generated_at": "2026-10-19T12:00:00+00:00",
+  "repository": "acme/payments",
+  "pull_request": 42,
+  "title": "Log failed sign-ins",
+  "base_sha": "b9a7fe3309d327020538da9df4059418eafcfdc8",
+  "head_sha": "a9677462ee19f18a9c62690265c91d7bdc979c31",
+  "profiles": [
+    {
+      "name": "iso27001",
+      "standard": "ISO/IEC 27001:2022, Annex A"
+    }
+  ],
+  "model_review": null,
+  "requirements": [],
+  "files_changed": [
+    {
+      "path": "app/accounts.py",
+      "status": "modified"
+    }
+  ],
+  "tests_changed": [],
+  "findings": [
+    {
+      "file": "app/accounts.py",
+      "line_start": 42,
+      "line_end": 42,
+      "category": "security",
+      "severity": "high",
+      "message": "The failed sign-in log line writes the submitted password in clear text. Failed attempts often contain the user's real password with a typo, or a password for another account, so anyone with log access can harvest credentials.",
+      "evidence": null,
+      "controls": [
+        "8.11",
+        "8.15",
+        "5.17"
+      ],
+      "status": "open",
+      "how": null,
+      "by": null
+    },
+    {
+      "file": "app/accounts.py",
+      "line_start": 42,
+      "line_end": 42,
+      "category": "rule",
+      "severity": "low",
+      "message": "Logging failed sign-ins changes behaviour, but no test comes with the change. A test should check that the warning is emitted and that it does not contain the password.",
+      "evidence": "CONTRIBUTING.md:12",
+      "controls": [
+        "8.29"
+      ],
+      "status": "open",
+      "how": null,
+      "by": null
+    }
+  ],
+  "controls": [
+    {
+      "id": "5.17",
+      "title": "Handling credentials",
+      "findings": [
+        "app/accounts.py:42"
+      ]
+    },
+    {
+      "id": "8.11",
+      "title": "Masking sensitive data",
+      "findings": [
+        "app/accounts.py:42"
+      ]
+    },
+    {
+      "id": "8.15",
+      "title": "Logs",
+      "findings": [
+        "app/accounts.py:42"
+      ]
+    },
+    {
+      "id": "8.29",
+      "title": "Security testing",
+      "findings": [
+        "app/accounts.py:42"
+      ]
+    }
+  ],
+  "threads_resolved": 0,
+  "notes": []
+}

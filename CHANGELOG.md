@@ -4,6 +4,8 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## Unreleased
 
+- Compatibility tests read files that earlier releases really wrote: a context and a host's result from 0.1, a summary comment from 0.2 with resolved threads and a review memory, and a context, result, evidence file and `.bylaw.toml` from 0.6. They check that the files still load, that old threads pair with their findings without a repost, and that the evidence is rebuilt field for field (tests/fixtures/0.x).
+
 ## 0.6.0 - 2026-10-19
 
 - A pull request's author can no longer take a finding out of `fail-on` by resolving its thread. Resolving never mutes (ADR 0008); a thread the author resolved keeps its finding open, and the summary lists it under "Resolved by the pull request's author but still present". Threads resolved by anyone else are unchanged.
