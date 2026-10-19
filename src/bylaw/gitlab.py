@@ -525,7 +525,8 @@ class GitLabMergeRequest:
                 # GitLab refused the line, for example after a push moved it. The finding still gets its
                 # discussion, unpositioned and naming the line, and the run goes on to the summary.
                 place = f"On `{comment.path}:{comment.line}`, which GitLab would not take as a position:"
-                self._client.send("POST", f"{self._mr_path}/discussions", json={"body": f"{place}\n\n{text}"})
+                body = f"{_inert(place)}\n\n{text}"  # a file name is the author's text too
+                self._client.send("POST", f"{self._mr_path}/discussions", json={"body": body})
 
     def _post_discussion(self, body: str, position: dict[str, object]) -> None:
         self._client.send("POST", f"{self._mr_path}/discussions", json={"body": body, "position": position})
