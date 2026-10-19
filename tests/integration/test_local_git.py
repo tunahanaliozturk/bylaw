@@ -123,3 +123,23 @@ def test_context_writes_utf8_to_the_output_file_and_nothing_to_stdout(
     assert code == 0
     assert capsysbinary.readouterr().out == b""
     assert "Öztürk" in json.loads(out.read_bytes().decode("utf-8"))["files"][0]["patch"]
+
+
+def test_a_textconv_driver_in_the_repository_config_never_runs(
+    repo: Path, tmp_path_factory: pytest.TempPathFactory
+) -> None:
+    # A repository handed to `bylaw mcp` brings its own .git/config; git runs a textconv driver it names.
+    marker = tmp_path_factory.mktemp("outside") / "ran"
+    _git(repo, "config", "diff.marker.textconv", f"touch '{marker.as_posix()}' && cat")
+    (repo / ".gitattributes").write_text("*.py diff=marker\n")
+    (repo / "app.py").write_text("def run():\n    return 1\n")
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-m", "attributes")
+    source = LocalGitSource(repo, "main")
+
+    files = source.changed_files()
+    source.read_head("app.py")
+    source.info()
+
+    assert {f.path for f in files} == {".gitattributes", "app.py"}
+    assert not marker.exists()

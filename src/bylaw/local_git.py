@@ -26,19 +26,22 @@ class LocalGitSource:
         return self._repo
 
     def info(self) -> ChangeInfo:
-        log = self._git("log", "--format=%B%x00", f"{self._base}..{self._head}")
+        # --no-show-signature: log.showSignature in the repository's config would run its gpg.program.
+        log = self._git("log", "--no-show-signature", "--format=%B%x00", f"{self._base}..{self._head}")
         messages = tuple(message.strip() for message in log.split("\0") if message.strip())
         return ChangeInfo(self._base, self._head, title="", body="", commit_messages=messages)
 
     def changed_files(self) -> tuple[ChangedFile, ...]:
         # Explicit prefixes: a user's diff.noprefix or diff.mnemonicPrefix setting would otherwise change
-        # the headers the parser reads.
+        # the headers the parser reads. --no-ext-diff and --no-textconv: the repository's config can name
+        # programs for both, and .gitattributes in the change picks which files they run on.
         diff = self._git(
             "-c",
             "core.quotePath=false",
             "diff",
             "--no-color",
             "--no-ext-diff",
+            "--no-textconv",
             "--src-prefix=a/",
             "--dst-prefix=b/",
             "-M",
@@ -86,7 +89,7 @@ class LocalGitSource:
         return None
 
     def _show(self, revision: str, path: str) -> str | None:
-        result = self._run("show", f"{revision}:{path}")
+        result = self._run("show", "--no-textconv", f"{revision}:{path}")
         return result.stdout.decode("utf-8", errors="replace") if result.returncode == 0 else None
 
     def _git(self, *args: str) -> str:
@@ -99,8 +102,10 @@ class LocalGitSource:
     def _run(self, *args: str) -> subprocess.CompletedProcess[bytes]:
         # git is resolved from PATH on purpose; arguments are a list, so nothing goes through a shell. No
         # stdin: under `bylaw mcp` it is the protocol channel, and a git that prompts must not read it.
+        # core.fsmonitor names a program git may start for any command that looks at the work tree; the
+        # repository's own config must not run one through bylaw.
         return subprocess.run(  # noqa: S603
-            ["git", *args],  # noqa: S607
+            ["git", "-c", "core.fsmonitor=false", *args],  # noqa: S607
             cwd=self._dir,
             stdin=subprocess.DEVNULL,
             capture_output=True,

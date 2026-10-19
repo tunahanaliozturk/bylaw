@@ -80,8 +80,13 @@ file can point anywhere, so a folder in a root could otherwise hand out a reposi
 are followed before the check.
 
 Point the roots at repositories you trust as much as running git in them yourself, because git applies a
-repository's own configuration. One thing the check does not follow is alternates: a repository whose
-`.git/objects/info/alternates` names another directory reads objects from there too.
+repository's own configuration. bylaw turns off the parts of it that start programs for the commands it
+runs: diffs and file reads pass `--no-ext-diff` and `--no-textconv`, so a `diff.<driver>.textconv` or
+`diff.external` a `.gitattributes` file points at never runs, the log passes `--no-show-signature`, so
+`log.showSignature` cannot start a `gpg.program`, and every command runs with `-c core.fsmonitor=false`.
+Hooks do not run for the read-only commands bylaw uses. One thing the check does not follow is
+alternates: a repository whose `.git/objects/info/alternates` names another directory reads objects from
+there too.
 
 ## Claude Code
 
