@@ -163,14 +163,24 @@ def model_gate(pull: PullRequest, config: Config) -> str | None:
         if pull.from_fork
         else "is by an author who is not an owner, member or collaborator"
     )
-    unlock = (
-        f"A maintainer can add the `{label}` label to review it with the model, or set"
-        if label
-        else "To review such pull requests with the model, set `[app] model_review_label` for a label, or"
-    )
+    if config.ceiling is not None and config.ceiling.model_review == "trusted":
+        # The organisation's ceiling keeps "all" out of reach, so only the label is worth naming.
+        unlock = (
+            f"A maintainer can add the `{label}` label to review it with the model."
+            if label
+            else "To review such pull requests with the model, set `[app] model_review_label` for a label."
+        )
+        unlock += " The organisation's `[ceiling]` keeps the review from opening to every pull request."
+    else:
+        unlock = (
+            f"A maintainer can add the `{label}` label to review it with the model, or set"
+            if label
+            else "To review such pull requests with the model, set `[app] model_review_label` for a label, or"
+        )
+        unlock += ' `[app] model_review = "all"` in .bylaw.toml.'
     return (
         f"{MODEL_NOT_RUN}: this pull request {why}, and the GitHub App reviews those with "
-        f'bylaw\'s own checks only. {unlock} `[app] model_review = "all"` in .bylaw.toml.'
+        f"bylaw's own checks only. {unlock}"
     )
 
 
