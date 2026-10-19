@@ -42,13 +42,15 @@ def review_pull_request(  # noqa: PLR0913 - two callers, every argument is a dis
     defaults: str | None = None,
     env: Mapping[str, str] | None = None,
     shared_secrets: bool = False,
+    operator_sites: bool = False,
 ) -> PullReview:
     """Review a pull request.
 
     `make` builds the model reviewer, None for the deterministic checks only. `defaults` is the
     organisation's `.bylaw.toml` (ADR 0017) and `env` holds the tracker tokens (ADR 0014).
     `shared_secrets`: the keys and tokens belong to a GitHub App installation, not to this repository, so
-    the repository's settings cannot say where they go (ADR 0017).
+    the repository's settings cannot say where they go (ADR 0017). `operator_sites` alone pins only the
+    tracker sites, for a repository the caller picked that is not its own (ADR 0019).
     """
     source = GitHubSource(client, repo, number)
     config = load_config(source.read_base(".bylaw.toml"), defaults)
@@ -67,7 +69,7 @@ def review_pull_request(  # noqa: PLR0913 - two callers, every argument is a dis
         post=post,
         say=say,
         env=env,
-        operator_sites=shared_secrets,
+        operator_sites=shared_secrets or operator_sites,
         skipped=skipped,
     )
 

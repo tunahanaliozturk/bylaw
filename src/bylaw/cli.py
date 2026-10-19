@@ -303,12 +303,15 @@ def _context(args: argparse.Namespace) -> ReviewContext:
     if args.pr is None:
         return build_context(LocalGitSource(Path(args.path), args.base, args.repo))
     repo, token = _repo_and_token(args.repo)
-    # A host agent names --repo, and a pull request can steer it to one whose .bylaw.toml names an
-    # attacker's tracker; only the Action's own repository may say where tracker tokens go (ADR 0019).
-    own = repo.lower() == os.environ.get("GITHUB_REPOSITORY", "").lower()
     api_url = os.environ.get("GITHUB_API_URL", "https://api.github.com")
     with GitHubClient(token, api_url, os.environ.get("GITHUB_GRAPHQL_URL")) as client:
-        return build_context(GitHubSource(client, repo, args.pr), operator_sites=not own)
+        return build_context(GitHubSource(client, repo, args.pr), operator_sites=_pin_sites(repo))
+
+
+def _pin_sites(repo: str) -> bool:
+    """A host agent names --repo, and a pull request can steer it to one whose .bylaw.toml names an
+    attacker's tracker; only the Action's own repository may say where tracker tokens go (ADR 0019)."""
+    return repo.lower() != os.environ.get("GITHUB_REPOSITORY", "").lower()
 
 
 def _validated(args: argparse.Namespace) -> Validated:
@@ -416,7 +419,15 @@ def _review_pull_request(args: argparse.Namespace) -> tuple[PullReview, str]:
     repo, token = _repo_and_token(args.repo)
     api_url = os.environ.get("GITHUB_API_URL", "https://api.github.com")
     with GitHubClient(token, api_url, os.environ.get("GITHUB_GRAPHQL_URL")) as client:
-        review = review_pull_request(client, repo, args.pr, make=_reviewer(args), post=args.post, say=_say)
+        review = review_pull_request(
+            client,
+            repo,
+            args.pr,
+            make=_reviewer(args),
+            post=args.post,
+            say=_say,
+            operator_sites=_pin_sites(repo),
+        )
     return review, repo
 
 
