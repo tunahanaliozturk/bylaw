@@ -1,7 +1,8 @@
 """bylaw mcp through an in-process MCP client: the tools it lists and how it refuses bad targets."""
 
+import subprocess
 from pathlib import Path
-from typing import Any
+from typing import Any, NoReturn
 
 import anyio
 import httpx
@@ -109,3 +110,36 @@ def test_a_github_failure_is_reported_without_the_token(
 def test_a_root_that_is_not_a_directory_is_refused_at_start(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="not a directory"):
         make_server([tmp_path / "missing"])
+
+
+def test_git_that_cannot_start_is_a_tool_error_the_agent_can_read(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def missing(*_args: object, **_kwargs: object) -> NoReturn:
+        raise FileNotFoundError(2, "No such file or directory", "git")
+
+    monkeypatch.setattr(subprocess, "run", missing)
+
+    result = _call(make_server([tmp_path]), "context", {"base": "main"})
+
+    assert result.is_error
+    assert "could not run git" in _text(result)
+
+
+def test_no_git_call_can_wait_on_the_server_s_standard_input(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # stdin is the MCP channel: a git that prompts would read protocol messages, or hang the server.
+    stdins: list[object] = []
+
+    def run(args: list[str], **kwargs: Any) -> subprocess.CompletedProcess[Any]:
+        stdins.append(kwargs.get("stdin"))
+        out = f"{tmp_path}\n" * 3 if kwargs.get("text") else b"abc\n"
+        return subprocess.CompletedProcess(args, 0, out, "" if kwargs.get("text") else b"")
+
+    monkeypatch.setattr(subprocess, "run", run)
+
+    _call(make_server([tmp_path]), "context", {"base": "main"})
+
+    assert len(stdins) > 1, "both the root check and LocalGitSource should have run git"
+    assert set(stdins) == {subprocess.DEVNULL}

@@ -8,6 +8,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 - Setup for `bylaw mcp` in Claude Code, Claude Desktop, Codex, Cursor and VS Code, each checked against the client's own documentation: [docs/mcp.md](docs/mcp.md).
 - `bylaw mcp --allow-post` adds a `post` tool that publishes a validated result to a pull request, as `bylaw post --pr` does, with `.bylaw.toml` read from the base branch. Without the flag the tool is not listed and cannot be called (ADR 0019).
 - A local `--base` that starts with `-` is refused instead of reaching git as an option.
+- `bylaw mcp` also refuses a folder in a root whose `.git` file or worktree keeps the repository outside it: the work tree, the git directory and the common git directory must all be inside the root. git never reads bylaw's standard input, which under `bylaw mcp` is the MCP channel.
 - Tracker tokens go only to a pinned site when an agent picks the repository: in `bylaw mcp`, and in `bylaw context --pr` with a `--repo` other than `GITHUB_REPOSITORY`, which is how the Claude Code and Codex skill runs it. Set `JIRA_URL` and `AZURE_DEVOPS_ORGANIZATION` next to the tokens; without them, Jira and Azure Boards work items are left out with a note. The Action reviewing its own repository is unchanged. The note no longer says "the app's operator", because it now also appears outside the GitHub App (ADR 0019).
 
 ## 0.5.0 - 2026-10-19

@@ -45,9 +45,14 @@ people see. And tool results go into the agent's context window, which is the sc
 - **Local paths stay inside allowed roots.** `bylaw mcp --root DIR`, repeatable, names the directories
   local reviews may read; without it, the server's working directory is the only root. A relative `path`
   is resolved against the first root, symlinks followed, and the directory must be inside a root. Then
-  `git rev-parse --show-toplevel` must be inside the same root too, because git walks up from a folder,
-  and a folder in a root can belong to a repository above it, such as a dotfiles repository in a home
-  directory.
+  the work tree, the git directory and the common git directory git uses from there (`git rev-parse
+  --path-format=absolute --show-toplevel --absolute-git-dir --git-common-dir`) must all be inside the
+  same root. git walks up from a folder, so a folder in a root can belong to a repository above it, such
+  as a dotfiles repository in a home directory; and a `.git` file or a worktree can keep the repository
+  itself outside the root. Alternates (`objects/info/alternates`) can still lend objects from another
+  directory; that is not checked, because git only reads objects through them and docs/mcp.md tells
+  users not to point a root at a repository they do not trust. git runs with no standard input, which
+  is the MCP channel, and a git that cannot start is a tool error, not a crash.
 - **Arguments are checked where they enter.** A `repo` must look like a GitHub `owner/name` before it goes
   into an API path. A `base` that starts with `-` is refused in `LocalGitSource` itself, so neither the
   server nor the CLI can pass git an option where it expects a ref.
