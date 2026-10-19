@@ -640,7 +640,13 @@ def _note_body(comment: ReviewComment) -> str:
     info = f"suggestion:-{above}+0" if above > 0 else "suggestion"
     # GitLab deletes carriage returns before it reads the note, so the fence is measured without them:
     # "``\r`" would otherwise become a closing fence and end the block early.
-    block = suggestion_block(parts.suggestion.replace("\r", ""), info)
+    suggestion = parts.suggestion.replace("\r", "")
+    if "```" in suggestion and any(line.startswith("/") for line in suggestion.split("\n")):
+        # The fence must then be longer than three backticks, and a GitLab whose quick action extractor
+        # knows only three-backtick fences would run the slash line. A suggestion is not worth that risk.
+        block = "_The suggested change is left out: GitLab could read a line of it as a quick action._"
+    else:
+        block = suggestion_block(suggestion, info)
     return "\n\n".join(part for part in (_inert(parts.before), block, _inert(parts.after)) if part)
 
 
