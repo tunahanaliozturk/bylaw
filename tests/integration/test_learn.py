@@ -143,6 +143,6 @@ def _action_steps() -> list[dict[str, object]]:
 def test_the_action_records_outcomes_when_the_pull_request_closes_and_reviews_otherwise() -> None:
     steps = {str(s.get("id")): s for s in _action_steps()}
 
-    assert steps["review"]["if"] == "${{ github.event.action != 'closed' }}"
-    assert steps["learn"]["if"] == "${{ github.event.action == 'closed' }}"
+    assert steps["review"]["if"] == "${{ github.event.pull_request && github.event.action != 'closed' }}"
+    assert steps["learn"]["if"] == "${{ github.event.pull_request && github.event.action == 'closed' }}"
     assert 'bylaw learn --pr "$BYLAW_PR"' in str(steps["learn"]["run"])

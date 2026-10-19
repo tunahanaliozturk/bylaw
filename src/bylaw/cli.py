@@ -31,13 +31,14 @@ from bylaw.evaluation.snapshot import snapshot_pull_request
 from bylaw.evidence import Evidence, build_evidence
 from bylaw.github import GitHubClient, GitHubError, GitHubSource
 from bylaw.gitlab import GitLabClient, GitLabMergeRequest
-from bylaw.learn import learn_from_pull_request
+from bylaw.learn import learn_from_pull_request, read_records
 from bylaw.local_git import LocalGitSource
 from bylaw.model import Finding, ReviewContext, ReviewResult, Severity
 from bylaw.plan import remaining
 from bylaw.prompt import render_input, system_prompt
 from bylaw.publish import first_plan, preview, publish
 from bylaw.pull_review import PullReview, check, review_change, review_pull_request, with_model_review
+from bylaw.report import render_report, report_data
 from bylaw.source import SourceError
 from bylaw.validate import Validated, validate
 
@@ -117,6 +118,11 @@ def _parser() -> argparse.ArgumentParser:
     )
     learn.add_argument("--pr", type=int, required=True, help="the closed pull request's number")
     learn.add_argument("--repo", help="owner/name; defaults to GITHUB_REPOSITORY")
+    page = commands.add_parser(
+        "report", help="write the per-repository report from the bylaw-outcomes branch"
+    )
+    page.add_argument("--repo", help="owner/name; defaults to GITHUB_REPOSITORY")
+    page.add_argument("--output", required=True, help="directory for index.html and its charts")
     _add_eval(commands.add_parser("eval", help="review the labelled evaluation set and score the result"))
     serve = commands.add_parser("mcp", help="serve the review tools to any MCP client over standard I/O")
     serve.add_argument(
@@ -190,6 +196,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _snapshot(args) if args.eval_command == "snapshot" else _eval(args)
         elif args.command == "learn":
             return _learn(args)
+        elif args.command == "report":
+            _report(args)
         elif args.command == "mcp":
             return _mcp(args)
         else:
@@ -434,6 +442,19 @@ def _learn(args: argparse.Namespace) -> int:
     with GitHubClient(token, api_url, os.environ.get("GITHUB_GRAPHQL_URL")) as client:
         learn_from_pull_request(client, repo, args.pr, say=_say)
     return 0
+
+
+def _report(args: argparse.Namespace) -> None:
+    repo, token = _repo_and_token(args.repo)
+    api_url = os.environ.get("GITHUB_API_URL", "https://api.github.com")
+    with GitHubClient(token, api_url, os.environ.get("GITHUB_GRAPHQL_URL")) as client:
+        records = read_records(client, repo)
+    out = Path(args.output)
+    out.mkdir(parents=True, exist_ok=True)
+    today = datetime.now(UTC).date().isoformat()
+    for name, data in render_report(report_data(repo, records), generated=today).items():
+        (out / name).write_bytes(data)
+    _say(f"wrote the report of {len(records)} pull request(s) to {out / 'index.html'}.")
 
 
 def _review_pull_request(args: argparse.Namespace) -> tuple[PullReview, str]:
