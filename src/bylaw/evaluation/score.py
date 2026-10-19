@@ -51,6 +51,9 @@ class Score(_Frozen):
     # Rule findings that hit a label citing a rule line, and how many cited that same line.
     citations_total: int
     citations_correct: int
+    # Hits on labels that name profile controls, and how many tagged at least one of them.
+    controls_total: int = 0
+    controls_correct: int = 0
     criteria_total: int
     criteria_correct: int
     creep_expected: int
@@ -89,7 +92,7 @@ def score(cases: Sequence[Case], runs: Sequence[CaseRun]) -> Score:  # noqa: PLR
     fn: Counter[Category] = Counter()
     located = duplicates = clean_cases = clean_with_inline = ignored = ignored_inline = 0
     criteria_total = criteria_correct = creep_expected = creep_found = creep_extra = 0
-    citations_total = citations_correct = 0
+    citations_total = citations_correct = controls_total = controls_correct = 0
     errors: list[str] = []
     misses: list[str] = []
     false_alarms: list[str] = []
@@ -124,6 +127,9 @@ def score(cases: Sequence[Case], runs: Sequence[CaseRun]) -> Score:  # noqa: PLR
                 if finding.category == Category.RULE and hit.evidence:
                     citations_total += 1
                     citations_correct += finding.evidence == hit.evidence
+                if hit.controls:
+                    controls_total += 1
+                    controls_correct += not set(finding.controls).isdisjoint(hit.controls)
                 continue
             if any(_near_label(finding, e) for e in matched):
                 duplicates += 1
@@ -183,6 +189,8 @@ def score(cases: Sequence[Case], runs: Sequence[CaseRun]) -> Score:  # noqa: PLR
         dropped=sum(r.dropped_findings for r in runs),
         citations_total=citations_total,
         citations_correct=citations_correct,
+        controls_total=controls_total,
+        controls_correct=controls_correct,
         criteria_total=criteria_total,
         criteria_correct=criteria_correct,
         creep_expected=creep_expected,

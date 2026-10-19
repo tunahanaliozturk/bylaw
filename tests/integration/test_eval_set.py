@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from bylaw.compliance import load_profile
 from bylaw.evaluation.cases import Case, build_case_context, load_cases
 from bylaw.evaluation.run import run_case
 from bylaw.evaluation.score import score
@@ -29,6 +30,7 @@ class Oracle:
                 severity=Severity.HIGH,
                 message=label.note,
                 evidence=label.evidence,
+                controls=label.controls,
             )
             for label in self._case.findings
             if not label.deterministic
@@ -65,6 +67,7 @@ def test_an_oracle_reviewer_scores_perfectly(
     assert result.criteria_correct == result.criteria_total
     assert (result.creep_found, result.creep_extra) == (result.creep_expected, 0)
     assert result.clean_with_inline == 0
+    assert result.controls_correct == result.controls_total >= 2
 
 
 def test_the_set_has_the_size_and_mix_the_design_asks_for(cases: tuple[Case, ...]) -> None:
@@ -80,6 +83,7 @@ def test_the_set_has_the_size_and_mix_the_design_asks_for(cases: tuple[Case, ...
         "py-users",
         "py-mono",
         "py-ledger",
+        "py-payments",
     }
 
 
@@ -117,3 +121,17 @@ def test_the_ledger_cases_are_held_to_the_accepted_adr_alone(
     # The superseded JSON decision and the proposed async one would both condemn the clean change.
     assert all([d.path for d in contexts[case.id].decisions] == [accepted] for case in ledger)
     assert all(not contexts[case.id].requirements for case in ledger)
+
+
+def test_the_profile_cases_are_reviewed_with_iso27001_and_label_controls_it_defines(
+    cases: tuple[Case, ...], contexts: dict[str, ReviewContext]
+) -> None:
+    profiled = [case for case in cases if case.project == "py-payments"]
+    defined = {control.id for control in load_profile("iso27001").controls}
+
+    assert {case.kind for case in profiled} == {"security", "clean"}
+    assert all(contexts[case.id].profiles == ("iso27001",) for case in profiled)
+    labelled = {control for case in profiled for label in case.findings for control in label.controls}
+    assert {"8.15", "8.11", "8.24"} <= labelled <= defined
+    # The rest of the set is reviewed without a profile, as before.
+    assert all(not contexts[case.id].profiles for case in cases if case.project != "py-payments")

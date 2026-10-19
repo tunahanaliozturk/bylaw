@@ -213,3 +213,23 @@ def test_rule_citations_are_counted_against_the_label() -> None:
 
     assert (good.citations_correct, good.citations_total) == (1, 1)
     assert (bad.citations_correct, bad.citations_total) == (0, 1)
+
+
+def test_control_tags_on_a_hit_are_counted_against_the_label() -> None:
+    logged = ExpectedFinding(
+        file="app.py",
+        lines=(10, 10),
+        categories=(Category.SECURITY,),
+        note="password",
+        controls=("8.15", "8.11"),
+    )
+    right = _found(10).model_copy(update={"controls": ("8.11",)})
+    wrong = _found(10).model_copy(update={"controls": ("8.28",)})
+
+    good = score([_case(findings=[logged])], [_run("c", right)])
+    bad = score([_case(findings=[logged])], [_run("c", wrong)])
+    untagged = score([_case(findings=[SQLI])], [_run("c", right)])
+
+    assert (good.controls_correct, good.controls_total) == (1, 1)
+    assert (bad.controls_correct, bad.controls_total) == (0, 1)
+    assert untagged.controls_total == 0
