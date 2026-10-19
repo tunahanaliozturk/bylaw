@@ -553,3 +553,34 @@ def test_a_planted_summary_is_left_alone_and_bylaw_posts_its_own(client: GitHubC
 
     assert (create.called, edit.called) == (True, False)
     assert plan.state.auto_resolved == frozenset()
+
+
+@respx.mock
+@pytest.mark.parametrize(
+    ("status", "headers"),
+    [(502, {}), (429, {}), (403, {"x-ratelimit-remaining": "0"}), (403, {"retry-after": "60"}), (403, {})],
+)
+def test_a_failed_identity_check_fails_the_run_instead_of_reading_as_no_identity(
+    client: GitHubClient, status: int, headers: dict[str, str]
+) -> None:
+    # Read as "no identity", it would post a second summary and repost every finding inline.
+    respx.get(url__startswith=f"{API}/repos/octo/app/issues/5/comments").mock(
+        return_value=httpx.Response(200, json=[_summary(1, "User", "owner", "OWNER")])
+    )
+    message = "You have exceeded a secondary rate limit" if status == 403 and not headers else "x"
+    answer = httpx.Response(status, headers=headers, json={"message": message})
+    respx.get(f"{API}/user").mock(return_value=answer)
+
+    with pytest.raises(GitHubError):
+        client.summary_comment("octo/app", 5)
+
+
+@respx.mock
+@pytest.mark.parametrize("status", [401, 403, 404])
+def test_a_token_that_cannot_say_who_it_is_has_no_identity(client: GitHubClient, status: int) -> None:
+    respx.get(url__startswith=f"{API}/repos/octo/app/issues/5/comments").mock(
+        return_value=httpx.Response(200, json=[_summary(1, "User", "owner", "OWNER")])
+    )
+    respx.get(f"{API}/user").mock(return_value=httpx.Response(status, json={"message": "no"}))
+
+    assert client.summary_comment("octo/app", 5) is None

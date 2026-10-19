@@ -845,12 +845,19 @@ class GitHubClient:
     @cached_property
     def _token_login(self) -> str | None:
         """The token's own user: a personal token can say who it is, a workflow or installation token
-        cannot (GitHub answers 403), and then no person's comment is bylaw's own."""
+        cannot (GitHub answers 403), and then no person's comment is bylaw's own.
+
+        Any other failure, a 5xx, a 429 or a rate-limited 403, ends the run: read as "no identity" it
+        would post a second summary and repost every open finding inline.
+        """
         if self._bot is not None:
             return None
         response = self._send("GET", f"{self._api_url}/user")
+        if _cannot_say_who(response):
+            return None
+        _raise_for_status(response)
         try:
-            body = response.json() if response.is_success else None
+            body = response.json()
         except ValueError:
             body = None
         login = body.get("login") if isinstance(body, dict) else None
@@ -895,6 +902,22 @@ class GitHubClient:
             return self._http.request(method, url, params=params, headers=headers, json=json)
         except httpx.HTTPError as error:
             raise GitHubError(f"Could not reach GitHub at {url}: {type(error).__name__}") from error
+
+
+def _cannot_say_who(response: httpx.Response) -> bool:
+    """GitHub's answer to `GET /user` from a token with no user: 401, 404, or a 403 that is not a rate
+    limit (a primary limit sets x-ratelimit-remaining to 0, a secondary one sends retry-after or says so)."""
+    status = response.status_code
+    if status in (HTTPStatus.UNAUTHORIZED, HTTPStatus.NOT_FOUND):
+        return True
+    if status != HTTPStatus.FORBIDDEN:
+        return False
+    headers = response.headers
+    return not (
+        headers.get("x-ratelimit-remaining") == "0"
+        or "retry-after" in headers
+        or "rate limit" in response.text.lower()
+    )
 
 
 def _raise_for_status(response: httpx.Response) -> None:
