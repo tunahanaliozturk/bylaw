@@ -130,6 +130,15 @@ profiles = ["iso27001"]         # optional compliance profiles: control tags and
 [budget]
 pr_tokens = 500000              # optional: model tokens one pull request may use across all runs
 
+[learn]                         # optional, off by default: learn from what maintainers dismiss
+enabled = true
+threshold = 3                   # pull requests that dismissed a rule before bylaw suggests suppressing it
+
+[[suppress]]                    # optional: a rule you decided is not worth a comment in some paths
+rule = "ruff:S101"              # exactly as findings cite it; never hides a security finding
+paths = ["tests/**"]
+reason = "Tests use assert."
+
 [jira]                          # optional: Jira issues a pull request names, such as PROJ-123
 url = "https://acme.atlassian.net"
 projects = ["PROJ"]
@@ -146,6 +155,27 @@ Requirements can also come from Jira, Azure Boards (`AB#123`) and Linear. Each i
 ## Compliance profiles
 
 With `profiles = ["iso27001"]`, bylaw reviews with the development controls of ISO/IEC 27001:2022 Annex A in mind, in its own words and never the standard's: findings name the controls they touch (`8.28` for an injection, `8.15` and `8.11` for personal data in a log), a finding tagged as personal data in a log or as a cryptography weakness is raised to at least `high` (so the rule is as good as the reviewer's tags), the summary lists the controls touched and the change-management evidence (linked requirement, commit reviewed, tests changed, findings accepted and by whom), and the Action uploads the same record as a JSON artifact per pull request. It helps a team keep evidence for an audit; it does not make anyone compliant. What it covers, what it does not and how an auditor reads it: [docs/compliance.md](https://github.com/tunahanaliozturk/bylaw/blob/main/docs/compliance.md).
+
+## Learning from maintainers
+
+A rule that maintainers keep waving away is either too broad for part of the code or unclear, and the
+summary is not where anyone notices that. With `[learn] enabled = true` and `closed` among the
+workflow's pull request events, the Action records what happened to each finding when a pull request
+closes: fixed, muted with `bylaw: ignore`, resolved without a change, suppressed or left open, and by
+whom. The records go to a `bylaw-outcomes` branch in your repository, one small JSON file per pull
+request, because bylaw has no server and an artifact would expire before a pattern shows.
+
+When maintainers have dismissed findings citing the same rule in `threshold` pull requests, more often
+than they fixed them, bylaw opens a pull request that adds a `[[suppress]]` entry to `.bylaw.toml`, and
+lists the pull requests and people behind it. Nothing changes until someone merges it, and a closed
+suggestion is never opened again. Only mutes by people with write access who did not write the pull
+request count, and security findings are never suggested and never hidden by a suppression. Every
+summary lists the suppressions in force and what they hid, so none works unseen.
+
+The same records make a report page: findings by category and what became of them, criteria met per
+month, and the rules dismissed most, with light and dark charts and no JavaScript. The Action publishes
+it as an artifact or to GitHub Pages with `report: artifact` or `report: pages`. Writing the branch needs
+`contents: write`. Setup, trust rules and the report: [docs/learning.md](https://github.com/tunahanaliozturk/bylaw/blob/main/docs/learning.md); the reasoning: [ADR 0022](https://github.com/tunahanaliozturk/bylaw/blob/main/docs/adr/0022-learning-and-reports.md).
 
 ## Evaluation
 

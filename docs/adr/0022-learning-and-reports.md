@@ -124,6 +124,11 @@ closes or the workflow runs on a schedule or by hand.
 - Cost: the closing run needs `contents: write` and, for suggestions, `pull-requests: write`. A pull
   request opened with `GITHUB_TOKEN` does not start other workflows, so the suggestion's CI runs only
   after someone pushes to it or closes and reopens it; docs/learning.md says so.
+- Cost: the `github-pages` environment deploys only from the default branch, and a composite action
+  cannot set a job's environment, so `report: pages` runs from a scheduled or manual workflow of its own
+  with `pages: write` and `id-token: write`. `report: artifact` works from the closing run.
+- Cost: on a public repository the records and a published report are public, as the pull requests
+  they come from already are. They name rules and the logins that dismissed them.
 - Cost: a repository gets one more branch. Its files are small, but a busy repository adds one commit
   per closed pull request.
 - Cost: a mute made after the pull request closed is not seen; there is no event for it to run on.
