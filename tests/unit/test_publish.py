@@ -157,3 +157,44 @@ def test_publishing_without_a_memory_keeps_the_token_count_of_the_last_one() -> 
 
     review = read_state(client.summaries[-1][1]).review
     assert review is not None and (review.files, review.tokens) == ({}, 900)
+
+
+def test_the_note_publish_adds_reaches_the_plan_the_evidence_is_built_from() -> None:
+    from bylaw.evidence import build_evidence  # noqa: PLC0415
+
+    marker = ThreadComment("text\n<!-- bylaw:fp=" + "c" * 16 + " -->", trusted=True)
+    long_thread = Thread(id="T1", resolved=False, comments=(marker,), older_replies_unread=True)
+    client = FakeClient(threads=[long_thread])
+    profiled = CONTEXT.model_copy(update={"profiles": ("iso27001",)})
+
+    plan = publish(client, "octo/app", 5, context=profiled, result=RESULT, config=Config())
+
+    note = "1 long review thread(s) read without older replies"
+    assert any(note in n for n in build_evidence(profiled, RESULT, plan).notes)
+    assert note in client.summaries[-1][1]
+
+
+def test_after_a_failed_resolve_the_summary_counts_only_the_threads_really_resolved() -> None:
+    import pytest  # noqa: PLC0415
+
+    from bylaw.github import GitHubError  # noqa: PLC0415
+
+    def ours(thread_id: str, line: int) -> Thread:
+        marker = ThreadComment(f"text\n<!-- bylaw:fp={thread_id[-1] * 16} -->", trusted=True)
+        return Thread(id=thread_id, resolved=False, comments=(marker,), line=line)
+
+    class Flaky(FakeClient):
+        def set_thread_resolved(self, thread_id: str, *, resolved: bool) -> None:
+            if thread_id == "Tb":
+                raise GitHubError("GitHub API rate limit reached")
+            super().set_thread_resolved(thread_id, resolved=resolved)
+
+    client = Flaky(threads=[ours("Ta", 1), ours("Tb", 2)])
+    profiled = CONTEXT.model_copy(update={"profiles": ("iso27001",)})
+
+    with pytest.raises(GitHubError):
+        publish(client, "octo/app", 5, context=profiled, result=ReviewResult(), config=Config())
+
+    body = client.summaries[-1][1]
+    assert "1 thread(s) resolved" in body
+    assert "1 thread resolved as fixed this run" in body

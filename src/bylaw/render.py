@@ -107,7 +107,7 @@ def summary_body(context: ReviewContext, result: ReviewResult, plan: Plan) -> st
         _details("Resolved by a reviewer but still present", plan.reviewer_resolved),
         _details("Muted with `bylaw: ignore`", plan.muted),
         _rule_sources(context),
-        _notes(context),
+        _notes((*context.notes, *plan.notes)),
         _footer(plan.state.review),
     ]
     body = "\n\n".join(section for section in sections if section)
@@ -316,10 +316,10 @@ def _rule_sources(context: ReviewContext) -> str:
     return f"<details><summary>Rule sources ({len(sources)})</summary>\n\n{paths}\n\n</details>"
 
 
-def _notes(context: ReviewContext) -> str:
-    if not context.notes:
+def _notes(notes: tuple[str, ...]) -> str:
+    if not notes:
         return ""
-    return "### Notes\n\n" + "\n".join(f"- {_text(note)}" for note in context.notes)
+    return "### Notes\n\n" + "\n".join(f"- {_text(note)}" for note in notes)
 
 
 def _footer(memory: ReviewMemory | None) -> str:

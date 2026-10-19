@@ -148,7 +148,7 @@ def build_evidence(context: ReviewContext, result: ReviewResult, plan: Plan) -> 
         findings=tuple(flat),
         controls=tuple(control for control in controls if control.findings),
         threads_resolved=len(plan.resolve),
-        notes=context.notes,
+        notes=(*context.notes, *plan.notes),
     )
 
 
