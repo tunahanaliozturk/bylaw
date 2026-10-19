@@ -25,6 +25,7 @@ from bylaw.render import SUMMARY_MARKER, suggestion_block
 from bylaw.source import ChangeInfo, Issue, IssueRef, SourceError
 
 _PAGE_SIZE = 100
+_READ_ATTEMPTS = 3
 _MAX_PAGES = 50
 # https://docs.gitlab.com/user/permissions/#default-roles: Developer and above can push code, the GitLab
 # peer of GitHub's write access (ADR 0008).
@@ -266,6 +267,7 @@ class GitLabMergeRequest:
         return tuple(messages)
 
     def info(self) -> ChangeInfo:
+        _ = self._files  # settles the shas: they must be the ones the diff was read at
         refs = self._refs
         author = self._mr.author
         return ChangeInfo(
@@ -295,10 +297,22 @@ class GitLabMergeRequest:
 
     @cached_property
     def _files(self) -> tuple[ChangedFile, ...]:
-        files: list[ChangedFile] = []
-        for page in self._client.pages(f"{self._mr_path}/diffs"):
-            files.extend(_changed(item) for item in _DIFFS.validate_python(page))
-        return tuple(files)
+        """The diff, read with the shas it belongs to. They come from two requests, and the diff from one per
+        page, so a push in between would put comments on the wrong lines: the merge request is read again
+        afterwards, and a moved head means reading the newer diff."""
+        for _ in range(_READ_ATTEMPTS):
+            refs = self._refs
+            files: list[ChangedFile] = []
+            for page in self._client.pages(f"{self._mr_path}/diffs"):
+                files.extend(_changed(item) for item in _DIFFS.validate_python(page))
+            latest = _MergeRequest.model_validate(self._client.get(self._mr_path))
+            if latest.diff_refs == refs:
+                return tuple(files)
+            self._mr = latest
+        raise SourceError(
+            f"Merge request !{self._iid} kept changing while bylaw read it; the pipeline of its newest push "
+            "reviews it."
+        )
 
     def changed_files(self) -> tuple[ChangedFile, ...]:
         return self._files
@@ -503,7 +517,15 @@ class GitLabMergeRequest:
                     # The line codes are computed, not read; a range GitLab rejects still gets its comment.
                     if error.status != HTTPStatus.BAD_REQUEST:
                         raise
-            self._post_discussion(text, position)
+            try:
+                self._post_discussion(text, position)
+            except GitLabError as error:
+                if error.status != HTTPStatus.BAD_REQUEST:
+                    raise
+                # GitLab refused the line, for example after a push moved it. The finding still gets its
+                # discussion, unpositioned and naming the line, and the run goes on to the summary.
+                place = f"On `{comment.path}:{comment.line}`, which GitLab would not take as a position:"
+                self._client.send("POST", f"{self._mr_path}/discussions", json={"body": f"{place}\n\n{text}"})
 
     def _post_discussion(self, body: str, position: dict[str, object]) -> None:
         self._client.send("POST", f"{self._mr_path}/discussions", json={"body": body, "position": position})
