@@ -149,6 +149,11 @@ default branch, so a change to the defaults takes effect once it merges there. W
 installed on `.github`, or the file does not exist, there are no defaults. An invalid defaults file stops
 the review with an error in the server log naming that file.
 
+`profiles` is the one key that is not overridden: a repository's compliance profiles add to the
+organisation's, so `profiles = ["iso27001"]` in the defaults reaches every repository and none can drop it
+([compliance.md](../compliance.md), [ADR 0021](../adr/0021-compliance-profiles.md)). The app has no
+artifact store, so its evidence is the summary comment.
+
 ### Which pull requests the model reviews
 
 The installation's key pays for every review, and anyone can open a pull request against a public
