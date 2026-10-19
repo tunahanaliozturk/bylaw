@@ -121,6 +121,7 @@ def test_an_oversized_summary_is_trimmed_and_keeps_its_state() -> None:
 
     assert len(body) <= MAX_BODY
     assert "Summary trimmed to fit" in body
+    assert "GitHub" not in body.split("Summary trimmed to fit", 1)[1].split("-->", 1)[0]
     assert read_state(body) == State(auto_resolved=frozenset({FP}))
 
 

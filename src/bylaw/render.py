@@ -26,7 +26,7 @@ _MAX_STATE_ENTRIES = 1000
 # and the next run reviews everything, which costs tokens but never loses a finding.
 _MAX_MEMORY = 20_000
 _MAX_PLACES = 5
-_TRIMMED = "\n\n_Summary trimmed to fit GitHub's comment size limit._"
+_TRIMMED = "\n\n_Summary trimmed to fit the comment size limit._"
 _MAX_CELL = 80
 # A criterion is the one cell a reader needs whole; inferred ones are capped at 300 characters (validate).
 _CRITERION_CELL = 300
