@@ -189,29 +189,31 @@ def load_config(text: str | None, defaults: str | None = None) -> Config:
     the repository's add to the organisation's, so a repository cannot drop one (ADR 0021). `[ceiling]` is
     the organisation's alone: one in the repository's file is ignored, and the merged settings are cut to
     the organisation's, so a repository cannot raise `[app] model_review` or `[budget] pr_tokens` past it.
+    Under a `"trusted"` ceiling the review label comes from the organisation's file only.
     """
     org = _parse(defaults, _DEFAULTS)
-    if org:
-        _validate(org, _DEFAULTS)
+    org_label = _validate(org, _DEFAULTS).app.model_review_label if org else None
     repo = _parse(text, _BASE)
     repo.pop("ceiling", None)
     merged = {**org, **repo}
     floor, added = org.get("profiles"), repo.get("profiles")
     if isinstance(floor, list) and isinstance(added, list):
         merged["profiles"] = [*floor, *added]
-    return _under_ceiling(_validate(merged, _BASE))
+    return _under_ceiling(_validate(merged, _BASE), org_label)
 
 
-def _under_ceiling(config: Config) -> Config:
+def _under_ceiling(config: Config, org_label: str | None) -> Config:
+    """A repository's settings cut to the organisation's ceiling. A budget the repository leaves unset
+    stays unset here; the GitHub App gives it the smaller of its default and the ceiling."""
     ceiling = config.ceiling
     if ceiling is None:
         return config
     app, budget = config.app, config.budget
     if ceiling.model_review == "trusted":
-        app = app.model_copy(update={"model_review": "trusted"})
-    if ceiling.pr_tokens is not None:
-        cap = ceiling.pr_tokens if budget.pr_tokens is None else min(budget.pr_tokens, ceiling.pr_tokens)
-        budget = budget.model_copy(update={"pr_tokens": cap})
+        # The label would reopen the review: an auto-labeller that tags every pull request is enough.
+        app = app.model_copy(update={"model_review": "trusted", "model_review_label": org_label})
+    if ceiling.pr_tokens is not None and budget.pr_tokens is not None:
+        budget = budget.model_copy(update={"pr_tokens": min(budget.pr_tokens, ceiling.pr_tokens)})
     return config.model_copy(update={"app": app, "budget": budget})
 
 

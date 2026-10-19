@@ -144,7 +144,10 @@ APP_PR_TOKENS = 500_000
 def with_app_budget(config: Config) -> Config:
     if config.budget.pr_tokens is not None:
         return config
-    return config.model_copy(update={"budget": Budget(pr_tokens=APP_PR_TOKENS)})
+    # A ceiling only ever lowers the default: a high one must not raise what a pull request may spend.
+    ceiling = config.ceiling.pr_tokens if config.ceiling else None
+    cap = APP_PR_TOKENS if ceiling is None else min(APP_PR_TOKENS, ceiling)
+    return config.model_copy(update={"budget": Budget(pr_tokens=cap)})
 
 
 def model_gate(pull: PullRequest, config: Config) -> str | None:

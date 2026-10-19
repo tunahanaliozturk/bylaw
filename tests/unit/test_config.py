@@ -213,9 +213,19 @@ def test_a_repository_cannot_raise_the_organisations_ceiling() -> None:
     assert (config.app.model_review, config.budget.pr_tokens) == ("trusted", 200_000)
 
 
-def test_under_the_ceiling_a_repository_still_lowers_its_budget_and_gets_the_ceiling_by_default() -> None:
+def test_under_the_ceiling_a_repository_still_lowers_its_budget() -> None:
     assert load_config("[budget]\npr_tokens = 100000\n", defaults=CEILING).budget.pr_tokens == 100_000
-    assert load_config(None, defaults=CEILING).budget.pr_tokens == 200_000
+
+
+def test_under_a_trusted_ceiling_only_the_organisation_names_the_review_label() -> None:
+    # An auto-labeller that tags every pull request would otherwise open the review to every fork.
+    repo = '[app]\nmodel_review_label = "needs-triage"\n'
+    org = CEILING + '[app]\nmodel_review_label = "bylaw: review"\n'
+    only_tokens = "[ceiling]\npr_tokens = 200000\n"
+
+    assert load_config(repo, defaults=CEILING).app.model_review_label is None
+    assert load_config(repo, defaults=org).app.model_review_label == "bylaw: review"
+    assert load_config(repo, defaults=only_tokens).app.model_review_label == "needs-triage"
 
 
 def test_a_repositorys_own_ceiling_can_neither_lift_nor_replace_the_organisations() -> None:
