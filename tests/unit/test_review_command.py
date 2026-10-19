@@ -276,3 +276,16 @@ def test_the_evidence_file_is_written_even_when_fail_on_fails_the_run(
     args = ["review", "--context", str(context), "--evidence", str(evidence), "--fail-on", "high"]
     assert cli.main(args) == 1
     assert evidence.is_file()
+
+
+def test_evidence_for_a_pull_request_needs_post_so_it_reads_the_threads(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setenv("GITHUB_TOKEN", "t")
+    evidence = tmp_path / "evidence.json"
+
+    code = cli.main(["review", "--pr", "5", "--repo", "octo/app", "--evidence", str(evidence)])
+
+    assert code == 2
+    assert "--evidence with --pr or --gitlab-mr needs --post" in capsys.readouterr().err
+    assert not evidence.exists()

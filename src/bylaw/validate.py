@@ -27,6 +27,14 @@ INFERRED_TEXT_LIMIT = 300
 _INFERRED = re.compile(r"IC-([1-9][0-9]*)")
 
 
+_SHOWN = 20
+
+
+def _control_id(text: str) -> str:
+    bare = text.strip()
+    return bare[2:] if bare[:2] in {"A.", "a."} else bare
+
+
 @dataclass(frozen=True, slots=True)
 class Validated:
     result: ReviewResult
@@ -96,10 +104,14 @@ class _Checker:
 
     def with_known_controls(self, finding: Finding, dropped: list[str]) -> Finding:
         """A wrong tag is the least certain part of a finding, so only the tag goes (ADR 0021)."""
-        kept = tuple(dict.fromkeys(c for c in finding.controls if c in self._controls))
-        for control in dict.fromkeys(c for c in finding.controls if c not in self._controls):
+        # "A.8.28" is how Annex A controls are often written; the profile lists the bare number.
+        named = [_control_id(c) for c in finding.controls]
+        kept = tuple(dict.fromkeys(c for c in named if c in self._controls))
+        for control in dict.fromkeys(c for c in named if c not in self._controls):
             where = f"{finding.file}:{finding.line_start} {finding.category}"
-            dropped.append(f"{where}: control {control} is not in the active profiles")
+            # The id is model text: cut it, so a long one cannot flood the log.
+            shown = control if len(control) <= _SHOWN else f"{control[:_SHOWN]}..."
+            dropped.append(f"{where}: control {shown} is not in the active profiles")
         return finding if kept == finding.controls else finding.model_copy(update={"controls": kept})
 
     def inferred_problem(self, item: CriterionResult) -> str | None:
