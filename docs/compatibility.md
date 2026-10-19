@@ -9,17 +9,20 @@ you know what an upgrade can change under you and what it cannot. The reasoning 
 These are the parts people build on. A patch or minor release does not remove them or change what they
 mean.
 
-- **CLI commands and flags:** `bylaw context`, `validate`, `post`, `schema`, `prompt`, `review`, `eval`
-  and `mcp`, each with its flags, and the exit codes: 0 for success, 1 when `--fail-on` finds a finding
+- **CLI commands and flags:** `bylaw context`, `validate`, `post`, `schema`, `prompt`, `review`, `eval`,
+  `mcp`, `learn` and `report`, each with its flags, and the exit codes: 0 for success, 1 when `--fail-on` finds a finding
   at or above its severity (or an `eval run` case failed), 2 for an error.
 - **`.bylaw.toml`:** every key and table in the README's configuration section and in
   [trackers.md](trackers.md), with its default and its meaning, plus `version`.
 - **Action inputs:** `api-key`, `provider`, `model`, `base-url`, `base-url-api-key`, `effort`, `fail-on`,
-  `github-token`, `jira-email`, `jira-api-token`, `azure-devops-token` and `linear-api-key`. The Action
-  has no outputs today; the evidence artifact's name, `bylaw-evidence-pr-<number>`, counts as one.
+  `github-token`, `jira-email`, `jira-api-token`, `azure-devops-token`, `linear-api-key` and `report`. The
+  Action has no outputs today; the artifact names `bylaw-evidence-pr-<number>` and `bylaw-report` count
+  as outputs.
 - **JSON files:** the context `bylaw context` writes, the result a reviewer writes (the shape `bylaw
   schema` prints), the `{"result", "dropped"}` object `bylaw validate` and `bylaw review` print, and
-  the evidence file, whose fields [compliance.md](compliance.md) lists.
+  the evidence file, whose fields [compliance.md](compliance.md) lists, and the outcome records on the
+  `bylaw-outcomes` branch (`pulls/<number>.json`, with `schema_version`), described in
+  [learning.md](learning.md).
 - **MCP tools:** `context`, `brief`, `schema`, `validate`, `preview` and, with `--allow-post`, `post`,
   with their arguments ([mcp.md](mcp.md)).
 - **GitHub App settings:** the `[app]` table, the organisation defaults file, and the environment
