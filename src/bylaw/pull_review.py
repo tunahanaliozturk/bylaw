@@ -130,7 +130,7 @@ def with_model_review(  # noqa: PLR0913 - every argument is a distinct input
     )
     for note in run.notes:
         say(note)
-    return context.model_copy(update={"notes": (*context.notes, *run.notes)}), run
+    return context.model_copy(update={"notes": (*context.notes, *run.notes), "model_review": run.asked}), run
 
 
 # Model tokens one pull request may use across its runs in the GitHub App when `[budget] pr_tokens` is not

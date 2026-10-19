@@ -448,3 +448,17 @@ def test_turning_a_profile_on_means_a_full_review() -> None:
     context = _context(OLD, NEW)
 
     assert inputs_key(context.model_copy(update={"profiles": ("iso27001",)})) != inputs_key(context)
+
+
+def test_a_run_says_whether_the_model_was_asked_this_time() -> None:
+    context = _context(OLD, NEW)
+    unchanged = _context(OLD)
+
+    asked = run_model_review(context, FakeReviewer, _memory(context), incremental=True, budget=None)
+    carried = run_model_review(unchanged, FakeReviewer, _memory(unchanged), incremental=True, budget=None)
+    failed = run_model_review(
+        context, lambda: FakeReviewer(error="boom"), None, incremental=True, budget=None
+    )
+    keyless = run_model_review(context, None, None, incremental=True, budget=None)
+
+    assert (asked.asked, carried.asked, failed.asked, keyless.asked) == (True, False, False, False)

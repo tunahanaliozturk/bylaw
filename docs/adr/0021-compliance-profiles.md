@@ -69,7 +69,8 @@ request switch the profile off for itself.
   (ADR 0012), so turning a profile on, or a new edition of it, forces a full review.
 - **The summary.** With a profile on, the summary gets a "Controls touched" table, the controls the
   current findings name with where, and a "Change management evidence" list: the linked requirements and
-  their criteria, the commit reviewed and whether the model review ran, the test files the change
+  their criteria, the commit reviewed and whether the model answered on this run (a flag the run sets, never read from
+  note text), the test files the change
   touches, and the findings resolved, still open, or accepted, with who accepted them. Who comes from
   data bylaw already reads: the login of the maintainer whose `bylaw: ignore` reply muted a finding, and
   GitHub's `resolvedBy` on a thread a person resolved, one more field in the threads query bylaw already

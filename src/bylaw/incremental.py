@@ -36,6 +36,8 @@ class ModelRun:
     notes: tuple[str, ...]
     # Changed files the model did not read this run: their threads are neither resolved nor posted again.
     unreviewed: frozenset[str] = frozenset()
+    # Whether the model answered this run; False when it was not called, carried everything over or failed.
+    asked: bool = False
 
 
 def trusted_memory(summary: SummaryComment | None) -> ReviewMemory | None:
@@ -139,7 +141,7 @@ def run_model_review(  # noqa: PLR0913 - every argument is a distinct input
     used = _tokens(getattr(reviewer, "last_usage", None))
     merged, criteria = _merge(context, plan, fresh, asked=True)
     memory_after = _remember(context, plan, fresh, criteria, spent=spent, used=used, read=read)
-    return ModelRun(merged, memory_after, tuple(notes), unreviewed=frozenset(left_out))
+    return ModelRun(merged, memory_after, tuple(notes), unreviewed=frozenset(left_out), asked=True)
 
 
 @dataclass(frozen=True, slots=True)

@@ -450,6 +450,7 @@ def test_the_summary_lists_the_decisions_among_the_rule_sources() -> None:
 PROFILED = CONTEXT.model_copy(
     update={
         "profiles": ("iso27001",),
+        "model_review": True,
         "files": (
             ChangedFile(path="app.py", status="modified"),
             ChangedFile(path="tests/test_app.py", status="modified"),
@@ -498,13 +499,18 @@ def test_with_a_profile_the_summary_gives_the_change_management_evidence() -> No
 
 def test_the_evidence_says_when_the_model_review_did_not_run_and_when_nothing_is_linked() -> None:
     context = PROFILED.model_copy(
-        update={"requirements": (), "files": (), "notes": (f"{MODEL_NOT_RUN}: no API key is set.",)}
+        update={
+            "requirements": (),
+            "files": (),
+            "notes": (f"{MODEL_NOT_RUN}: no API key is set.",),
+            "model_review": False,
+        }
     )
 
     section = summary_body(context, ReviewResult(), _plan()).split("### Change management evidence")[1]
 
     assert "- Requirements: none linked." in section
-    assert "without the model review (see the notes)." in section
+    assert "without calling the model on it (see the notes)." in section
     assert "- Tests changed: none." in section
     assert "No finding touches a control of the profile." in summary_body(context, ReviewResult(), _plan())
 
@@ -536,3 +542,13 @@ def test_a_finding_the_author_resolved_stays_open_in_the_evidence_and_is_flagged
     assert "`app.py:7` resolved by its author `alice`, which does not accept it" in section
     assert [(f.status, f.by) for f in record.findings] == [("resolved_by_author", "alice")]
     assert "Resolved by the pull request's author but still present (1)" in body
+
+
+def test_the_evidence_takes_the_model_review_from_the_run_not_from_the_notes() -> None:
+    carried = PROFILED.model_copy(update={"model_review": False, "notes": ()})
+    hosted = PROFILED.model_copy(update={"model_review": None})
+
+    assert build_evidence(carried, ReviewResult(), _plan()).model_review is False
+    assert "without calling the model on it" in summary_body(carried, ReviewResult(), _plan())
+    assert build_evidence(hosted, ReviewResult(), _plan()).model_review is None
+    assert "the result came from outside `bylaw review`" in summary_body(hosted, ReviewResult(), _plan())

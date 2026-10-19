@@ -14,7 +14,6 @@ from pydantic import BaseModel, ConfigDict
 
 from bylaw.compliance import load_profile
 from bylaw.model import (
-    MODEL_NOT_RUN,
     Category,
     CriterionStatus,
     Finding,
@@ -93,7 +92,8 @@ class Evidence(_Frozen):
     base_sha: str
     head_sha: str
     profiles: tuple[EvidenceProfile, ...]
-    model_review: bool
+    # None when the result came from outside `bylaw review`, such as a host model.
+    model_review: bool | None
     requirements: tuple[EvidenceRequirement, ...]
     files_changed: tuple[str, ...]
     tests_changed: tuple[str, ...]
@@ -134,7 +134,7 @@ def build_evidence(context: ReviewContext, result: ReviewResult, plan: Plan) -> 
         base_sha=context.base_sha,
         head_sha=context.head_sha,
         profiles=tuple(EvidenceProfile(name=p.name, standard=p.standard) for p in profiles),
-        model_review=not any(note.startswith(MODEL_NOT_RUN) for note in context.notes),
+        model_review=context.model_review,
         requirements=_requirements(context, result),
         files_changed=changed,
         tests_changed=tuple(path for path in changed if is_test(path)),
