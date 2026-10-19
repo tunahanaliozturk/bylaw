@@ -3,7 +3,9 @@ import sys
 from importlib.metadata import version
 from pathlib import Path
 
+import httpx
 import pytest
+import respx
 
 from bylaw import cli, pull_review
 from bylaw.cli import main
@@ -274,3 +276,36 @@ def test_bylaw_mcp_with_a_root_that_does_not_exist_is_a_clear_error(
 
     assert code == 2
     assert "not a directory" in capsys.readouterr().err
+
+
+@respx.mock
+def test_with_the_workflow_token_only_github_actions_writes_bylaws_summary(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # The Action sets BYLAW_BOT_LOGIN when it posts with the workflow token, so a bot a pull request's
+    # author can steer, such as a review bot quoting the pull request, cannot plant a summary.
+    monkeypatch.setenv("BYLAW_BOT_LOGIN", "github-actions[bot]")
+    comments = [
+        {"id": 1, "body": "<!-- bylaw:summary --> x", "user": {"type": "Bot", "login": "copilot[bot]"}},
+        {
+            "id": 2,
+            "body": "<!-- bylaw:summary --> y",
+            "user": {"type": "Bot", "login": "github-actions[bot]"},
+        },
+    ]
+    respx.get(url__startswith="https://api.github.com/repos/octo/app/issues/5/comments").mock(
+        return_value=httpx.Response(200, json=comments)
+    )
+
+    with cli.github_client("t", "https://api.github.com") as client:
+        summary = client.summary_comment("octo/app", 5)
+
+    assert summary is not None
+    assert summary.id == 2
+
+
+def test_the_action_names_its_bot_only_when_it_posts_with_the_workflow_token() -> None:
+    action = (Path(__file__).resolve().parents[2] / "action.yml").read_text(encoding="utf-8")
+    line = "BYLAW_BOT_LOGIN: ${{ inputs.github-token == github.token && 'github-actions[bot]' || '' }}"
+
+    assert action.count(line) == 2  # the review and the learning step

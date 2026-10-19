@@ -193,6 +193,24 @@ repository's own `[ceiling]` is ignored. ADR 0017 and the deploy guide document 
 
 **Status.** Fixed in `782f0ea`; the label and the default budget were closed in review of the fix.
 
+## Found in review of the fixes
+
+The pull request with the fixes was reviewed in turn, and these were changed before it merged:
+
+- `GET /user` failing for any other reason than a token without a user (a 5xx, a 429 or a rate-limited
+  403) read as "no identity" and silently cost a duplicate summary and reposted findings; it now ends
+  the run (`test_a_failed_identity_check_fails_the_run_instead_of_reading_as_no_identity`).
+- Under a `"trusted"` ceiling a repository could still name the review label, and a high ceiling raised
+  the app's default budget; both are closed (finding 10).
+- Dropping an oversized finding resolved its thread as fixed; it is now cut down instead (finding 4).
+- Tests were added for the branches nothing failed without: bylaw's own bot on a pull request it
+  opened, another bot under a fixed App login, and `log.showSignature`; the git guards with no test are
+  described as guards (finding 5).
+- Trusting any bot on the workflow token let a bot a pull request's author can steer plant a marker.
+  The Action now sets `BYLAW_BOT_LOGIN=github-actions[bot]` when it posts with the workflow token, so
+  only that bot counts there (`test_with_the_workflow_token_only_github_actions_writes_bylaws_summary`).
+  With other tokens any bot still counts; SECURITY.md and ADR 0008 name this as a known limit.
+
 ## Checked and found sound
 
 - **The Action.** Inputs reach scripts through environment variables, never through expression

@@ -73,6 +73,9 @@ runs:
       # become part of the command line.
       env:
         GITHUB_TOKEN: ${{ inputs.github-token }}
+        # With the workflow token bylaw posts as github-actions[bot], so only that bot carries its state;
+        # with another token the identity is unknown and any bot does (ADR 0008).
+        BYLAW_BOT_LOGIN: ${{ inputs.github-token == github.token && 'github-actions[bot]' || '' }}
         BYLAW_API_KEY: ${{ inputs.api-key }}
         BYLAW_PROVIDER: ${{ inputs.provider }}
         BYLAW_MODEL: ${{ inputs.model }}
@@ -114,6 +117,7 @@ runs:
       shell: bash
       env:
         GITHUB_TOKEN: ${{ inputs.github-token }}
+        BYLAW_BOT_LOGIN: ${{ inputs.github-token == github.token && 'github-actions[bot]' || '' }}
         BYLAW_PR: ${{ github.event.pull_request.number }}
       run: uv run --project "$GITHUB_ACTION_PATH" --locked --no-dev bylaw learn --pr "$BYLAW_PR"
     # Pinned by commit like the step above. The artifact belongs to the workflow run and expires with the
