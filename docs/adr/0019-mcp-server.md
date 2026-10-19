@@ -61,7 +61,9 @@ people see. And tool results go into the agent's context window, which is the sc
   that asks it to post cannot. The choice belongs to the person who starts the server, not to the agent
   or the pull request, so it is a flag and not a tool argument. `post` takes `repo`, `pr` and the result,
   validates it against the kept context, reads `.bylaw.toml` from the base branch again, as `bylaw post`
-  does, and publishes through the same code. It is marked not read-only, not destructive (it adds
+  does, and publishes through the same code. It first compares the pull request's current head with the
+  head the brief read, and refuses when they differ, telling the agent to run brief again: comments
+  placed on lines a push has since moved would land on the wrong code. It is marked not read-only, not destructive (it adds
   comments and edits or resolves only bylaw's own) and idempotent (a rerun repeats nothing), so clients
   that ask before a writing tool will ask. With posting on, the server's instructions add that the agent
   posts only when the user asks.

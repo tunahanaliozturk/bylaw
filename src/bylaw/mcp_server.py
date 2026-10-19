@@ -174,20 +174,31 @@ def make_server(roots: Sequence[Path], *, allow_post: bool = False) -> MCPServer
             """Publish the result to the pull request after validation: inline comments, the summary and
             resolved threads, as `bylaw post --pr` does. Checked against the context the last brief read."""
             name = _repo(repo)
-            context = read(name, pr, None, None, again=False)
-            checked = _validated(context, result)
-            with _tool_errors(), _github() as client:
-                # Read again rather than trusting the context: the config must come from the base branch.
-                config = load_config(GitHubSource(client, name, pr).read_base(".bylaw.toml"))
-                plan = publish(client, name, pr, context=context, result=checked.result, config=config)
-            return Posted(
-                inline=len(plan.inline),
-                resolved=len(plan.resolve),
-                reopened=len(plan.unresolve),
-                dropped=list(checked.dropped),
-            )
+            return _post(read(name, pr, None, None, again=False), result, name, pr)
 
     return server
+
+
+def _post(context: ReviewContext, result: dict[str, Any], repo: str, pr: int) -> Posted:
+    checked = _validated(context, result)
+    with _tool_errors(), _github() as client:
+        source = GitHubSource(client, repo, pr)
+        # The comments go on the lines the reviewer saw; after a push those lines may be gone.
+        head = source.pull_request().head.sha
+        if head != context.head_sha:
+            raise ToolError(
+                f"pull request {pr} has new commits since the brief (reviewed {context.head_sha[:12]}, now "
+                f"{head[:12]}); run brief again and review the new head before posting"
+            )
+        # Read again rather than trusting the context: the config must come from the base branch.
+        config = load_config(source.read_base(".bylaw.toml"))
+        plan = publish(client, repo, pr, context=context, result=checked.result, config=config)
+    return Posted(
+        inline=len(plan.inline),
+        resolved=len(plan.resolve),
+        reopened=len(plan.unresolve),
+        dropped=list(checked.dropped),
+    )
 
 
 def _repo(repo: str | None) -> str:
