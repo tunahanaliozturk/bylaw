@@ -113,3 +113,11 @@ def test_only_the_categories_learn_may_suggest_are_suggested() -> None:
 
     assert suggestions(records, Learn(enabled=True), ()) == []
     assert len(suggestions(records, Learn(enabled=True, suggest=("bug",)), ())) == 1
+
+
+def test_at_close_a_marker_the_pull_request_author_planted_changes_nothing() -> None:
+    planted = ThreadComment(f"<!-- bylaw:fp={FP} -->", trusted=True, by_pr_author=True)
+    mute = ThreadComment("bylaw: ignore", trusted=True, author="maintainer")
+    thread = Thread(id="T1", resolved=False, comments=(planted, mute))
+
+    assert close_outcomes(OPEN, [thread], frozenset()) == OPEN

@@ -13,7 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 
 from bylaw.diff import parse_patch
 from bylaw.model import ChangedFile, FileStatus
-from bylaw.plan import Thread, ThreadComment
+from bylaw.plan import FINGERPRINT, Thread, ThreadComment
 from bylaw.render import SUMMARY_MARKER, InlineParts
 from bylaw.source import ChangeInfo, Issue, IssueRef
 
@@ -621,15 +621,7 @@ class GitHubClient:
             pr_author = pull.author.login if pull.author else None
             for node in pull.review_threads.nodes:
                 read, unread = self._thread_comments(node)
-                comments = tuple(
-                    ThreadComment(
-                        body=c.body,
-                        trusted=self._trusted(c.author, c.author_association),
-                        by_pr_author=c.author is not None and c.author.login == pr_author,
-                        author=c.author.login if c.author else "",
-                    )
-                    for c in read
-                )
+                comments = tuple(self._thread_comment(c, pr_author) for c in read)
                 threads.append(
                     Thread(
                         id=node.id,
@@ -650,6 +642,25 @@ class GitHubClient:
             if not pull.review_threads.page_info.has_next_page:
                 return threads
             after = pull.review_threads.page_info.end_cursor
+
+    def _thread_comment(self, comment: "_GqlComment", pr_author: str | None) -> ThreadComment:
+        author = comment.author
+        login = _login(author.login) if author else ""
+        trusted = self._trusted(author, comment.author_association)
+        by_pr_author = author is not None and pr_author is not None and login == _login(pr_author)
+        # Asked only of the author's comments that carry a marker: a trusted bot, or a personal token's
+        # owner, is bylaw itself, so its comments count on a pull request it opened.
+        bot = author is not None and author.typename == "Bot"
+        own = by_pr_author and (
+            (bot and trusted) or (FINGERPRINT.search(comment.body) is not None and login == self._token_login)
+        )
+        return ThreadComment(
+            body=comment.body,
+            trusted=trusted,
+            by_pr_author=by_pr_author,
+            author=author.login if author else "",
+            own=own,
+        )
 
     def _thread_comments(self, thread: _GqlThread) -> tuple[list[_GqlComment], bool]:
         """The finding and every reply, and whether the older replies could not be read.
@@ -679,32 +690,36 @@ class GitHubClient:
         return _first_and_recent(merged), unread
 
     def summary_comment(self, repo: str, number: int) -> SummaryComment | None:
-        """The comment that opens with the summary marker, a bot's first (ADR 0008).
+        """The comment that opens with the summary marker and that bylaw's own account wrote (ADR 0008).
 
-        A marker in the middle of a comment is someone quoting it; editing that comment would overwrite
-        a person's words.
+        That is a trusted bot's, or, with a personal token, the token owner's. A person's marker comment is
+        never the summary, whatever their association: MEMBER covers read-only organisation members, so a
+        pull request's author could plant one, and bylaw would edit their words and read their state. A
+        marker in the middle of a comment is someone quoting it.
         """
-        fallback: SummaryComment | None = None
+        people: list[tuple[str, SummaryComment]] = []
         for page in range(1, _MAX_FILE_PAGES + 1):
             params = {"per_page": _PAGE_SIZE, "page": page}
             batch = _ISSUE_COMMENTS.validate_python(
                 self._get(f"/repos/{repo}/issues/{number}/comments", params).json()
             )
             for comment in batch:
-                kind = comment.user.kind if comment.user else ""
-                author = _GqlAuthor(__typename=kind, login=comment.user.login if comment.user else "")
-                if not comment.body.startswith(SUMMARY_MARKER) or not self._trusted(
-                    author, comment.author_association
-                ):
+                if not comment.body.startswith(SUMMARY_MARKER) or comment.user is None:
                     continue
-                if self._bot is not None and not self._is_own(author):
-                    continue  # with a fixed identity, the summary is bylaw's own comment and nobody else's
+                kind, login = comment.user.kind, comment.user.login
                 if kind == "Bot":
-                    return SummaryComment(id=comment.id, body=comment.body, bot=True)
-                fallback = fallback or SummaryComment(id=comment.id, body=comment.body)
+                    author = _GqlAuthor(__typename=kind, login=login)
+                    if self._trusted(author, comment.author_association) and (
+                        self._bot is None or self._is_own(author)
+                    ):
+                        return SummaryComment(id=comment.id, body=comment.body, bot=True)
+                elif self._bot is None:
+                    people.append((_login(login), SummaryComment(id=comment.id, body=comment.body)))
             if len(batch) < _PAGE_SIZE:
                 break
-        return fallback
+        # Asked only when no bot wrote one, so a workflow token's run costs no extra call.
+        own = self._token_login if people else None
+        return next((summary for login, summary in people if own is not None and login == own), None)
 
     def upsert_summary(self, repo: str, number: int, comment_id: int | None, body: str) -> None:
         if comment_id is None:
@@ -826,6 +841,20 @@ class GitHubClient:
         if author is None or author.typename != "Bot":
             return False
         return self._bot is None or self._is_own(author)
+
+    @cached_property
+    def _token_login(self) -> str | None:
+        """The token's own user: a personal token can say who it is, a workflow or installation token
+        cannot (GitHub answers 403), and then no person's comment is bylaw's own."""
+        if self._bot is not None:
+            return None
+        response = self._send("GET", f"{self._api_url}/user")
+        try:
+            body = response.json() if response.is_success else None
+        except ValueError:
+            body = None
+        login = body.get("login") if isinstance(body, dict) else None
+        return _login(login) if isinstance(login, str) and login else None
 
     def _is_own(self, author: "_GqlAuthor") -> bool:
         return author.typename == "Bot" and _login(author.login) == self._bot

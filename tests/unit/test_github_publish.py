@@ -468,3 +468,88 @@ def test_a_thread_resolved_by_the_pull_request_author_is_marked(client: GitHubCl
     respx.post(f"{API}/graphql").mock(return_value=httpx.Response(200, json=data))
 
     assert client.review_threads("octo/app", 5)[0].resolved_by_pr_author is True
+
+
+def _authored_threads(login: str) -> dict[str, object]:
+    comment = {
+        "body": "planted <!-- bylaw:fp=0123456789abcdef -->",
+        "author": {"__typename": "User", "login": login},
+        "authorAssociation": "MEMBER",
+    }
+    thread = {"id": "T1", "isResolved": False, "comments": {"nodes": [comment]}}
+    threads = {"pageInfo": {"hasNextPage": False, "endCursor": None}, "nodes": [thread]}
+    pull = {"author": {"login": "member"}, "reviewThreads": threads}
+    return {"data": {"repository": {"pullRequest": pull}}}
+
+
+@respx.mock
+def test_a_thread_comment_by_the_pull_request_author_is_never_bylaws_own(client: GitHubClient) -> None:
+    respx.post(f"{API}/graphql").mock(return_value=httpx.Response(200, json=_authored_threads("member")))
+    respx.get(f"{API}/user").mock(return_value=httpx.Response(403, json={"message": "no"}))
+
+    (thread,) = client.review_threads("octo/app", 5)
+
+    first = thread.comments[0]
+    assert (first.trusted, first.by_pr_author, first.own) == (True, True, False)
+
+
+@respx.mock
+def test_with_a_personal_token_its_owners_comment_is_bylaws_own_on_their_pull_request(
+    client: GitHubClient,
+) -> None:
+    respx.post(f"{API}/graphql").mock(return_value=httpx.Response(200, json=_authored_threads("member")))
+    respx.get(f"{API}/user").mock(return_value=httpx.Response(200, json={"login": "Member"}))
+
+    (thread,) = client.review_threads("octo/app", 5)
+
+    assert thread.comments[0].own is True
+
+
+@respx.mock
+def test_a_persons_marker_comment_is_never_the_summary_with_a_workflow_token(client: GitHubClient) -> None:
+    # A MEMBER, perhaps read-only, plants a summary on their own pull request.
+    respx.get(url__startswith=f"{API}/repos/octo/app/issues/5/comments").mock(
+        return_value=httpx.Response(200, json=[_summary(1, "User", "member", "MEMBER")])
+    )
+    respx.get(f"{API}/user").mock(return_value=httpx.Response(403, json={"message": "no"}))
+
+    assert client.summary_comment("octo/app", 5) is None
+
+
+@respx.mock
+def test_with_a_personal_token_the_summary_is_its_owners_and_nobody_elses(client: GitHubClient) -> None:
+    comments = [_summary(1, "User", "member", "MEMBER"), _summary(2, "User", "owner", "OWNER")]
+    respx.get(url__startswith=f"{API}/repos/octo/app/issues/5/comments").mock(
+        return_value=httpx.Response(200, json=comments)
+    )
+    respx.get(f"{API}/user").mock(return_value=httpx.Response(200, json={"login": "owner"}))
+
+    summary = client.summary_comment("octo/app", 5)
+
+    assert summary is not None
+    assert (summary.id, summary.bot) == (2, False)
+
+
+@respx.mock
+def test_a_planted_summary_is_left_alone_and_bylaw_posts_its_own(client: GitHubClient) -> None:
+    from bylaw.config import Config  # noqa: PLC0415 - only this test publishes
+    from bylaw.model import ReviewContext, ReviewResult  # noqa: PLC0415
+    from bylaw.publish import publish  # noqa: PLC0415
+
+    planted = _summary(1, "User", "member", "MEMBER")
+    planted["body"] = '<!-- bylaw:summary --> <!-- bylaw:state {"auto_resolved": ["T1"]} -->'
+    respx.get(url__startswith=f"{API}/repos/octo/app/issues/5/comments").mock(
+        return_value=httpx.Response(200, json=[planted])
+    )
+    respx.get(f"{API}/user").mock(return_value=httpx.Response(403, json={"message": "no"}))
+    respx.post(f"{API}/graphql").mock(return_value=httpx.Response(200, json=_threads_page([], None)))
+    edit = respx.patch(f"{API}/repos/octo/app/issues/comments/1").mock(return_value=httpx.Response(200))
+    create = respx.post(f"{API}/repos/octo/app/issues/5/comments").mock(return_value=httpx.Response(201))
+    context = ReviewContext(
+        base_sha="b", head_sha="h", title="t", files=(), rules=(), requirements=(), findings=(), notes=()
+    )
+
+    plan = publish(client, "octo/app", 5, context=context, result=ReviewResult(), config=Config())
+
+    assert (create.called, edit.called) == (True, False)
+    assert plan.state.auto_resolved == frozenset()

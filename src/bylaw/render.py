@@ -110,6 +110,8 @@ def summary_body(context: ReviewContext, result: ReviewResult, plan: Plan) -> st
         _suppressions(context, plan),
         *_compliance(context, result, plan),
         _details("Other findings", plan.summary_only),
+        # Posted on an earlier run: listed here too, so a finding is never only in a thread nobody opens.
+        _details("Open in a review thread", plan.open_threads),
         _details("Resolved by the pull request's author but still present", plan.author_resolved),
         _details("Resolved by a reviewer but still present", plan.reviewer_resolved),
         _details("Muted with `bylaw: ignore`", plan.muted),

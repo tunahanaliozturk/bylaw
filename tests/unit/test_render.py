@@ -40,6 +40,7 @@ def _plan(
     *,
     inline: tuple[Group, ...] = (),
     summary_only: tuple[Group, ...] = (),
+    open_threads: tuple[Group, ...] = (),
     auto: frozenset[str] = frozenset(),
 ) -> Plan:
     return Plan(
@@ -47,7 +48,7 @@ def _plan(
         summary_only=summary_only,
         muted=(),
         reviewer_resolved=(),
-        open_threads=(),
+        open_threads=open_threads,
         resolve=(),
         unresolve=(),
         state=State(auto_resolved=auto),
@@ -636,3 +637,12 @@ def test_the_change_management_evidence_counts_suppressed_findings_apart_from_op
 
     assert "- Findings: 0 open, 0 accepted" in body
     assert "- Hidden by a suppression in `.bylaw.toml`: 1." in body
+
+
+def test_findings_in_open_threads_are_listed_so_none_is_shown_nowhere() -> None:
+    plan = _plan(open_threads=(Group(finding=_finding(7), fingerprint=FP, others=()),))
+
+    body = summary_body(CONTEXT, ReviewResult(), plan)
+
+    assert "<details><summary>Open in a review thread (1)</summary>" in body
+    assert "`app.py:7` SQL built by string concatenation." in body
