@@ -17,7 +17,10 @@
 # pipeline in this project: that pipeline gets the token, and its job definition comes from the fork.
 bylaw:
   stage: test
-  image: ghcr.io/astral-sh/uv:python3.13-bookworm-slim
+  # Pinned by digest: a tag can be moved to another image, a digest cannot. To update, read the digest
+  # the tag points at now and review the change like any other:
+  #   docker buildx imagetools inspect ghcr.io/astral-sh/uv:python3.13-bookworm-slim
+  image: ghcr.io/astral-sh/uv:python3.13-bookworm-slim@sha256:531f855bda2c73cd6ef67d56b733b357cea384185b3022bd09f05e002cd144ca
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
   # A newer push makes this run pointless, and GitLab can cancel it when the project allows that.
@@ -29,6 +32,10 @@ bylaw:
     GIT_STRATEGY: none
     # The first release with GitLab support; pin it so an update is a change you review.
     BYLAW_VERSION: "0.6.0"
+    # bylaw@0.6.0 pins bylaw, not what it depends on: uvx resolves those afresh on every run. This keeps
+    # the resolution to packages published by the time of that release, so a dependency released later,
+    # compromised or not, never reaches the job. Move it forward together with BYLAW_VERSION.
+    UV_EXCLUDE_NEWER: "2026-10-19T12:00:00Z"
   script:
     # Add --fail-on high to fail the pipeline while a high or critical finding is open.
     - uvx "bylaw@${BYLAW_VERSION}" review --gitlab-mr "$CI_MERGE_REQUEST_IID" --project "$CI_MERGE_REQUEST_PROJECT_ID" --post
