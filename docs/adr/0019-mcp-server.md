@@ -60,6 +60,15 @@ people see. And tool results go into the agent's context window, which is the sc
   comments and edits or resolves only bylaw's own) and idempotent (a rerun repeats nothing), so clients
   that ask before a writing tool will ask. With posting on, the server's instructions add that the agent
   posts only when the user asks.
+- **Tracker tokens go only to pinned sites.** The Jira site and the Azure DevOps organisation a token
+  goes to come from the reviewed repository's `.bylaw.toml`. Here the agent picks that repository, and a
+  hostile pull request can ask it to brief `attacker/x`, whose `.bylaw.toml` names the attacker's Jira.
+  So the server reads contexts with the GitHub App's rule (ADR 0017): a token goes only to the site
+  pinned in the server's environment, `JIRA_URL` or `AZURE_DEVOPS_ORGANIZATION`, and without a pin the
+  tracker is not read and a note says so. The same holds for local branches, since a root can hold a
+  clone of anything. The skill's path has the same hole, because the agent names `--repo` there too, so
+  `bylaw context --pr` pins the sites whenever `--repo` differs from `GITHUB_REPOSITORY`; the Action,
+  which reviews its own repository, keeps today's behaviour.
 - **No secrets in results.** The GitHub token comes from the server's environment (`GITHUB_TOKEN` or
   `GH_TOKEN`), never from an argument. bylaw's own errors become tool errors with their message, and
   those messages never carry the token (a test sets a sentinel token and checks a failed call); anything

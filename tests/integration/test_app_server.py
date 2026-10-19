@@ -479,7 +479,7 @@ def test_a_repository_cannot_send_the_installation_s_jira_token_to_a_host_it_pic
 
         assert server.elsewhere is not None
         assert not server.elsewhere.called
-    assert "names a Jira site other than the one the app's operator set" in github.comments[0]["body"]
+    assert "names a Jira site other than the one the operator set" in github.comments[0]["body"]
 
 
 KEYED = {"BYLAW_INSTALLATION_7_ANTHROPIC_API_KEY": "key-for-7"}

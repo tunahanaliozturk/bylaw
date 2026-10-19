@@ -736,8 +736,8 @@ def test_with_operator_sites_a_repository_cannot_send_the_jira_token_to_another_
     assert requirements == ()
     assert len(respx.calls) == 0
     assert notes == (
-        "PROJ-12 was not read from Jira: .bylaw.toml names a Jira site other than the one the app's "
-        "operator set for this installation (JIRA_URL), and the installation's token goes only there.",
+        "PROJ-12 was not read from Jira: .bylaw.toml names a Jira site other than the one the operator "
+        "set in bylaw's environment (JIRA_URL), and the token goes only there.",
     )
     assert not _notes_leak(notes, env)
 
@@ -750,8 +750,8 @@ def test_with_operator_sites_and_no_site_set_the_jira_token_goes_nowhere() -> No
 
     assert (requirements, len(respx.calls)) == ((), 0)
     assert notes == (
-        "PROJ-12 was not read from Jira: the app's operator has not set JIRA_URL for this installation, "
-        "so its token is not sent anywhere.",
+        "PROJ-12 was not read from Jira: the operator has not set JIRA_URL in bylaw's environment, so "
+        "the token is not sent anywhere.",
     )
 
 
@@ -765,7 +765,7 @@ def test_with_operator_sites_azure_boards_is_read_only_from_the_operator_s_organ
     refused, notes = read_work_items(["AB#345"], load_config(other), env, operator_sites=True)
 
     assert ([r.source for r in kept], refused, route.call_count) == (["AB#345"], (), 1)
-    assert "names an Azure DevOps organisation other than the one the app's operator set" in notes[0]
+    assert "names an Azure DevOps organisation other than the one the operator set" in notes[0]
 
 
 @respx.mock

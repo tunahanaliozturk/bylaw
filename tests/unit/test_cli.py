@@ -5,7 +5,9 @@ from pathlib import Path
 
 import pytest
 
+from bylaw import cli
 from bylaw.cli import main
+from bylaw.model import ReviewContext
 
 
 def test_version_flag_prints_the_installed_version(capsys: pytest.CaptureFixture[str]) -> None:
@@ -202,6 +204,32 @@ def test_bylaw_mcp_without_the_mcp_extra_says_how_to_install_it(
 
     assert code == 2
     assert "bylaw[mcp]" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    ("repo_arg", "pinned"),
+    [(None, False), ("Acme/App", False), ("attacker/x", True)],
+    ids=["own repository", "own repository, other case", "another repository"],
+)
+def test_context_for_another_repository_sends_tracker_tokens_only_to_pinned_sites(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, repo_arg: str | None, pinned: bool
+) -> None:
+    # An agent running the skill picks --repo; the Action reviews its own GITHUB_REPOSITORY.
+    seen: list[bool] = []
+
+    def build(_source: object, *_args: object, operator_sites: bool = False, **_kw: object) -> object:
+        seen.append(operator_sites)
+        return ReviewContext.model_validate_json(_EMPTY_CONTEXT)
+
+    monkeypatch.setattr(cli, "build_context", build)
+    monkeypatch.setenv("GITHUB_TOKEN", "t")
+    monkeypatch.setenv("GITHUB_REPOSITORY", "acme/app")
+    repo = ["--repo", repo_arg] if repo_arg else []
+
+    code = main(["context", "--pr", "1", *repo, "--output", str(tmp_path / "context.json")])
+
+    assert code == 0
+    assert seen == [pinned]
 
 
 def test_bylaw_mcp_with_a_root_that_does_not_exist_is_a_clear_error(

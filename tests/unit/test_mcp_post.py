@@ -1,4 +1,5 @@
-"""The post tool: offered only when the server was started with posting allowed."""
+"""bylaw mcp on a pull request with GitHub stubbed out: the post tool, offered only when posting is
+allowed, and what the server sends where."""
 
 from pathlib import Path
 from types import SimpleNamespace
@@ -66,7 +67,7 @@ def test_post_publishes_the_validated_result_with_the_config_from_the_base_branc
         published.update(parts, repo=repo, number=number)
         return SimpleNamespace(inline=("one",), resolve=(), unresolve=())
 
-    monkeypatch.setattr(mcp_server, "build_context", lambda _source: CONTEXT)
+    monkeypatch.setattr(mcp_server, "build_context", lambda _source, **_: CONTEXT)
     monkeypatch.setattr(mcp_server, "GitHubSource", BaseBranch)
     monkeypatch.setattr(mcp_server, "publish", publish)
     elsewhere = {**FINDING, "file": "other.py"}
@@ -107,3 +108,26 @@ def test_bylaw_mcp_allows_posting_only_with_the_allow_post_flag(
     assert cli.main(["mcp", "--root", str(tmp_path)]) == 0
     assert cli.main(["mcp", "--root", str(tmp_path), "--allow-post"]) == 0
     assert started == [False, "stdio", True, "stdio"]
+
+
+def _capture_sites(monkeypatch: pytest.MonkeyPatch) -> list[bool]:
+    seen: list[bool] = []
+
+    def build(_source: object, *_args: object, operator_sites: bool = False, **_kw: object) -> ReviewContext:
+        seen.append(operator_sites)
+        return CONTEXT
+
+    monkeypatch.setattr(mcp_server, "build_context", build)
+    return seen
+
+
+def test_a_pull_request_sends_tracker_tokens_only_to_sites_pinned_in_the_environment(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("GITHUB_TOKEN", "t")
+    seen = _capture_sites(monkeypatch)
+
+    result = _call(make_server([tmp_path]), "brief", {"repo": "attacker/x", "pr": 1})
+
+    assert not result.is_error, _text(result)
+    assert seen == [True]

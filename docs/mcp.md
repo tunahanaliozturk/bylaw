@@ -54,6 +54,16 @@ fine-grained token with read access to contents, pull requests and issues is eno
 the token to the server through its configuration; each section below shows how to do that without
 writing the token into the file where the client allows it.
 
+## Tracker tokens
+
+Jira and Azure Boards work items need their tokens in the server's environment too ([trackers.md](trackers.md)).
+The server also needs to know where those tokens may go. Normally the site comes from the reviewed
+repository's `.bylaw.toml`, but here the agent picks the repository, and a pull request can ask it to
+review one whose `.bylaw.toml` names someone else's Jira. So the server sends a tracker token only to the
+site you pin next to it: `JIRA_URL` (such as `https://acme.atlassian.net`) for Jira and
+`AZURE_DEVOPS_ORGANIZATION` for Azure Boards. Without the pin, work items are left out with a note and the
+token goes nowhere. Linear has one fixed host and needs no pin.
+
 ## Local paths
 
 A local review runs git in the directory the agent names, so the server only accepts directories inside
