@@ -143,3 +143,30 @@ def test_a_textconv_driver_in_the_repository_config_never_runs(
 
     assert {f.path for f in files} == {".gitattributes", "app.py"}
     assert not marker.exists()
+
+
+def test_a_signature_program_in_the_repository_config_never_runs(
+    repo: Path, tmp_path_factory: pytest.TempPathFactory
+) -> None:
+    # With log.showSignature on, `git log` runs gpg.program on every signed commit it lists.
+    outside = tmp_path_factory.mktemp("outside")
+    marker = outside / "ran"
+    signer = outside / "sign.sh"
+    signer.write_text(
+        '#!/bin/sh\necho "[GNUPG:] SIG_CREATED D 1 8 00 1700000000 ABCDEF" >&2\n'
+        'echo "-----BEGIN PGP SIGNATURE-----"\necho\necho abc\necho "-----END PGP SIGNATURE-----"\n'
+    )
+    verifier = outside / "verify.sh"
+    verifier.write_text(f"#!/bin/sh\ntouch '{marker.as_posix()}'\n")
+    for script in (signer, verifier):
+        script.chmod(0o755)
+    (repo / "signed.py").write_text("x = 1\n")
+    _git(repo, "add", ".")
+    _git(repo, "-c", f"gpg.program={signer.as_posix()}", "commit", "-S", "-m", "signed")
+    _git(repo, "config", "log.showSignature", "true")
+    _git(repo, "config", "gpg.program", verifier.as_posix())
+
+    messages = LocalGitSource(repo, "main").info().commit_messages
+
+    assert "signed" in messages
+    assert not marker.exists()

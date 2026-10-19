@@ -108,12 +108,14 @@ million-character notes; the summary was already trimmed to fit.
 **What.** A local review, including one through `bylaw mcp`, ran `git diff` without `--no-textconv`, so a
 `diff.<driver>.textconv` in the repository's config ran for files its `.gitattributes` named.
 
-**Fix.** `git diff` and `git show` pass `--no-textconv` (`git diff` already passed `--no-ext-diff`),
-`git log` passes `--no-show-signature` so `log.showSignature` cannot start a `gpg.program`, and every git
-command runs with `-c core.fsmonitor=false`. `docs/mcp.md` says so.
+**Fix.** `git diff` passes `--no-textconv` (it already passed `--no-ext-diff`), and `git log` passes
+`--no-show-signature`, so `log.showSignature` cannot start a `gpg.program`. As guards with no test,
+because git starts neither program for these commands today, `git show` passes `--no-textconv` and
+every git command runs with `-c core.fsmonitor=false`. `docs/mcp.md` says which is which.
 
-**Test.** `test_a_textconv_driver_in_the_repository_config_never_runs`, with a driver that writes a
-marker file outside the repository.
+**Tests.** `test_a_textconv_driver_in_the_repository_config_never_runs` and
+`test_a_signature_program_in_the_repository_config_never_runs`, each with a program that writes a marker
+file outside the repository; both fail without their flag.
 
 **Status.** Fixed in `a14beae`.
 
