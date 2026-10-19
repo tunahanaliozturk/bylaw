@@ -4,6 +4,7 @@ Pure functions over data, so every rule about re-runs is unit tested without Git
 """
 
 import hashlib
+import html
 import re
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, replace
@@ -13,6 +14,8 @@ from bylaw.model import Finding, ReviewContext, ReviewMemory, Severity
 FINGERPRINT = re.compile(r"<!-- bylaw:fp=([0-9a-f]{16}) -->")
 _IGNORE = re.compile(r"^\s*bylaw:\s*ignore\b", re.IGNORECASE | re.MULTILINE)
 _RANK = {severity: rank for rank, severity in enumerate(Severity)}
+# What `&#8203;` in a comment reads as once unescaped.
+_ZERO_WIDTH_SPACE = chr(0x200B)
 
 
 @dataclass(frozen=True, slots=True)
@@ -190,7 +193,10 @@ def _pair(
     """Match findings to their threads; findings on identical lines share a fingerprint, so line decides.
 
     Nearest line first, outdated threads last. A mute or resolve stays with the code it was written about:
-    deleting one copy resolves that copy's thread and never hands its mute to another.
+    deleting one copy resolves that copy's thread and never hands its mute to another. Between threads on
+    the same line, the one whose comment states the finding's message wins, so two problems on one line
+    keep their own threads whichever order the model lists them in (HRD-36). A reworded finding still
+    pairs by line, so threads posted before keep their mutes.
     """
     indexes: dict[str, list[int]] = {}
     for index, group in enumerate(groups):
@@ -199,18 +205,29 @@ def _pair(
     unpaired: list[tuple[str, Thread]] = []
     for fp, candidates in ours.items():
         options = sorted(
-            (_distance(thread, groups[index].finding), index, n)
+            (_distance(thread, finding := groups[index].finding), not _says(thread, finding), index, n)
             for index in indexes.get(fp, [])
             for n, thread in enumerate(candidates)
         )
         used: set[int] = set()
-        for _, index, n in options:
+        for *_, index, n in options:
             if index in paired or n in used:
                 continue
             paired[index] = candidates[n]
             used.add(n)
         unpaired += [(fp, thread) for n, thread in enumerate(candidates) if n not in used]
     return paired, unpaired
+
+
+def _says(thread: Thread, finding: Finding) -> bool:
+    """Whether the thread's first comment is bylaw's inline comment for this message (render.inline_parts).
+
+    The comment escapes `&`, `<` and `>` as entities and puts a zero-width space after `@`; both are undone
+    here, and so is the zero-width space GitLab comments put before a leading `/`.
+    """
+    _, _, text = thread.comments[0].body.partition("** ")
+    text = html.unescape(text).replace(_ZERO_WIDTH_SPACE, "")
+    return text == finding.message or text.startswith(f"{finding.message}\n\n")
 
 
 def remaining(plan: Plan) -> tuple[Finding, ...]:

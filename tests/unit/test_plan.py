@@ -12,6 +12,7 @@ from bylaw.plan import (
     make_plan,
     remaining,
 )
+from bylaw.render import inline_body
 
 
 def _context(*lines: tuple[int, str]) -> ReviewContext:
@@ -280,3 +281,37 @@ def test_a_thread_the_pull_request_author_resolved_still_counts_for_fail_on() ->
     assert plan.reviewer_resolved == ()
     assert [g.by for g in plan.author_resolved] == ["alice"]
     assert remaining(plan) == (_finding(),)
+
+
+def _posted(group: Group, thread_id: str, *replies: ThreadComment) -> Thread:
+    """A thread as bylaw posted it: the inline body, fingerprint marker and all (HRD-36)."""
+    first = ThreadComment(body=inline_body(group), trusted=True)
+    return Thread(id=thread_id, resolved=False, comments=(first, *replies), line=group.finding.line_end)
+
+
+def _same_lines(*messages: str) -> list[Group]:
+    added = added_text(_context((4, "log.info(f'{user} {password}')")))
+    return list(group_findings([_finding(4, message=m) for m in messages], added))
+
+
+def test_two_findings_on_the_same_lines_keep_their_own_mute_when_the_model_lists_them_in_another_order() -> (
+    None
+):
+    first_run = _same_lines("The query is built from input.", "A password <secret> & @admin go to the log.")
+    assert first_run[0].fingerprint == first_run[1].fingerprint
+    threads = [_posted(first_run[0], "T-query", MUTE), _posted(first_run[1], "T-password")]
+
+    plan = _plan_for(list(reversed(first_run)), threads)
+
+    assert [g.finding.message for g in plan.muted] == ["The query is built from input."]
+    assert [g.finding.message for g in plan.open_threads] == ["A password <secret> & @admin go to the log."]
+
+
+def test_a_finding_reworded_since_its_thread_was_posted_still_pairs_with_it() -> None:
+    (before,) = _same_lines("The password goes to the log.")
+    (after,) = _same_lines("A password is written to the log here.")
+
+    plan = _plan_for([after], [_posted(before, "T1", MUTE)])
+
+    assert (plan.inline, plan.resolve) == ((), ())
+    assert [g.finding.message for g in plan.muted] == ["A password is written to the log here."]
