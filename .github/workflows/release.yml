@@ -24,7 +24,9 @@ jobs:
             echo "Release tag $GITHUB_REF_NAME does not match the package version $version" >&2
             exit 1
           fi
-      - run: uv build
+      # The build backend comes from a hashed constraints file, so every release is built by the same
+      # hatchling; hatchling writes reproducible archives, so the same commit gives the same bytes.
+      - run: uv build --build-constraints tools/build-constraints.txt --require-hashes
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: dist

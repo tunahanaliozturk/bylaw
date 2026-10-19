@@ -34,6 +34,8 @@ jobs:
       cancel-in-progress: false
     runs-on: ubuntu-latest
     steps:
+      # @v0 follows the newest 0.x release. A tag can be moved, so pin the full commit SHA of a release
+      # instead, with the tag in a comment so Dependabot keeps it current; see the README.
       - uses: tunahanaliozturk/bylaw@v0
         with:
           api-key: ${{ secrets.ANTHROPIC_API_KEY }}

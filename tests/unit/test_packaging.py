@@ -207,3 +207,25 @@ def test_the_learning_recipe_gives_write_access_to_contents_only_to_the_closing_
     assert jobs["review"]["permissions"]["contents"] == "read"
     assert jobs["learn"]["if"] == "github.event.action == 'closed'"
     assert jobs["learn"]["permissions"]["contents"] == "write"
+
+
+def test_the_gitlab_recipe_pins_its_image_by_digest_and_its_dependencies_by_date() -> None:
+    job = YAML(typ="safe").load((ROOT / "docs" / "recipes" / "gitlab-ci.yml").read_text(encoding="utf-8"))
+    image, cutoff = job["bylaw"]["image"], job["bylaw"]["variables"]["UV_EXCLUDE_NEWER"]
+
+    assert re.fullmatch(r"ghcr\.io/astral-sh/uv:[\w.-]+@sha256:[0-9a-f]{64}", image)
+    assert re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", cutoff)
+
+
+def test_releases_are_built_with_the_hashed_build_backend() -> None:
+    release = (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
+    constraints = (ROOT / "tools" / "build-constraints.txt").read_text(encoding="utf-8")
+    project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    required = project["build-system"]["requires"]
+
+    assert "uv build --build-constraints tools/build-constraints.txt --require-hashes" in release
+    pinned = re.search(r"^hatchling==([\d.]+) \\\n\s+--hash=sha256:", constraints, re.MULTILINE)
+    assert pinned is not None
+    floor = re.fullmatch(r"hatchling>=([\d.]+)", required[0])
+    assert floor is not None
+    assert tuple(map(int, pinned[1].split("."))) >= tuple(map(int, floor[1].split(".")))

@@ -62,6 +62,8 @@ jobs:
           api-key: ${{ secrets.ANTHROPIC_API_KEY }}
 ```
 
+`@v0` follows the newest 0.x release. A tag can be moved, so for a workflow that holds a model key, pin the Action by its full commit SHA, with the tag in a comment so Dependabot or Renovate keeps it current: `uses: tunahanaliozturk/bylaw@221b247dae5ed951da2538870c44c1a0628c0848 # v0.6.0`. The commit of each release is on its [release page](https://github.com/tunahanaliozturk/bylaw/releases).
+
 Without a key it still runs the deterministic checks. OpenAI works too (`provider: openai`, `model: ...`), and so do Amazon Bedrock, Google Vertex AI, Microsoft Foundry, Azure OpenAI and local models through Ollama, vLLM or LM Studio, for teams whose code may not go to a public API: [docs/providers.md](https://github.com/tunahanaliozturk/bylaw/blob/main/docs/providers.md) lists what leaves the machine with each and which variables it reads. Fork pull requests need [the `pull_request_target` recipe](https://github.com/tunahanaliozturk/bylaw/blob/main/docs/recipes/pull-request-target.yml); read the warning at its top first.
 
 **GitHub App, for an organisation.** One install instead of a workflow file per repository: a server you
