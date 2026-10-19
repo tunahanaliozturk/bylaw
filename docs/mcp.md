@@ -195,9 +195,36 @@ Cursor fills in `${workspaceFolder}` and reads `${env:GITHUB_TOKEN}` from its ow
 
 ## VS Code
 
-From [VS Code's MCP configuration reference](https://code.visualstudio.com/docs/copilot/reference/mcp-configuration):
-add the server to `.vscode/mcp.json` in the workspace, or run **MCP: Open User Configuration** for every
-workspace.
+VS Code reads two formats ([configuration
+reference](https://code.visualstudio.com/docs/copilot/reference/mcp-configuration), [adding
+servers](https://code.visualstudio.com/docs/copilot/customization/mcp-servers)). The portable one is what
+VS Code now recommends for new servers, and the one Copilot's agent sessions read directly: `.mcp.json`
+at the workspace root, or `$COPILOT_HOME/mcp-config.json` (by default `~/.copilot/mcp-config.json`) for
+every workspace. Both hold a `mcpServers` object:
+
+```json
+{
+  "mcpServers": {
+    "bylaw": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["--from", "bylaw[mcp]", "bylaw", "mcp", "--root", "/path/to/code"],
+      "env": { "GITHUB_TOKEN": "github_pat_..." }
+    }
+  }
+}
+```
+
+The portable format supports neither input variables nor environment files, and VS Code documents no
+variable expansion for it, so a token in `env` is plain text. Put the server with a token in your user
+file, never in the workspace `.mcp.json` that goes into version control, use a fine-grained token that
+can only read, and leave `env` out of the workspace file if it only reviews local branches. Use an
+absolute `--root`: the workspace `.mcp.json` cannot set the directory the server starts in.
+
+If you want VS Code to prompt for the token and store it securely, the older VS Code format can:
+`.vscode/mcp.json` in the workspace, or **MCP: Open User Configuration**. VS Code lists those files as
+deprecated, and it does not forward a server that needs `${input:...}` to Copilot's agent sessions, so
+this works in VS Code's own chat only:
 
 ```json
 {
@@ -216,9 +243,7 @@ workspace.
 ```
 
 VS Code asks for the token the first time it starts the server and stores it securely, so it is never in
-the file. VS Code also reads a portable `.mcp.json` at the workspace root, with a `mcpServers` object like
-the Claude Code one above; that format does not support input variables, so use it only for local
-reviews or with a token from the environment.
+the file, and `${workspaceFolder}` is filled in with the workspace.
 
 ## Posting
 
