@@ -14,4 +14,6 @@ Show what bylaw found and what happened to it: findings by category, fix rate, c
 
 ## Notes
 
-Reads the store from LRN.
+Reads the store from LRN. RPT-3's `report` input (artifact or GitHub Pages) and `bylaw report` are built
+and tested against the fake GitHub; the box stays open until a report is published from the bylaw-demo
+repository, which needs closed pull requests with learning on.

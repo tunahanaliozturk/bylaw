@@ -50,6 +50,10 @@ inputs:
     description: Azure DevOps personal access token with Work Items (Read). Used only when .bylaw.toml has an [azure_boards] table. Pass it from a secret.
     required: false
     default: ""
+  report:
+    description: Publish the per-repository report from the bylaw-outcomes branch when a pull request closes or the workflow runs without one, such as on a schedule. none (default), artifact (the workflow artifact bylaw-report) or pages (GitHub Pages; the job needs pages and id-token write and environment github-pages). See docs/learning.md.
+    required: false
+    default: none
   linear-api-key:
     description: Linear personal API key with read access. Used only when .bylaw.toml has a [linear] table. Pass it from a secret.
     required: false
@@ -63,7 +67,7 @@ runs:
     - name: Review the pull request
       id: review
       # A closed pull request has nothing left to review; its outcomes are recorded below instead.
-      if: ${{ github.event.action != 'closed' }}
+      if: ${{ github.event.pull_request && github.event.action != 'closed' }}
       shell: bash
       # Inputs travel as environment variables and are quoted below, so nothing a workflow passes in can
       # become part of the command line.
@@ -106,7 +110,7 @@ runs:
     # request's outcomes go to the bylaw-outcomes branch. Needs `contents: write` (docs/learning.md).
     - name: Record what happened to the findings
       id: learn
-      if: ${{ github.event.action == 'closed' }}
+      if: ${{ github.event.pull_request && github.event.action == 'closed' }}
       shell: bash
       env:
         GITHUB_TOKEN: ${{ inputs.github-token }}
@@ -122,3 +126,38 @@ runs:
         path: ${{ steps.review.outputs.evidence }}
         if-no-files-found: error
         overwrite: true
+    # The per-repository report from the bylaw-outcomes branch (docs/learning.md), when a pull request
+    # closes or the workflow runs without one, such as on a schedule.
+    - name: Write the report
+      id: report
+      if: ${{ inputs.report != 'none' && (github.event.action == 'closed' || !github.event.pull_request) }}
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        BYLAW_REPORT: ${{ inputs.report }}
+      run: |
+        case "$BYLAW_REPORT" in
+          artifact | pages) ;;
+          *) echo "::error title=bylaw::The report input must be none, artifact or pages."; exit 1 ;;
+        esac
+        dir="$RUNNER_TEMP/bylaw/report"
+        uv run --project "$GITHUB_ACTION_PATH" --locked --no-dev bylaw report --output "$dir"
+        echo "dir=$dir" >> "$GITHUB_OUTPUT"
+    - name: Keep the report
+      if: ${{ steps.report.outputs.dir != '' && inputs.report == 'artifact' }}
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: bylaw-report
+        path: ${{ steps.report.outputs.dir }}
+        if-no-files-found: error
+        overwrite: true
+    # GitHub Pages needs `pages: write`, `id-token: write` and `environment: github-pages` on the job, and
+    # the github-pages environment deploys from the default branch only, so run this on a schedule.
+    - name: Stage the report for GitHub Pages
+      if: ${{ steps.report.outputs.dir != '' && inputs.report == 'pages' }}
+      uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+      with:
+        path: ${{ steps.report.outputs.dir }}
+    - name: Publish the report to GitHub Pages
+      if: ${{ steps.report.outputs.dir != '' && inputs.report == 'pages' }}
+      uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

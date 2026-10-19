@@ -31,7 +31,7 @@ jobs:
   review:
     runs-on: ubuntu-latest
     steps:
-      - uses: tunahanaliozturk/bylaw@v1
+      - uses: tunahanaliozturk/bylaw@v0
         with:
           api-key: ${{ secrets.ANTHROPIC_API_KEY }}
 ```
@@ -96,3 +96,44 @@ summary lists the suppressions in force, with their reason and how many findings
 hidden findings in a collapsed section, so nothing disappears unseen. A suppression of a rule line, such
 as `CONTRIBUTING.md:41`, stops matching when that file's lines move, and the findings come back; update
 the line when you edit the rule.
+
+## The report
+
+`bylaw report --output DIR` reads the records and writes `index.html` with its charts into `DIR`:
+findings per category and what happened to them, with the fix rate; criteria met, partly met, missing and
+not assessed per month, for the last twelve months with records; and the rules maintainers dismissed in
+the most pull requests. It needs no JavaScript and no web server. Each chart is a pair of PNG files, light
+and dark, which the browser picks from your system theme, and each has a table with the same numbers. It
+reads the newest 500 records.
+
+The Action writes it when you set its `report` input, on a closed pull request or on a run that has no
+pull request, such as a schedule:
+
+- `report: artifact` uploads the page as the workflow artifact `bylaw-report`. This works from the same
+  workflow as the review, with the permissions above.
+- `report: pages` publishes it to GitHub Pages. Set the repository's Pages source to GitHub Actions. The
+  `github-pages` environment deploys only from the default branch, so publish from a workflow of its own:
+
+```yaml
+name: bylaw report
+on:
+  schedule:
+    - cron: "0 6 * * 1"   # Mondays
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+    steps:
+      - uses: tunahanaliozturk/bylaw@v0
+        with:
+          report: pages
+```
+
+On a public repository the Pages site is public, and it names your rules and how often they were waved
+away. The records on the branch are visible to anyone who can read the repository either way.
