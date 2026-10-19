@@ -124,6 +124,7 @@ adr_globs = ["docs/adr/**", "doc/adr/**", "docs/decisions/**"]  # accepted ADRs 
 issue_repos = []                # other repositories whose issues may be quoted, e.g. ["acme/roadmap"]
 input_token_budget = 300000     # model input in tokens; the largest files are left out first
 incremental = true              # on a new push, send the model only the files whose change differs
+profiles = ["iso27001"]         # optional compliance profiles: control tags and audit evidence
 
 [budget]
 pr_tokens = 500000              # optional: model tokens one pull request may use across all runs
@@ -138,6 +139,10 @@ Rule files need no setting. bylaw reads them from the base branch: the ones at t
 ADRs are read from the base branch too, from `adr_globs`, subdirectories included. bylaw keeps the accepted ones, whether the status is a `Status: Accepted` line, a `## Status` section (Nygard, adr-tools), a table row or MADR front matter, and shows the reviewer only each one's title, status and decision section, newest first, about 4,000 tokens at most; the summary notes what was cut or left out, and names any ADR it could not read. Superseded, deprecated, rejected and proposed ADRs are left out. An ADR under a package, such as `packages/api/docs/adr/`, applies only to that package. A finding may cite only a decision line the reviewer was shown.
 
 Requirements can also come from Jira, Azure Boards (`AB#123`) and Linear. Each is an opt-in with an allow list and a token in the environment; setup, and `quote_trackers = false` for private trackers, are in [docs/trackers.md](https://github.com/tunahanaliozturk/bylaw/blob/main/docs/trackers.md).
+
+## Compliance profiles
+
+With `profiles = ["iso27001"]`, bylaw reviews with the development controls of ISO/IEC 27001:2022 Annex A in mind, in its own words and never the standard's: findings name the controls they touch (`8.28` for an injection, `8.15` and `8.11` for personal data in a log), a password in a log or weak password hashing is at least `high`, the summary lists the controls touched and the change-management evidence (linked requirement, commit reviewed, tests changed, findings accepted and by whom), and the Action uploads the same record as a JSON artifact per pull request. It helps a team keep evidence for an audit; it does not make anyone compliant. What it covers, what it does not and how an auditor reads it: [docs/compliance.md](https://github.com/tunahanaliozturk/bylaw/blob/main/docs/compliance.md).
 
 ## Evaluation
 

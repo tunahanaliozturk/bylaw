@@ -20,7 +20,7 @@ profiles = ["iso27001"]
 - [x] **CMP-6** (M) Summary section "Controls touched" and change-management evidence: linked requirement, review done, tests changed, findings resolved or accepted and by whom. Done when: render tests.
 - [x] **CMP-7** (M) Evidence file per pull request (JSON, published as an Actions artifact) for audits. Done when: schema documented, artifact on the demo repository. Done locally: the schema is in [docs/compliance.md](../compliance.md), a test keeps every field documented, `bylaw review --evidence` is tested against a fake GitHub, and the Action's step is run in bash with a stand-in for `uv`. The artifact on the demo repository needs a run there; it is on the live checks list below.
 - [x] **CMP-8** (M) Evaluation cases for the profile: changes that break a control and clean ones. Done when: cases in the set, scored. Three cases in `py-payments`, the one project with the profile on: a password in a log (8.15, 8.11), passwords hashed with MD5 (8.24) and a clean sign-in log. The scorer counts control tags against the labels, the oracle test scores them perfectly and the no-model run scores all 60 cases; a model run on them waits for the next paid evaluation.
-- [ ] **CMP-9** (S) Docs: what the profile covers, what it does not, and how an auditor reads the evidence. Done when: docs page reviewed by someone who has run a 27001 audit.
+- [ ] **CMP-9** (S) Docs: what the profile covers, what it does not, and how an auditor reads the evidence. Done when: docs page reviewed by someone who has run a 27001 audit. The page is written ([docs/compliance.md](../compliance.md)); the review by someone who has run an ISO/IEC 27001 audit has not happened yet, so this stays open.
 
 ## Live checks before v1.0
 

@@ -221,6 +221,12 @@ Works with no configuration. An optional `.bylaw.toml` sets the spec glob, sever
 categories, comment cap and token budget. Lockfiles, vendored code and files marked `linguist-generated`
 are skipped; large pull requests are split into file groups.
 
+A compliance profile, `profiles = ["iso27001"]`, adds a standard's controls to the brief, lets findings
+carry the control ids they touch, raises some severities by fixed rules after validation, and adds a
+change-management record to the summary and, in the Action, an evidence file per pull request. It helps
+with audit evidence and does not make anyone compliant ([ADR 0021](adr/0021-compliance-profiles.md),
+[compliance.md](compliance.md)).
+
 ## Testing and evaluation
 
 - **Unit tests** on every PR: `.editorconfig` resolution, acceptance criteria extraction, closing keyword
