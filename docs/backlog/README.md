@@ -23,7 +23,7 @@ One file per roadmap feature. Each item has an id, a size and what "done" means,
 | [MCP server](mcp-server.md) | Q3 | v0.6 | 3 | 3 |
 | [Compliance profiles: ISO/IEC 27001 first](compliance-profiles.md) | Q3 | v0.6 | 9 | 8 |
 | [A reviewer that learns the repository](learning.md) | Q4 | v1.0 | 5 | 5 |
-| [Per-repository report](repo-report.md) | Q4 | v1.0 | 3 | 0 |
+| [Per-repository report](repo-report.md) | Q4 | v1.0 | 3 | 1 |
 | [v1.0 stability](v1-stability.md) | Q4 | v1.0 | 4 | 3 |
 | [Fix pull requests](fix-pull-requests.md) | End of 2027 | v1.1 | 9 | 0 |
 | [Tracker tasks in both directions](tracker-tasks.md) | Beyond 2027 | v1.2+ | 5 | 0 |
