@@ -177,7 +177,7 @@ summary lists the suppressions in force and what they hid, so none works unseen.
 The same records make a report page: findings by category and what became of them, criteria met per
 month, and the rules dismissed most, with light and dark charts and no JavaScript. The Action publishes
 it as an artifact or to GitHub Pages with `report: artifact` or `report: pages`. Writing the branch needs
-`contents: write`. Setup, trust rules and the report: [docs/learning.md](https://github.com/tunahanaliozturk/bylaw/blob/main/docs/learning.md); the reasoning: [ADR 0022](https://github.com/tunahanaliozturk/bylaw/blob/main/docs/adr/0022-learning-and-reports.md).
+`contents: write`, which only a separate job for closed pull requests should get. Setup, trust rules and the report: [docs/learning.md](https://github.com/tunahanaliozturk/bylaw/blob/main/docs/learning.md); the reasoning: [ADR 0022](https://github.com/tunahanaliozturk/bylaw/blob/main/docs/adr/0022-learning-and-reports.md).
 
 ## Evaluation
 
