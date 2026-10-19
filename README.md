@@ -117,6 +117,7 @@ The design and its trade-offs: [docs/design.md](https://github.com/tunahanaliozt
 Optional `.bylaw.toml` at the repository root, always read from the base branch:
 
 ```toml
+version = 1                     # optional; the configuration format, 1 when left out
 severity_threshold = "medium"   # inline comments at or above this; the rest go in the summary
 max_comments = 15               # inline comments per run, 0 to 50
 spec_globs = ["docs/specs/**", "**/REQUIREMENTS.md"]

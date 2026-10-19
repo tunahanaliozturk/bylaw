@@ -95,3 +95,26 @@ def test_a_repository_cannot_drop_a_profile_the_organisation_turned_on() -> None
     config = load_config("profiles = []\nmax_comments = 3\n", defaults='profiles = ["iso27001"]\n')
 
     assert (config.profiles, config.max_comments) == (("iso27001",), 3)
+
+
+def test_a_configuration_without_a_version_is_version_1() -> None:
+    # Every .bylaw.toml written for 0.x has no version, and must mean what it always meant (ADR 0023).
+    assert load_config(None).version == 1
+    assert load_config("version = 1\n").version == 1
+
+
+def test_an_unknown_configuration_version_fails_and_names_the_versions_bylaw_reads() -> None:
+    with pytest.raises(ConfigError, match=r"says version 2.*reads version 1"):
+        load_config("version = 2\n")
+
+
+def test_an_organisation_default_with_an_unknown_version_names_the_organisation_file() -> None:
+    with pytest.raises(ConfigError, match=r"(?s)^The organisation's .bylaw.toml .*says version 3"):
+        load_config(None, defaults="version = 3\n")
+
+
+def test_a_version_that_is_not_a_number_is_refused_without_repeating_it() -> None:
+    with pytest.raises(ConfigError) as raised:
+        load_config('version = "ghp_pasted_in_the_wrong_place"\n')
+
+    assert "ghp_pasted" not in str(raised.value)

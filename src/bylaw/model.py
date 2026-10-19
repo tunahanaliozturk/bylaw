@@ -1,9 +1,9 @@
 """The contract between bylaw's parts and the hosts that run it. Everything here serialises to JSON."""
 
 from enum import StrEnum
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 
 
 def text_lines(text: str) -> list[str]:
@@ -38,6 +38,23 @@ class RuleKind(StrEnum):
     LINTER = "linter"
     PROSE = "prose"
 
+
+# The versions of the context and result files this bylaw reads (ADR 0023). Files from 0.x have none and
+# are version 1. A field that goes away or changes meaning raises the version; a new optional one does not.
+SCHEMA_VERSIONS = (1,)
+
+
+def _readable(version: int) -> int:
+    if version not in SCHEMA_VERSIONS:
+        known = ", ".join(str(v) for v in SCHEMA_VERSIONS)
+        raise ValueError(
+            f"this file is schema_version {version}, and this bylaw reads schema_version {known}: "
+            "read it with the bylaw that wrote it, or a newer one"
+        )
+    return version
+
+
+SchemaVersion = Annotated[int, AfterValidator(_readable)]
 
 # Every note about a model review that did not happen starts with this, so the summary can tell.
 MODEL_NOT_RUN = "The model review did not run"
@@ -144,6 +161,7 @@ class Finding(_Frozen):
 
 
 class ReviewContext(_Frozen):
+    schema_version: SchemaVersion = 1
     base_sha: str
     head_sha: str
     title: str
@@ -195,6 +213,8 @@ class ScopeCreep(_Frozen):
 
 
 class ReviewResult(_Frozen):
+    # Written by bylaw, never asked of the model: OutReview in engine.py has no such field (ADR 0023).
+    schema_version: SchemaVersion = 1
     findings: tuple[Finding, ...] = ()
     criteria: tuple[CriterionResult, ...] = ()
     scope_creep: tuple[ScopeCreep, ...] = ()

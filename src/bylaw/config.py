@@ -79,9 +79,14 @@ class App(BaseModel):
     model_review_label: str | None = Field(default=None, min_length=1, max_length=50)
 
 
+# The `.bylaw.toml` versions this bylaw reads (ADR 0023). A file without `version` is version 1.
+CONFIG_VERSIONS = (1,)
+
+
 class Config(BaseModel):
     model_config = _SETTINGS
 
+    version: int = 1
     spec_globs: tuple[str, ...] = ("docs/specs/**", "**/REQUIREMENTS.md")
     # Where the ADRs live. Accepted ones are decisions read from the base branch, never specs (ADR 0016).
     adr_globs: tuple[str, ...] = ("docs/adr/**", "doc/adr/**", "docs/decisions/**")
@@ -105,6 +110,14 @@ class Config(BaseModel):
     app: App = App()
     # Compliance profiles shipped with bylaw, such as "iso27001" (ADR 0021).
     profiles: tuple[str, ...] = ()
+
+    @field_validator("version")
+    @classmethod
+    def _readable(cls, version: int) -> int:
+        if version not in CONFIG_VERSIONS:
+            known = ", ".join(str(v) for v in CONFIG_VERSIONS)
+            raise ValueError(f"the file says version {version}, and this bylaw reads version {known}")
+        return version
 
     @field_validator("profiles")
     @classmethod
