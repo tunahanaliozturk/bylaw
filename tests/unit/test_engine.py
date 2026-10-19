@@ -6,7 +6,15 @@ import httpx2
 import openai
 import pytest
 
-from bylaw.engine import OutReview, ReviewError, Usage, api_key_for, make_reviewer
+from bylaw.engine import (
+    InvalidReviewError,
+    OutReview,
+    ReviewError,
+    Usage,
+    api_key_for,
+    make_reviewer,
+    read_review,
+)
 from bylaw.engine_anthropic import AnthropicReviewer
 from bylaw.engine_openai import OpenAIReviewer
 
@@ -475,3 +483,22 @@ def test_the_model_schema_asks_for_controls_on_every_finding_and_keeps_them() ->
     assert "controls" in finding["required"]
     assert set(finding["required"]) == set(finding["properties"])
     assert OutReview.model_validate(REVIEW).to_result().findings[0].controls == ("8.28",)
+
+
+def test_the_json_fallback_reads_a_finding_without_controls_as_tagging_none() -> None:
+    # Models outside strict structured output often leave out a field that is empty for most repositories;
+    # that must not cost a retry, or a failed review for a repository with no profile.
+    finding = {key: value for key, value in REVIEW["findings"][0].items() if key != "controls"}  # type: ignore[index]
+    nulled = {**finding, "controls": None}
+    answer = json.dumps({**REVIEW, "findings": [finding, nulled]})
+
+    review = read_review(answer)
+
+    assert [f.controls for f in review.findings] == [[], []]
+
+
+def test_the_json_fallback_still_refuses_controls_that_are_not_a_list() -> None:
+    finding = {**REVIEW["findings"][0], "controls": "8.28"}  # type: ignore[index]
+
+    with pytest.raises(InvalidReviewError, match="controls"):
+        read_review(json.dumps({**REVIEW, "findings": [finding]}))

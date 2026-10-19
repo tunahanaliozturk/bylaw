@@ -294,6 +294,12 @@ def read_review(text: str) -> OutReview:
             break
     if found is None:
         raise InvalidReviewError("the answer holds no JSON object")
+    # `controls` is empty unless a compliance profile is on (ADR 0021), and models without strict output
+    # often leave an empty field out; read that as no tags rather than spend a retry on it.
+    findings = found.get("findings")
+    for finding in findings if isinstance(findings, list) else []:
+        if isinstance(finding, dict) and finding.get("controls") is None:
+            finding["controls"] = []
     try:
         return OutReview.model_validate(found)
     except ValidationError as error:
