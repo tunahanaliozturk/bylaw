@@ -183,17 +183,34 @@ def test_the_summary_is_bylaws_own_note_first_then_a_developers(
     assert (summary.id, summary.bot) == (4, True)
 
 
-def test_a_summary_by_a_maintainer_is_used_but_its_memory_is_not_trusted(
+def test_once_bylaw_knows_its_account_a_persons_marker_note_is_never_its_summary(
     client: GitLabClient, server: respx.MockRouter
 ) -> None:
     server.get(url__startswith=f"{P}/merge_requests/5/notes").mock(
         return_value=httpx.Response(200, json=[_note(2, f"{SUMMARY_MARKER} by hand", MAINTAINER)])
     )
 
-    summary = _mr(client).summary_comment("group/app", 5)
+    assert _mr(client).summary_comment("group/app", 5) is None
 
-    assert summary is not None
-    assert (summary.id, summary.bot) == (2, False)
+
+def test_a_first_run_posts_its_own_summary_and_leaves_a_persons_note_alone(
+    client: GitLabClient, server: respx.MockRouter
+) -> None:
+    context = ReviewContext(
+        base_sha="s1", head_sha="h1", title="t", files=(), rules=(), requirements=(), findings=(), notes=()
+    )
+    server.get(url__startswith=f"{P}/merge_requests/5/discussions").mock(
+        return_value=httpx.Response(200, json=[])
+    )
+    server.get(url__startswith=f"{P}/merge_requests/5/notes").mock(
+        return_value=httpx.Response(200, json=[_note(2, f"{SUMMARY_MARKER} by hand", MAINTAINER)])
+    )
+    edit = server.put(f"{P}/merge_requests/5/notes/2").mock(return_value=httpx.Response(200, json={}))
+    create = server.post(f"{P}/merge_requests/5/notes").mock(return_value=httpx.Response(201, json={}))
+
+    publish(_mr(client), "group/app", 5, context=context, result=ReviewResult(), config=Config())
+
+    assert (create.called, edit.called) == (True, False)
 
 
 def test_without_its_own_identity_bylaw_trusts_no_summary_as_its_own(
