@@ -132,7 +132,10 @@ def make_server(roots: Sequence[Path], *, allow_post: bool = False) -> MCPServer
         requirements and bylaw's own deterministic findings. Large; brief is what a reviewer reads."""
         return read(repo, pr, base, path, again=True).model_dump_json()
 
-    @server.tool(annotations=_READS, structured_output=False)
+    # Claude Code moves a text result over 50,000 characters to a file unless the tool raises the limit,
+    # up to 500,000. The reviewer must read all of the brief, so it stays in the conversation; the raw
+    # context is data an agent may only search, so a file is fine there. Other clients ignore the key.
+    @server.tool(annotations=_READS, structured_output=False, meta={"anthropic/maxResultSizeChars": 500_000})
     def brief(repo: Repo = None, pr: Pr = None, base: Base = None, path: Where = None) -> CallToolResult:
         """What a reviewer reads: bylaw's instructions, a --- line, then the review data. Start a review
         here and read all of it; it is the same brief the GitHub Action gives its model."""
