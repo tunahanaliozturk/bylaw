@@ -584,3 +584,39 @@ def test_a_token_that_cannot_say_who_it_is_has_no_identity(client: GitHubClient,
     respx.get(f"{API}/user").mock(return_value=httpx.Response(status, json={"message": "no"}))
 
     assert client.summary_comment("octo/app", 5) is None
+
+
+@respx.mock
+def test_on_a_pull_request_bylaws_app_opened_its_own_comments_are_still_its_own() -> None:
+    # The App's learn suggestions are pull requests by bylaw's own bot; GraphQL names it without [bot].
+    comment = {
+        "body": "finding <!-- bylaw:fp=0123456789abcdef -->",
+        "author": {"__typename": "Bot", "login": "bylaw-acme"},
+        "authorAssociation": "NONE",
+    }
+    thread = {"id": "T1", "isResolved": False, "comments": {"nodes": [comment]}}
+    threads = {"pageInfo": {"hasNextPage": False, "endCursor": None}, "nodes": [thread]}
+    pull = {"author": {"login": "bylaw-acme"}, "reviewThreads": threads}
+    respx.post(f"{API}/graphql").mock(
+        return_value=httpx.Response(200, json={"data": {"repository": {"pullRequest": pull}}})
+    )
+
+    with GitHubClient("t", bot_login="bylaw-acme[bot]") as client:
+        (read,) = client.review_threads("octo/app", 5)
+
+    first = read.comments[0]
+    assert (first.by_pr_author, first.own, first.carries_marker) == (True, True, True)
+
+
+@respx.mock
+def test_with_a_fixed_bot_login_another_bot_with_a_trusted_association_is_not_the_summary() -> None:
+    comments = [_summary(1, "Bot", "renovate[bot]", "MEMBER"), _summary(2, "Bot", "bylaw-acme[bot]")]
+    respx.get(url__startswith=f"{API}/repos/octo/app/issues/5/comments").mock(
+        return_value=httpx.Response(200, json=comments)
+    )
+
+    with GitHubClient("t", bot_login="bylaw-acme[bot]") as client:
+        summary = client.summary_comment("octo/app", 5)
+
+    assert summary is not None
+    assert summary.id == 2
