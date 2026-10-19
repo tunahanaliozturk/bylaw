@@ -121,7 +121,7 @@ The core (context, validation, the plan, the summary and its state) is unchanged
   could batch them if that turns out to be slow.
 - Cost: GitLab caps `changes_count` at the string `"1000+"`, so a very large merge request gets no note
   that its listing was cut.
-- Not covered yet: `bylaw context` and `bylaw post` (the Claude Code and Codex path) read GitHub only, and
+- Not covered yet: `bylaw context`, `bylaw post` and `bylaw mcp` (the agent paths) read GitHub only, and
   the live checks listed in docs/backlog/gitlab.md have not run against gitlab.com.
 
 ## Alternatives
