@@ -105,7 +105,7 @@ def test_requirements_come_from_issues_and_specs_with_notes_for_gaps() -> None:
         ("docs/specs/login.md", "Login spec", 0),
     ]
     assert notes == (
-        "Could not read issue#99; it is left out of the requirement check.",
+        "Could not read `issue#99`; it is left out of the requirement check.",
         "Linked spec docs/specs/missing.md does not exist at the head commit.",
         "docs/specs/login.md has no structured acceptance criteria.",
     )
@@ -127,7 +127,7 @@ def test_issues_in_other_repositories_need_an_allow_list() -> None:
 
     assert blocked == ()
     assert notes == (
-        "otherorg/private#1 is in another repository; list it under issue_repos in .bylaw.toml to use it.",
+        "`otherorg/private#1` is in another repository; list it under issue_repos in .bylaw.toml to use it.",
     )
     assert [r.source for r in allowed] == ["otherorg/private#1"]
 
@@ -190,4 +190,26 @@ def test_unreadable_comments_are_noted() -> None:
 
     _, notes = collect_requirements(source, source.info(), (), (), ())
 
-    assert "issue#7: its comments could not be read; only the issue text is used." in notes
+    assert "`issue#7`: its comments could not be read; only the issue text is used." in notes
+
+
+def test_hundreds_of_references_to_other_repositories_make_a_few_notes_in_code_spans() -> None:
+    # A raw `owner/repo#1` in a comment links and cross-references that issue; hundreds would spam it.
+    source = FakeSource(body=" ".join(f"fixes victim-org/project#{n}" for n in range(1, 301)))
+
+    _, notes = collect_requirements(source, source.info(), (), GLOBS, ())
+
+    assert len(notes) == 6
+    assert notes[0] == (
+        "`victim-org/project#1` is in another repository; list it under issue_repos in .bylaw.toml to use it."
+    )
+    assert notes[-1] == "295 more references to other repositories were left out."
+
+
+def test_hundreds_of_unreadable_references_make_a_few_notes() -> None:
+    source = FakeSource(body=" ".join(f"fixes #{n}" for n in range(1, 301)))
+
+    _, notes = collect_requirements(source, source.info(), (), GLOBS, ())
+
+    assert len(notes) == 6
+    assert notes[-1] == "295 more references could not be read and were left out."
