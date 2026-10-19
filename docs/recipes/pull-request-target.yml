@@ -2,6 +2,12 @@
 # bylaw reads the diff through the API and never runs the pull request's code. Do not add
 # actions/checkout of the pull request head to this workflow: that is what makes
 # pull_request_target dangerous.
+#
+# The label stays on for new pushes, so a fork author decides how often this runs. Cap what one pull
+# request may spend in .bylaw.toml on the base branch:
+#
+#   [budget]
+#   pr_tokens = 500000
 name: bylaw
 
 on:
@@ -20,10 +26,12 @@ jobs:
       contains(github.event.pull_request.labels.*.name, 'bylaw') &&
       (github.event.action != 'labeled' || github.event.label.name == 'bylaw')
     # At job level: a run skipped by the condition above never takes the group, so it cannot cancel a
-    # review in progress.
+    # review in progress. Runs queue instead of cancelling: a cancelled run never writes its tokens to
+    # the summary, so a fork author pushing again and again would get reviews that `pr_tokens` never
+    # counts. A queue keeps one pending run; GitHub drops the older pending one.
     concurrency:
       group: bylaw-${{ github.event.pull_request.number }}
-      cancel-in-progress: true
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     steps:
       - uses: tunahanaliozturk/bylaw@v0

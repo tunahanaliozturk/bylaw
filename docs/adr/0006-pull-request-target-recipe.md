@@ -33,3 +33,21 @@ get reviewed.
 - **`workflow_run` two-stage pattern** (unprivileged job produces an artifact, privileged job posts).
   Lost because bylaw needs the secret in the stage that calls the model, so the split adds complexity
   without removing the secret from a privileged context.
+
+## Amendment, 2026-10-19: queue runs, do not cancel them
+
+The 1.0 security review found that the recipe's `cancel-in-progress: true` let a fork author spend past
+`[budget] pr_tokens`. The label stays on for later pushes, so every push starts a run, and each push
+cancelled the run before it. A cancelled run has already called the model but never writes its tokens
+to the summary, so the next run counted from the same total and the budget never moved.
+
+The recipe now sets `cancel-in-progress: false`. A run in progress always finishes and records what it
+used; GitHub keeps at most one pending run per group and drops the older pending one, which has not
+spent anything yet. The recipe's header shows `[budget] pr_tokens`, because with the label on, the fork
+author decides how often bylaw runs.
+
+- Cost: a burst of pushes waits for the review in progress before the newest one is read, instead of
+  starting at once.
+- The same-repository recipe keeps `cancel-in-progress: true`: its authors have write access and could
+  change the workflow anyway.
+

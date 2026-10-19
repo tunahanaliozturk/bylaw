@@ -181,3 +181,13 @@ def test_the_mcp_sdk_is_an_optional_extra_that_the_cli_never_imports() -> None:
     assert not [d for d in project["dependencies"] if d.startswith("mcp")]
     assert [d for d in project["optional-dependencies"]["mcp"] if d.startswith("mcp>=")]
     assert done.stdout.strip() == "[]"
+
+
+def test_the_fork_recipe_never_cancels_a_review_in_progress() -> None:
+    # A fork author who pushes again and again after the label would otherwise cancel each run before
+    # its tokens reach the summary, so `[budget] pr_tokens` would never count them.
+    recipe = (ROOT / "docs" / "recipes" / "pull-request-target.yml").read_text(encoding="utf-8")
+
+    assert "cancel-in-progress: false" in recipe
+    assert "cancel-in-progress: true" not in recipe
+    assert "pr_tokens" in recipe
