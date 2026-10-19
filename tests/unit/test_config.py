@@ -138,3 +138,27 @@ def test_a_deprecated_key_keeps_working_and_gives_a_note_that_says_what_replaces
         "Use `dummy_gate` instead.",
     )
     assert deprecations(load_config('[app]\nmodel_review_label = "x"\n')) == ()
+
+
+def test_learning_is_off_by_default() -> None:
+    learn = load_config(None).learn
+
+    assert (learn.enabled, learn.threshold, learn.suggest) == (False, 3, ("rule",))
+
+
+def test_learning_is_switched_on_with_a_threshold_and_the_categories_it_may_suggest() -> None:
+    learn = load_config('[learn]\nenabled = true\nthreshold = 5\nsuggest = ["rule", "bug"]\n').learn
+
+    assert (learn.enabled, learn.threshold, learn.suggest) == (True, 5, ("rule", "bug"))
+
+
+def test_learning_may_never_suggest_hiding_security_findings() -> None:
+    # ADR 0022: a security finding is never suggested for suppression, whatever the maintainers did.
+    with pytest.raises(ConfigError, match=r"learn.suggest"):
+        load_config('[learn]\nenabled = true\nsuggest = ["security"]\n')
+
+
+def test_a_threshold_of_one_pull_request_is_refused() -> None:
+    # One mute is a decision about one change, not a pattern.
+    with pytest.raises(ConfigError, match=r"learn.threshold"):
+        load_config("[learn]\nthreshold = 1\n")
