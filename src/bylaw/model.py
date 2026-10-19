@@ -162,6 +162,9 @@ class ReviewContext(_Frozen):
     decisions: tuple[Decision, ...] = ()
     # Compliance profiles from the base branch's .bylaw.toml, by name (ADR 0021).
     profiles: tuple[str, ...] = ()
+    # Whether `bylaw review` had the model answer for this commit; None when the result came from elsewhere,
+    # such as a host model through `bylaw post` (ADR 0021).
+    model_review: bool | None = None
 
 
 class CriterionStatus(StrEnum):

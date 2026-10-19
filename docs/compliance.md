@@ -86,8 +86,9 @@ found nothing to tag, which is worth recording, but is not a statement that the 
 - **Requirements:** the issues, specs and work items the pull request links, with how many of their
   acceptance criteria the review judged met. "None linked" is itself useful: a change with no requirement
   behind it is the first thing a change-management sample asks about.
-- **Reviewed:** the head commit and the base it was compared with, and whether the model review ran on
-  it. When it did not, the Notes section says why (no key, the token budget, a fork in the app).
+- **Reviewed:** the head commit and the base it was compared with, and whether the model answered on
+  this run. When it did not, the Notes section says why: no key, the token budget, a fork in the app, or
+  nothing changed since the last review, so the earlier model findings stand without a new call.
 - **Tests changed:** the changed files that look like tests by their path, such as `tests/`, `test_*.py`,
   `*_test.go`, `*.test.ts` or `*Tests.cs`.
 - **Findings:** how many are open, how many were accepted, and how many threads bylaw resolved this run
@@ -135,7 +136,7 @@ field can be added within a version, so a reader should ignore fields it does no
 | `base_sha` | The commit the change was compared with. |
 | `head_sha` | The commit that was reviewed. |
 | `profiles` | The profiles that were on: `name` and `standard`, such as `ISO/IEC 27001:2022, Annex A`. |
-| `model_review` | Whether the model review ran on this commit. False means only bylaw's own checks ran; `notes` says why. |
+| `model_review` | Whether the model answered on this run. False when it was not called or failed, including when nothing changed since the last review and the earlier model findings were kept; `notes` says which. Null when the result came from outside `bylaw review`, such as a host model through `bylaw post`. |
 | `requirements` | The linked requirements: `source`, such as `issue#12` or `PROJ-7`, and `criteria`, each a `key` and a `status` (`met`, `partial`, `missing` or `not assessed`). A requirement's title and text are never copied here. |
 | `files_changed` | Every changed file bylaw read, by path. |
 | `tests_changed` | The changed files that look like tests. |
@@ -187,7 +188,8 @@ For a sampled change:
 2. Read `requirements`. A change with no linked requirement, or with criteria `missing`, is a question for
    the team about how the change was approved.
 3. Read `model_review` and `notes`. A review that ran only bylaw's own checks covers formatting and the
-   rules bylaw can check without a model, not secure coding.
+   rules bylaw can check without a model, not secure coding. When the notes say the files were unchanged
+   since an earlier review, the model findings come from that earlier commit's review.
 4. Read `findings`. An open finding at `high` or above on a merged change, or an accepted one, should have
    a reason somewhere the team can show you: the thread on GitHub, a risk acceptance, a follow-up issue.
    `by` tells you whom to ask. A `resolved_by_author` finding was closed by the person who wrote the

@@ -246,7 +246,12 @@ def _controls_touched(record: Evidence) -> str:
 
 def _change_management(record: Evidence) -> str:
     requirements = "; ".join(f"{_code(r.source)}, {_criteria_met(r)}" for r in record.requirements)
-    model = "with the model review" if record.model_review else "without the model review (see the notes)"
+    model = {
+        True: "with the model review",
+        False: "without calling the model on it (see the notes)",
+        None: "and the result came from outside `bylaw review`, such as a host model, so bylaw cannot say "
+        "whether a model read it",
+    }[record.model_review]
     tests = _listed([_code(path) for path in record.tests_changed], ", ")
     accepted = [f for f in record.findings if f.status == "accepted"]
     opened = len(record.findings) - len(accepted)
