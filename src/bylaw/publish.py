@@ -88,9 +88,14 @@ def _state_after(plan: Plan, done: Sequence[tuple[str, bool]]) -> State:
     )
 
 
+def first_plan(context: ReviewContext, result: ReviewResult, config: Config) -> Plan:
+    """The plan of a run on a pull request with no threads yet: what is posted when nothing was before."""
+    return _plan(context, result, config, (), State(auto_resolved=frozenset()))
+
+
 def preview(context: ReviewContext, result: ReviewResult, config: Config) -> str:
     """What a first run would post, for a terminal with no pull request."""
-    plan = _plan(context, result, config, (), State(auto_resolved=frozenset()))
+    plan = first_plan(context, result, config)
     comments = [f"---\n`{g.finding.file}:{g.finding.line_start}`\n\n{inline_body(g)}" for g in plan.inline]
     return "\n\n".join([summary_body(context, result, plan), *comments])
 

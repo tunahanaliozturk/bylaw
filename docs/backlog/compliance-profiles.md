@@ -18,9 +18,22 @@ profiles = ["iso27001"]
 - [x] **CMP-4** (M) The brief adds the profile's guidance; findings may carry `controls: ["8.28"]`, and validation drops ids the profile does not define. Done when: prompt and validate tests.
 - [x] **CMP-5** (M) Severity rules per profile, for example personal data in logs is at least `high` under bylaw's 27001 profile. Done when: tests.
 - [x] **CMP-6** (M) Summary section "Controls touched" and change-management evidence: linked requirement, review done, tests changed, findings resolved or accepted and by whom. Done when: render tests.
-- [ ] **CMP-7** (M) Evidence file per pull request (JSON, published as an Actions artifact) for audits. Done when: schema documented, artifact on the demo repository.
+- [x] **CMP-7** (M) Evidence file per pull request (JSON, published as an Actions artifact) for audits. Done when: schema documented, artifact on the demo repository. Done locally: the schema is in [docs/compliance.md](../compliance.md), a test keeps every field documented, `bylaw review --evidence` is tested against a fake GitHub, and the Action's step is run in bash with a stand-in for `uv`. The artifact on the demo repository needs a run there; it is on the live checks list below.
 - [ ] **CMP-8** (M) Evaluation cases for the profile: changes that break a control and clean ones. Done when: cases in the set, scored.
 - [ ] **CMP-9** (S) Docs: what the profile covers, what it does not, and how an auditor reads the evidence. Done when: docs page reviewed by someone who has run a 27001 audit.
+
+## Live checks before v1.0
+
+On the demo repository, with `profiles = ["iso27001"]` in `.bylaw.toml` on its default branch:
+
+- [ ] A pull request that logs a password gets a finding tagged `8.15` and `8.11` at `high` or above, and
+  the summary has "Controls touched" and "Change management evidence".
+- [ ] The workflow run has an artifact `bylaw-evidence-pr-<number>` holding one JSON file that reads as
+  schema version 1, with the pull request's head commit.
+- [ ] With `fail-on: high`, the check fails and the artifact is still uploaded.
+- [ ] Without the profile, the run uploads nothing and the log says no evidence file was written.
+- [ ] A thread resolved by a person shows that person's login under "Accepted", which needs GitHub's
+  `resolvedBy` to be readable with the workflow token.
 
 ## Notes
 

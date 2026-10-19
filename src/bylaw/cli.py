@@ -6,6 +6,7 @@ import os
 import sys
 import tempfile
 from collections.abc import Callable, Sequence
+from datetime import UTC, datetime
 from importlib.metadata import version
 from pathlib import Path
 
@@ -27,13 +28,14 @@ from bylaw.evaluation.cases import Case, load_cases
 from bylaw.evaluation.report import report
 from bylaw.evaluation.run import AnswerReviewer, CaseRun, NoModel, prepare, run_all
 from bylaw.evaluation.snapshot import snapshot_pull_request
+from bylaw.evidence import Evidence, build_evidence
 from bylaw.github import GitHubClient, GitHubError, GitHubSource
 from bylaw.gitlab import GitLabClient, GitLabMergeRequest
 from bylaw.local_git import LocalGitSource
 from bylaw.model import Finding, ReviewContext, ReviewResult, Severity
 from bylaw.prompt import render_input, system_prompt
-from bylaw.publish import preview, publish
-from bylaw.pull_review import check, review_change, review_pull_request, with_model_review
+from bylaw.publish import first_plan, preview, publish
+from bylaw.pull_review import PullReview, check, review_change, review_pull_request, with_model_review
 from bylaw.source import SourceError
 from bylaw.validate import Validated, validate
 
@@ -97,6 +99,10 @@ def _parser() -> argparse.ArgumentParser:
         "--post",
         action="store_true",
         help="publish to the pull request or merge request (needs --pr or --gitlab-mr)",
+    )
+    run.add_argument(
+        "--evidence",
+        help="write the change-management evidence here as JSON when a compliance profile is on (ADR 0021)",
     )
     run.add_argument(
         "--fail-on",
@@ -362,6 +368,7 @@ def _review(args: argparse.Namespace) -> int:
         return 0
     if args.post and args.pr is None and args.gitlab_mr is None:
         raise SourceError("--post needs --pr or --gitlab-mr")
+    repo: str | None = None
     if args.gitlab_mr is not None:
         if _gitlab_fork_without_token():
             _say(
@@ -369,30 +376,53 @@ def _review(args: argparse.Namespace) -> int:
                 "skipped it. See docs/hosts.md for reviewing merge requests from forks."
             )
             return 0
-        checked, counted = _review_merge_request(args)
+        review, repo = _review_merge_request(args)
+        checked, counted, context, plan = review.checked, review.counted, review.context, review.plan
     elif args.pr is None:
         context = _read(ReviewContext, args.context)
         context, run = with_model_review(context, _reviewer(args), _say)
         checked = check(context, run.result, _say)
         counted = checked.result.findings
+        settings = Config(severity_threshold=context.severity_threshold, max_comments=context.max_comments)
+        plan = first_plan(context, checked.result, settings)
     else:
-        checked, counted = _review_pull_request(args)
+        review, repo = _review_pull_request(args)
+        checked, counted, context, plan = review.checked, review.counted, review.context, review.plan
+    if args.evidence:
+        # Before the exit code: a run that fails on a finding is the one an auditor most wants a record of.
+        number = args.pr if args.gitlab_mr is None else args.gitlab_mr
+        _write_evidence(args.evidence, build_evidence(context, checked.result, plan), repo, number)
     if not args.post:
         payload = {"result": checked.result.model_dump(mode="json"), "dropped": list(checked.dropped)}
         _write(json.dumps(payload, indent=2, ensure_ascii=False))
     return _exit_code(counted, args.fail_on)
 
 
-def _review_pull_request(args: argparse.Namespace) -> tuple[Validated, tuple[Finding, ...]]:
-    """Review a pull request; also return the findings `--fail-on` counts (muted ones excluded)."""
+def _review_pull_request(args: argparse.Namespace) -> tuple[PullReview, str]:
+    """Review a pull request; the review holds the findings `--fail-on` counts (muted ones excluded)."""
     repo, token = _repo_and_token(args.repo)
     api_url = os.environ.get("GITHUB_API_URL", "https://api.github.com")
     with GitHubClient(token, api_url, os.environ.get("GITHUB_GRAPHQL_URL")) as client:
         review = review_pull_request(client, repo, args.pr, make=_reviewer(args), post=args.post, say=_say)
-    return review.checked, review.counted
+    return review, repo
 
 
-def _review_merge_request(args: argparse.Namespace) -> tuple[Validated, tuple[Finding, ...]]:
+def _write_evidence(path: str, record: Evidence, repo: str | None, number: int | None) -> None:
+    if not record.profiles:
+        _say("no compliance profile is on, so no evidence file was written (ADR 0021).")
+        return
+    stamped = record.model_copy(
+        update={
+            "generated_at": datetime.now(UTC).isoformat(timespec="seconds"),
+            "repository": repo,
+            "pull_request": number,
+        }
+    )
+    _write(stamped.model_dump_json(indent=2), path)
+    _say(f"wrote the evidence file {path}.")
+
+
+def _review_merge_request(args: argparse.Namespace) -> tuple[PullReview, str]:
     """Review a GitLab merge request (ADR 0020); the same flow as a pull request."""
     project = args.project or os.environ.get("CI_MERGE_REQUEST_PROJECT_ID") or os.environ.get("CI_PROJECT_ID")
     token = os.environ.get("GITLAB_TOKEN")
@@ -417,7 +447,7 @@ def _review_merge_request(args: argparse.Namespace) -> tuple[Validated, tuple[Fi
             post=args.post,
             say=_say,
         )
-    return review.checked, review.counted
+    return review, merge_request.repo
 
 
 def _gitlab_fork_without_token() -> bool:

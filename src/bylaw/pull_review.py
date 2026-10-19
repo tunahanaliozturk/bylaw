@@ -10,8 +10,8 @@ from bylaw.engine import Reviewer
 from bylaw.github import TRUSTED_ASSOCIATIONS, GitHubClient, GitHubSource, PullRequest
 from bylaw.incremental import ModelRun, keep_valid, run_model_review, trusted_memory
 from bylaw.model import MODEL_NOT_RUN, Finding, ReviewContext, ReviewMemory, ReviewResult
-from bylaw.plan import remaining
-from bylaw.publish import Publisher, publish
+from bylaw.plan import Plan, remaining
+from bylaw.publish import Publisher, first_plan, publish
 from bylaw.source import RepoSource
 from bylaw.validate import Validated, validate
 
@@ -26,6 +26,9 @@ class PullReview:
     counted: tuple[Finding, ...]
     # The head commit the review read, which may be newer than the one an event named.
     head_sha: str
+    # What was reviewed and what was posted, or would be on a first run: the evidence record (ADR 0021).
+    context: ReviewContext
+    plan: Plan
 
 
 def review_pull_request(  # noqa: PLR0913 - two callers, every argument is a distinct input
@@ -90,7 +93,8 @@ def review_change(  # noqa: PLR0913 - every argument is a distinct input
     context, run = with_model_review(context, make, say, config, memory, skipped=skipped)
     checked = check(context, run.result, say)
     if not post:
-        return PullReview(checked, checked.result.findings, context.head_sha)
+        plan = first_plan(context, checked.result, config)
+        return PullReview(checked, checked.result.findings, context.head_sha, context, plan)
     plan = publish(
         publisher,
         repo,
@@ -102,7 +106,7 @@ def review_change(  # noqa: PLR0913 - every argument is a distinct input
         unreviewed=run.unreviewed,
     )
     say(f"posted {len(plan.inline)} comment(s), resolved {len(plan.resolve)}.")
-    return PullReview(checked, remaining(plan), context.head_sha)
+    return PullReview(checked, remaining(plan), context.head_sha, context, plan)
 
 
 def with_model_review(  # noqa: PLR0913 - every argument is a distinct input

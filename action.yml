@@ -61,6 +61,7 @@ runs:
     # Pinned by commit: this action holds an API key and a write token.
     - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
     - name: Review the pull request
+      id: review
       shell: bash
       # Inputs travel as environment variables and are quoted below, so nothing a workflow passes in can
       # become part of the command line.
@@ -79,7 +80,11 @@ runs:
         LINEAR_API_KEY: ${{ inputs.linear-api-key }}
         BYLAW_PR: ${{ github.event.pull_request.number }}
       run: |
+        # bylaw writes the evidence file only when .bylaw.toml turns a compliance profile on (ADR 0021).
+        evidence="$RUNNER_TEMP/bylaw/evidence-pr-$BYLAW_PR.json"
+        mkdir -p "$RUNNER_TEMP/bylaw"
         args=(review --pr "$BYLAW_PR" --post --provider "$BYLAW_PROVIDER" --fail-on "$BYLAW_FAIL_ON")
+        args+=(--evidence "$evidence")
         if [ -n "$BYLAW_MODEL" ]; then args+=(--model "$BYLAW_MODEL"); fi
         if [ -n "$BYLAW_EFFORT" ]; then args+=(--effort "$BYLAW_EFFORT"); fi
         if [ -n "$BYLAW_BASE_URL" ]; then args+=(--base-url "$BYLAW_BASE_URL"); fi
@@ -90,4 +95,18 @@ runs:
           vertex) extras=(--extra vertex) ;;
           foundry | azure-openai) extras=(--extra azure) ;;
         esac
-        uv run --project "$GITHUB_ACTION_PATH" --locked --no-dev "${extras[@]}" bylaw "${args[@]}"
+        status=0
+        uv run --project "$GITHUB_ACTION_PATH" --locked --no-dev "${extras[@]}" bylaw "${args[@]}" || status=$?
+        # Named for the upload even when fail-on fails this step: a failing review needs its record most.
+        if [ -f "$evidence" ]; then echo "evidence=$evidence" >> "$GITHUB_OUTPUT"; fi
+        exit "$status"
+    # Pinned by commit like the step above. The artifact belongs to the workflow run and expires with the
+    # repository's retention setting, so keep a copy where your audit records live (docs/compliance.md).
+    - name: Keep the compliance evidence
+      if: ${{ !cancelled() && steps.review.outputs.evidence != '' }}
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: bylaw-evidence-pr-${{ github.event.pull_request.number }}
+        path: ${{ steps.review.outputs.evidence }}
+        if-no-files-found: error
+        overwrite: true
