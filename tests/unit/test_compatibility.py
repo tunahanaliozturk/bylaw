@@ -7,6 +7,7 @@ import pytest
 
 from bylaw.cli import main
 from bylaw.config import Config, load_config
+from bylaw.engine import OutReview
 from bylaw.evaluation.run import CaseRun
 from bylaw.evidence import Evidence, build_evidence
 from bylaw.github import SummaryComment
@@ -118,3 +119,38 @@ def test_a_0_6_configuration_with_every_key_and_no_version_still_loads() -> None
     assert config.jira is not None
     assert config.jira.criteria_field == "customfield_10042"
     assert config.app.model_review == "all"
+
+
+def test_files_from_0_x_have_no_schema_version_and_read_as_version_1() -> None:
+    assert _context("0.1.1/cs-async-void.context.json").schema_version == 1
+    assert _run("0.1.1/cs-async-void.run.json").result.schema_version == 1
+
+
+def test_the_context_and_result_bylaw_writes_carry_their_schema_version() -> None:
+    written = json.loads(_context("0.2.0/cs-async-void.context.json").model_dump_json())
+
+    assert written["schema_version"] == 1
+    assert json.loads(ReviewResult().model_dump_json())["schema_version"] == 1
+
+
+def test_the_model_is_never_asked_for_a_schema_version() -> None:
+    # The model fills OutReview; bylaw adds the version when it writes a file (ADR 0023).
+    assert "schema_version" not in json.dumps(OutReview.model_json_schema())
+    assert OutReview(findings=[], criteria=[], scope_creep=[]).to_result().schema_version == 1
+
+
+@pytest.mark.parametrize("option", ["--context", "--result"])
+def test_a_file_with_an_unknown_schema_version_fails_and_names_the_versions_bylaw_reads(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], option: str
+) -> None:
+    context = json.loads((FIXTURES / "0.1.1/cs-async-void.context.json").read_text(encoding="utf-8"))
+    files = {"--context": context, "--result": {"findings": []}}
+    files[option] = {**files[option], "schema_version": 2}
+    paths = {name: tmp_path / f"{name[2:]}.json" for name in files}
+    for name, data in files.items():
+        paths[name].write_text(json.dumps(data), encoding="utf-8")
+
+    code = main(["validate", "--context", str(paths["--context"]), "--result", str(paths["--result"])])
+
+    assert code == 2
+    assert "schema_version 2" in capsys.readouterr().err

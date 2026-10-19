@@ -4,6 +4,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## Unreleased
 
+- `.bylaw.toml` takes an optional `version = 1`, and the context and result files carry `schema_version: 1`. A file without one is version 1, so everything written for 0.x reads as before. A version this bylaw does not know fails with a message that names the file, its version and the versions bylaw reads, instead of being read as if it meant the same. The model is never asked for the version; bylaw adds it when it writes a file. The evidence file keeps its own `schema_version`, and the summary state is not versioned, because an unreadable state already reads as empty (ADR 0023).
 - Compatibility tests read files that earlier releases really wrote: a context and a host's result from 0.1, a summary comment from 0.2 with resolved threads and a review memory, and a context, result, evidence file and `.bylaw.toml` from 0.6. They check that the files still load, that old threads pair with their findings without a repost, and that the evidence is rebuilt field for field (tests/fixtures/0.x).
 
 ## 0.6.0 - 2026-10-19
