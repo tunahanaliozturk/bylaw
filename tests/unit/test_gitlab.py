@@ -45,6 +45,7 @@ def _member(user_id: int, level: int | None) -> None:
 @respx.mock
 def test_info_reads_the_title_description_shas_and_commit_messages(client: GitLabClient) -> None:
     _serve_mr()
+    respx.get(url__startswith=f"{P}/merge_requests/5/diffs").mock(return_value=httpx.Response(200, json=[]))
     _member(7, 30)
     respx.get(url__startswith=f"{P}/merge_requests/5/commits").mock(
         return_value=httpx.Response(200, json=[{"message": "Fixes #3"}, {"message": "Tidy"}])
@@ -63,6 +64,7 @@ def test_an_author_below_developer_or_outside_the_project_is_not_trusted(
     client: GitLabClient, level: int | None
 ) -> None:
     _serve_mr()
+    respx.get(url__startswith=f"{P}/merge_requests/5/diffs").mock(return_value=httpx.Response(200, json=[]))
     _member(7, level)
     respx.get(url__startswith=f"{P}/merge_requests/5/commits").mock(return_value=httpx.Response(200, json=[]))
 
@@ -79,6 +81,7 @@ def test_a_merge_request_whose_diff_is_not_ready_asks_for_a_rerun(client: GitLab
 
 @respx.mock
 def test_every_page_of_diffs_is_collected_with_status_and_added_lines(client: GitLabClient) -> None:
+    _serve_mr()
     page_one = [
         {"old_path": f"f{i}.py", "new_path": f"f{i}.py", "diff": "@@ -1 +1 @@\n-a\n+b\n"} for i in range(100)
     ]
@@ -108,7 +111,51 @@ def test_every_page_of_diffs_is_collected_with_status_and_added_lines(client: Gi
 
 
 @respx.mock
+def test_a_push_while_the_diff_is_read_makes_bylaw_read_the_newer_one(client: GitLabClient) -> None:
+    newer = {**MR, "diff_refs": {"base_sha": "b2", "start_sha": "s2", "head_sha": "h2"}}
+    respx.get(f"{P}/merge_requests/5").mock(
+        side_effect=[
+            httpx.Response(200, json=MR),
+            httpx.Response(200, json=newer),
+            httpx.Response(200, json=newer),
+        ]
+    )
+    _member(7, 30)
+    respx.get(url__startswith=f"{P}/merge_requests/5/commits").mock(return_value=httpx.Response(200, json=[]))
+    old = [{"old_path": "a.py", "new_path": "a.py", "diff": "@@ -1 +1 @@\n-a\n+b\n"}]
+    new = [{"old_path": "a.py", "new_path": "a.py", "diff": "@@ -1 +1,2 @@\n-a\n+b\n+c\n"}]
+    respx.get(url__startswith=f"{P}/merge_requests/5/diffs").mock(
+        side_effect=[httpx.Response(200, json=old), httpx.Response(200, json=new)]
+    )
+    mr = _mr(client)
+
+    info = mr.info()
+
+    # The shas and the diff are read as one: the newer head with the newer diff.
+    assert (info.base_sha, info.head_sha) == ("s2", "h2")
+    assert [line.number for line in mr.changed_files()[0].added_lines] == [1, 2]
+
+
+@respx.mock
+def test_a_merge_request_that_keeps_changing_asks_for_a_rerun(client: GitLabClient) -> None:
+    heads = iter(range(100))
+
+    def serve(_request: httpx.Request) -> httpx.Response:
+        head = f"h{next(heads)}"
+        return httpx.Response(
+            200, json={**MR, "diff_refs": {"base_sha": "b", "start_sha": "s", "head_sha": head}}
+        )
+
+    respx.get(f"{P}/merge_requests/5").mock(side_effect=serve)
+    respx.get(url__startswith=f"{P}/merge_requests/5/diffs").mock(return_value=httpx.Response(200, json=[]))
+
+    with pytest.raises(SourceError, match="kept changing"):
+        _mr(client).changed_files()
+
+
+@respx.mock
 def test_a_binary_too_large_or_empty_diff_is_marked_omitted(client: GitLabClient) -> None:
+    _serve_mr()
     diffs = [
         {
             "old_path": "logo.png",
@@ -220,6 +267,7 @@ def test_an_api_error_names_the_status_and_never_the_token(client: GitLabClient)
 
 @respx.mock
 def test_a_next_page_link_to_another_host_is_not_followed_with_the_token(client: GitLabClient) -> None:
+    _serve_mr()
     elsewhere = respx.get(url__startswith="https://elsewhere.example/")
     respx.get(url__startswith=f"{P}/merge_requests/5/diffs").mock(
         return_value=httpx.Response(

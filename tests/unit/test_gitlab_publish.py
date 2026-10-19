@@ -314,6 +314,24 @@ def test_a_multi_line_comment_has_a_line_range_and_its_suggestion_covers_it(
     assert "```suggestion:-2+0\nfixed\n```" in sent["body"]
 
 
+def test_a_position_gitlab_refuses_becomes_a_discussion_that_names_the_line(
+    client: GitLabClient, server: respx.MockRouter
+) -> None:
+    def serve(request: httpx.Request) -> httpx.Response:
+        if "position" in json.loads(request.content):
+            return httpx.Response(400, json={"message": '400 Bad request - Note {:line_code=>["invalid"]}'})
+        return httpx.Response(201, json={})
+
+    create = server.post(f"{P}/merge_requests/5/discussions").mock(side_effect=serve)
+
+    _mr(client).create_review("group/app", 5, "h1", "", [_rendered("new.py", 1, 1)])
+
+    sent = json.loads(create.calls.last.request.content)
+    assert "position" not in sent
+    assert sent["body"].startswith("On `new.py:1`")
+    assert "<!-- bylaw:fp=0123456789abcdef -->" in sent["body"]
+
+
 def test_a_rejected_line_range_falls_back_to_a_single_line(
     client: GitLabClient, server: respx.MockRouter
 ) -> None:
