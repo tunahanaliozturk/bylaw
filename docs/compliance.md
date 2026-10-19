@@ -52,9 +52,10 @@ With the profile on:
 - **The brief** gets the controls and their guidance, about 1,000 tokens. The reviewer reports problems as
   it always does, with the guidance as more places to look, and tags each finding with the control ids it
   touches, such as `8.28` for an SQL injection or `8.15` and `8.11` for an email address written to a log.
-- **Validation** keeps only control ids the profile defines. A finding tagged with an id that does not
-  exist keeps its place and loses the tag; the run's log says which id was dropped. The finding itself is
-  checked exactly as any other: on lines the change adds, with real evidence.
+- **Validation** keeps only control ids the profile defines, reading `A.8.28` as `8.28`. A finding tagged
+  with an id that does not exist keeps its place and loses the tag; the run's log says which id was
+  dropped, cut to 20 characters. The finding itself is checked exactly as any other: on lines the change
+  adds, with real evidence.
 - **Severity rules** are applied by bylaw after validation, so the same tags always give the same
   severity. Under `iso27001`, a finding tagged both 8.15 and 8.11 (personal data or a secret in a log) is
   at least `high`, and a security finding tagged 8.24 (cryptography) is at least `high`. A rule never
@@ -107,7 +108,12 @@ found nothing to tag, which is worth recording, but is not a statement that the 
 nothing and says so. The Action passes it on every run and uploads the file as the workflow run's
 artifact `bylaw-evidence-pr-<number>`, also when `fail-on` fails the check, because a failing review is
 the one an auditor most wants to see. A later run of the same pull request writes its own artifact in its
-own workflow run.
+own workflow run. Within one run the upload step sets `overwrite: true`, so a re-run attempt replaces the
+file of the attempt before it instead of failing on the name.
+
+With `--pr` or `--gitlab-mr`, `--evidence` needs `--post`: only a posting run reads the review threads,
+and a file written without them would miss every mute and every resolve. With `--context`, for a local
+change, there are no threads, so the file shows the change as a first run would see it.
 
 Artifacts expire with the repository's retention setting, 90 days by default. If your certification
 cycle needs the records longer, copy them to your own records store, for example with a scheduled

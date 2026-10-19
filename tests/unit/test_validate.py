@@ -563,3 +563,20 @@ def test_a_severity_rule_never_lowers_a_finding() -> None:
 def test_without_the_profile_no_severity_is_raised() -> None:
     # The tags are dropped too, so nothing is left for a rule to match.
     assert _severity_after(Severity.LOW, Category.SECURITY, "8.15", "8.11", profiled=False) == Severity.LOW
+
+
+def test_an_annex_a_prefix_on_a_control_id_is_read_as_the_id() -> None:
+    context = CONTEXT.model_copy(update={"profiles": ("iso27001",)})
+
+    kept = validate(context, ReviewResult(findings=(_tagged("A.8.28", " a.8.15 ", "8.28"),)))
+
+    assert kept.result.findings[0].controls == ("8.28", "8.15")
+    assert kept.dropped == ()
+
+
+def test_a_long_unknown_control_id_is_cut_in_the_dropped_list() -> None:
+    context = CONTEXT.model_copy(update={"profiles": ("iso27001",)})
+
+    kept = validate(context, ReviewResult(findings=(_tagged("x" * 500),)))
+
+    assert kept.dropped == (f"app.py:3 security: control {'x' * 20}... is not in the active profiles",)

@@ -368,6 +368,9 @@ def _review(args: argparse.Namespace) -> int:
         return 0
     if args.post and args.pr is None and args.gitlab_mr is None:
         raise SourceError("--post needs --pr or --gitlab-mr")
+    if args.evidence and not args.post and (args.pr is not None or args.gitlab_mr is not None):
+        # Without posting, bylaw does not read the threads, so the file would miss every mute and resolve.
+        raise SourceError("--evidence with --pr or --gitlab-mr needs --post, which reads the review threads")
     repo: str | None = None
     if args.gitlab_mr is not None:
         if _gitlab_fork_without_token():
