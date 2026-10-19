@@ -1,0 +1,40 @@
+{
+  "case_id": "cs-sqli-fromsqlraw",
+  "result": {
+    "findings": [
+      {
+        "file": "OrderService.cs",
+        "line_start": 24,
+        "line_end": 24,
+        "category": "security",
+        "severity": "critical",
+        "message": "The customer value is interpolated into a raw SQL string passed to `FromSqlRaw`, so a crafted customer name can inject arbitrary SQL. This also breaks the repository rule that raw SQL goes only through `FromSql` with interpolated parameters.",
+        "suggestion": "        return db.Orders.FromSql($\"SELECT * FROM Orders WHERE Customer = {customer}\").ToListAsync(cancellationToken);",
+        "evidence": "CONTRIBUTING.md:9",
+        "controls": []
+      },
+      {
+        "file": "OrderService.cs",
+        "line_start": 21,
+        "line_end": 21,
+        "category": "rule",
+        "severity": "low",
+        "message": "This added blank line contains trailing whitespace, which the editorconfig asks to trim.",
+        "suggestion": "",
+        "evidence": ".editorconfig:5",
+        "controls": []
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 2,
+  "seconds": 3.81676019995939,
+  "input_tokens": 4425,
+  "output_tokens": 338,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "d843f63dbc07b2338cf206df26828024a56aa3fc48034daa4b5a887ddd977310",
+  "dropped_findings": 0
+}

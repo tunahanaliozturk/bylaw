@@ -41,7 +41,7 @@ The server needs [uv](https://docs.astral.sh/uv/getting-started/installation/) a
 uvx --from "bylaw[mcp]" bylaw mcp
 ```
 
-The extra is in the first release after 0.5.0. Until then, run it from a clone of this repository with
+The extra ships from 0.6.0 on. To run an unreleased version, use a clone of this repository:
 `uv run --project /path/to/bylaw --extra mcp bylaw mcp`.
 
 The command prints nothing and waits: an MCP client starts it and talks to it over standard input and

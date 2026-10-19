@@ -1,0 +1,40 @@
+{
+  "case_id": "py-swallowed-commit",
+  "result": {
+    "findings": [
+      {
+        "file": "app/db.py",
+        "line_start": 20,
+        "line_end": 21,
+        "category": "bug",
+        "severity": "critical",
+        "message": "Inside this `@contextmanager` generator, catching the exception and not re-raising suppresses every error raised in the caller's `with` block, including failed reads and failed commits. Callers carry on as if the write succeeded while the uncommitted changes are discarded on `close()`, so data is lost silently. Nothing retries the write either, despite what the comment says.",
+        "suggestion": "        connection.rollback()\n        raise",
+        "evidence": null,
+        "controls": []
+      },
+      {
+        "file": "app/db.py",
+        "line_start": 20,
+        "line_end": 20,
+        "category": "rule",
+        "severity": "low",
+        "message": "This changes error-handling behaviour for every database caller, but the pull request adds no test for it.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:15",
+        "controls": []
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 2,
+  "seconds": 7.8377044999506325,
+  "input_tokens": 4388,
+  "output_tokens": 669,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "a274de5d66b0204b2f3c67929df44a4817d369197d3901539fda8ae923d19fd5",
+  "dropped_findings": 0
+}

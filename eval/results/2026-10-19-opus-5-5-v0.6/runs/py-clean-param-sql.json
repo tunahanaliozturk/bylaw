@@ -1,0 +1,17 @@
+{
+  "case_id": "py-clean-param-sql",
+  "result": {
+    "findings": [],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 0,
+  "seconds": 1.7890455999877304,
+  "input_tokens": 4783,
+  "output_tokens": 26,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "c4955955aeb61f3511428732b6c8abb8e737889c242df153c35e1c2b4f4264fb",
+  "dropped_findings": 0
+}

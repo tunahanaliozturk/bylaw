@@ -1,0 +1,40 @@
+{
+  "case_id": "py-mono-api-raises",
+  "result": {
+    "findings": [
+      {
+        "file": "packages/api/api/handlers.py",
+        "line_start": 26,
+        "line_end": 26,
+        "category": "rule",
+        "severity": "medium",
+        "message": "`cancel_order` raises `LookupError` when the order is missing. The API package rule says handlers never raise to the caller and must return a `Result` with `ok=False`, so the HTTP layer will not turn this case into a proper response.",
+        "suggestion": "        return Result(ok=False, error=f\"order {order_id} not found\")",
+        "evidence": "packages/api/AGENTS.md:3",
+        "controls": []
+      },
+      {
+        "file": "packages/api/api/handlers.py",
+        "line_start": 29,
+        "line_end": 29,
+        "category": "bug",
+        "severity": "medium",
+        "message": "The shipped check and the UPDATE are separate statements, so an order that ships between the SELECT and the UPDATE is still marked cancelled. Put the condition in the UPDATE itself (`... WHERE id = ? AND status != 'shipped'`) and check `rowcount` so a shipped order can never be cancelled.",
+        "suggestion": null,
+        "evidence": null,
+        "controls": []
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 2,
+  "seconds": 6.520641200011596,
+  "input_tokens": 4873,
+  "output_tokens": 667,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "49a09ff48706ed2e1630a39896f6b2341447ee5f0ee2fd5159fc9673a01481c9",
+  "dropped_findings": 0
+}

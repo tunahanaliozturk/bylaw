@@ -4,6 +4,8 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## Unreleased
 
+## 0.6.0 - 2026-10-19
+
 - A pull request's author can no longer take a finding out of `fail-on` by resolving its thread. Resolving never mutes (ADR 0008); a thread the author resolved keeps its finding open, and the summary lists it under "Resolved by the pull request's author but still present". Threads resolved by anyone else are unchanged.
 - After a failed resolve, the summary counts only the threads bylaw really resolved or reopened.
 - Compliance profiles, ISO/IEC 27001 first. `profiles = ["iso27001"]` in `.bylaw.toml`, read from the base branch, adds the Annex A controls of ISO/IEC 27001:2022 that bylaw can look for in a diff (5.17, 5.34, 8.2 to 8.5, 8.8 to 8.12, 8.15, 8.16, 8.24 to 8.29 and 8.31 to 8.33) to the brief, each with a short title and reviewer guidance in bylaw's own words; the standard's text is copyrighted and is not in bylaw. Findings carry `controls`, such as `["8.28"]`, and validation drops ids the profile does not define while keeping the finding, and reads `A.8.28` as `8.28`. The JSON fallback reads a finding without `controls` as untagged instead of spending a retry on it. An unknown profile name is a configuration error. In the GitHub App, a repository's profiles add to the organisation's defaults instead of replacing them (ADR 0021).

@@ -1,0 +1,51 @@
+{
+  "case_id": "py-command-injection",
+  "result": {
+    "findings": [
+      {
+        "file": "app/thumbnails.py",
+        "line_start": 11,
+        "line_end": 11,
+        "category": "security",
+        "severity": "critical",
+        "message": "The client-supplied file name is interpolated into a shell command run with shell=True, so a name like `x; rm -rf ~` executes arbitrary commands. It also allows path traversal (`../`) outside UPLOAD_DIR, both for reading the source and writing the target.",
+        "suggestion": "    subprocess.run([\"convert\", str(UPLOAD_DIR / client_name), \"-resize\", \"128x128\", str(UPLOAD_DIR / target)], check=True)",
+        "evidence": null,
+        "controls": []
+      },
+      {
+        "file": "app/thumbnails.py",
+        "line_start": 10,
+        "line_end": 10,
+        "category": "security",
+        "severity": "high",
+        "message": "client_name is not validated, so values containing path separators or `..` escape UPLOAD_DIR. Reject names that are not a plain basename, or names whose resolved path is not inside UPLOAD_DIR. Names starting with `-` can also be read by ImageMagick as options, and prefixes like `msl:` can be read as coders.",
+        "suggestion": null,
+        "evidence": null,
+        "controls": []
+      },
+      {
+        "file": "app/thumbnails.py",
+        "line_start": 8,
+        "line_end": 8,
+        "category": "rule",
+        "severity": "medium",
+        "message": "This new behaviour has no accompanying test, but the contributing guide requires one for every change in behaviour.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:15",
+        "controls": []
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 3,
+  "seconds": 6.265177199966274,
+  "input_tokens": 4500,
+  "output_tokens": 529,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "b598ebdd753ba6ebd47ca755e9b48c44e15e3781ef454ed201223ffd1c2cf166",
+  "dropped_findings": 0
+}

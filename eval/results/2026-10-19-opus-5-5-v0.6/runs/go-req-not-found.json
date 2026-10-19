@@ -1,0 +1,70 @@
+{
+  "case_id": "go-req-not-found",
+  "result": {
+    "findings": [
+      {
+        "file": "handlers.go",
+        "line_start": 71,
+        "line_end": 75,
+        "category": "requirement",
+        "severity": "high",
+        "message": "Every error from `Rename` becomes a 500, so renaming an unknown id returns 500 instead of 404. `Rename` also never checks whether the UPDATE touched a row, so a missing widget only shows up as a generic error from the follow-up lookup.",
+        "suggestion": null,
+        "evidence": "docs/specs/rename.md/AC-2",
+        "controls": []
+      },
+      {
+        "file": "store.go",
+        "line_start": 46,
+        "line_end": 49,
+        "category": "bug",
+        "severity": "low",
+        "message": "`Rename` ignores `RowsAffected` and runs the UPDATE and the re-read outside a transaction. A missing id cannot be told apart from other failures, and a concurrent update or delete between the two statements can return a different result than the rename wrote.",
+        "suggestion": null,
+        "evidence": null,
+        "controls": []
+      }
+    ],
+    "criteria": [
+      {
+        "criterion": "docs/specs/rename.md/AC-1",
+        "status": "met",
+        "text": null,
+        "code": [
+          {
+            "file": "main.go",
+            "line": 19
+          },
+          {
+            "file": "handlers.go",
+            "line": 57
+          },
+          {
+            "file": "store.go",
+            "line": 45
+          }
+        ],
+        "tests": [],
+        "note": "Implemented, but no tests cover the rename endpoint."
+      },
+      {
+        "criterion": "docs/specs/rename.md/AC-2",
+        "status": "missing",
+        "text": null,
+        "code": [],
+        "tests": [],
+        "note": "An unknown id falls into the generic error branch and returns 500. Nothing maps a not-found result to 404."
+      }
+    ],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 2,
+  "seconds": 8.15532440005336,
+  "input_tokens": 5469,
+  "output_tokens": 811,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "4d7ec543d3b53b584256756613a74412975d079b2ce5ce4928c0c07069953198",
+  "dropped_findings": 0
+}

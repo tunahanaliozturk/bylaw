@@ -1,0 +1,29 @@
+{
+  "case_id": "cs-blocking-result",
+  "result": {
+    "findings": [
+      {
+        "file": "OrdersController.cs",
+        "line_start": 17,
+        "line_end": 20,
+        "category": "rule",
+        "severity": "medium",
+        "message": "The new `Total` action blocks on `FindAsync` with `.Result`, which the contributing rules forbid. Blocking request threads on async work risks thread-pool starvation, and passing `CancellationToken.None` ignores client disconnects.",
+        "suggestion": "    public async Task<ActionResult<decimal>> Total(int id, CancellationToken ct)\n    {\n        var order = await orders.FindAsync(id, ct);\n        return order is null ? NotFound() : order.Total;",
+        "evidence": "CONTRIBUTING.md:7",
+        "controls": []
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": 8.487092199968174,
+  "input_tokens": 4437,
+  "output_tokens": 551,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "ba3cd323f3920dbcbc39a3327e9a2bef7c96375c54b093289418e0ca23630fc0",
+  "dropped_findings": 0
+}

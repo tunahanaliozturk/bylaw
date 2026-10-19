@@ -1,0 +1,75 @@
+{
+  "case_id": "py-req-missing-lockout",
+  "result": {
+    "findings": [
+      {
+        "file": "app/login.py",
+        "line_start": 14,
+        "line_end": 15,
+        "category": "requirement",
+        "severity": "high",
+        "message": "There is no lockout: failed attempts are never counted, so after five wrong passwords in a row `login` still returns the user when the right password is given. This leaves the account open to unlimited password guessing.",
+        "suggestion": null,
+        "evidence": "docs/specs/login.md/AC-3",
+        "controls": []
+      },
+      {
+        "file": "app/login.py",
+        "line_start": 9,
+        "line_end": 9,
+        "category": "rule",
+        "severity": "medium",
+        "message": "This change adds a new sign-in behaviour but no tests. None of the acceptance criteria are covered by a test.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:15",
+        "controls": []
+      }
+    ],
+    "criteria": [
+      {
+        "criterion": "docs/specs/login.md/AC-1",
+        "status": "met",
+        "text": null,
+        "code": [
+          {
+            "file": "app/login.py",
+            "line": 16
+          }
+        ],
+        "tests": [],
+        "note": "Implemented, but no test proves it."
+      },
+      {
+        "criterion": "docs/specs/login.md/AC-2",
+        "status": "met",
+        "text": null,
+        "code": [
+          {
+            "file": "app/login.py",
+            "line": 14
+          }
+        ],
+        "tests": [],
+        "note": "Implemented for both an unknown email and a wrong password, but no test proves it."
+      },
+      {
+        "criterion": "docs/specs/login.md/AC-3",
+        "status": "missing",
+        "text": null,
+        "code": [],
+        "tests": [],
+        "note": "Failed attempts are not tracked and accounts are never locked."
+      }
+    ],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 2,
+  "seconds": 8.526453700033017,
+  "input_tokens": 4949,
+  "output_tokens": 842,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "df275cadac25bedd70c6fc7bb7246a76033728ed6e5021c9dbe01c8a98402feb",
+  "dropped_findings": 0
+}

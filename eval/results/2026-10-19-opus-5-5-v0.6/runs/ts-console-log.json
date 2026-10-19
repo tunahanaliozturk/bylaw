@@ -1,0 +1,29 @@
+{
+  "case_id": "ts-console-log",
+  "result": {
+    "findings": [
+      {
+        "file": "src/server.ts",
+        "line_start": 27,
+        "line_end": 27,
+        "category": "rule",
+        "severity": "low",
+        "message": "The change replaces the project logger with `console.log`. The repository rules forbid `console.log`, and this also drops the structured `orderId` field from the log entry.",
+        "suggestion": "  logger.info(\"order created\", { orderId: order.id });",
+        "evidence": "CONTRIBUTING.md:8",
+        "controls": []
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 1,
+  "seconds": 2.8508993999566883,
+  "input_tokens": 4356,
+  "output_tokens": 171,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "1cfc2ea3d4a5dfb8946c128820fe6c3e1a333680cfa07295dd26f944d3f5bdd7",
+  "dropped_findings": 0
+}

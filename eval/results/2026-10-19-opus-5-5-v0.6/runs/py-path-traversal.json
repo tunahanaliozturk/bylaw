@@ -1,0 +1,62 @@
+{
+  "case_id": "py-path-traversal",
+  "result": {
+    "findings": [
+      {
+        "file": "app/files.py",
+        "line_start": 22,
+        "line_end": 22,
+        "category": "security",
+        "severity": "critical",
+        "message": "`read_upload` joins a client-supplied name onto `UPLOAD_DIR` without any check. A value like `../../etc/passwd` or an absolute path escapes the upload directory and can read any file the process can access.",
+        "suggestion": "    path = (UPLOAD_DIR / name).resolve()\n    if not path.is_relative_to(UPLOAD_DIR.resolve()):\n        raise ValueError(\"invalid upload name\")\n    return path.read_bytes()",
+        "evidence": null,
+        "controls": []
+      },
+      {
+        "file": "app/web.py",
+        "line_start": 33,
+        "line_end": 36,
+        "category": "security",
+        "severity": "high",
+        "message": "`download` never identifies the requesting user or checks that the file belongs to them. Anyone who knows or guesses a file name can fetch another user's uploads, avatars included.",
+        "suggestion": null,
+        "evidence": null,
+        "controls": []
+      },
+      {
+        "file": "app/web.py",
+        "line_start": 36,
+        "line_end": 36,
+        "category": "bug",
+        "severity": "medium",
+        "message": "Several inputs crash the handler with an unhandled exception instead of returning a proper error response. Calling `.decode()` on arbitrary uploaded bytes raises `UnicodeDecodeError` for binary files such as PNGs. A missing file raises `FileNotFoundError`, and an empty or missing `file` parameter resolves to the directory itself and raises `IsADirectoryError`.",
+        "suggestion": null,
+        "evidence": null,
+        "controls": []
+      },
+      {
+        "file": "app/web.py",
+        "line_start": 33,
+        "line_end": 33,
+        "category": "rule",
+        "severity": "low",
+        "message": "The new download behaviour comes with no test, but the contributing guide requires every change in behaviour to have one.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:15",
+        "controls": []
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 4,
+  "seconds": 14.093986500054598,
+  "input_tokens": 4697,
+  "output_tokens": 1113,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "8d887b679ae0f772a926850463c35121dc8dd9a1451dea60a8957831acf7fab5",
+  "dropped_findings": 0
+}

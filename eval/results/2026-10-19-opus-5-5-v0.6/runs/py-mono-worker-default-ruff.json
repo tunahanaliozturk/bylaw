@@ -1,0 +1,40 @@
+{
+  "case_id": "py-mono-worker-default-ruff",
+  "result": {
+    "findings": [
+      {
+        "file": "packages/worker/worker/jobs.py",
+        "line_start": 21,
+        "line_end": 21,
+        "category": "bug",
+        "severity": "high",
+        "message": "The default `pending: list[int] = []` is a mutable default created once and shared across calls. Receipts from earlier calls leak into later ones, and the list grows without bound in a long-running worker.",
+        "suggestion": "def queue_receipt(order_id: int, pending: list[int] | None = None) -> list[int]:",
+        "evidence": "ruff:B006",
+        "controls": []
+      },
+      {
+        "file": "packages/worker/worker/jobs.py",
+        "line_start": 23,
+        "line_end": 23,
+        "category": "bug",
+        "severity": "medium",
+        "message": "Once the default is fixed to None, the function still appends to `pending` directly. It needs to create a fresh list when none is passed.",
+        "suggestion": "    if pending is None:\n        pending = []\n    pending.append(order_id)",
+        "evidence": null,
+        "controls": []
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 2,
+  "seconds": 4.042087799985893,
+  "input_tokens": 4662,
+  "output_tokens": 332,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "d4d203a5ebe2a3174346b19c9f044042902b2605d9dc238396474a6888ad15af",
+  "dropped_findings": 0
+}

@@ -1,0 +1,62 @@
+{
+  "case_id": "py-pickle-cookie",
+  "result": {
+    "findings": [
+      {
+        "file": "app/web.py",
+        "line_start": 37,
+        "line_end": 37,
+        "category": "security",
+        "severity": "critical",
+        "message": "The `prefs` cookie is fully controlled by the client, and `pickle.loads` on it lets anyone run arbitrary code on the server by sending a crafted pickle payload. Never unpickle untrusted input.",
+        "suggestion": null,
+        "evidence": null,
+        "controls": []
+      },
+      {
+        "file": "app/web.py",
+        "line_start": 37,
+        "line_end": 38,
+        "category": "bug",
+        "severity": "medium",
+        "message": "When the cookie is missing, the default `\"\"` decodes to empty bytes and `pickle.loads(b\"\")` raises `EOFError`, so every first-time visitor gets a 500. Malformed base64 or a value that is not a dict also crashes the handler instead of falling back to `light`.",
+        "suggestion": null,
+        "evidence": null,
+        "controls": []
+      },
+      {
+        "file": "app/web.py",
+        "line_start": 3,
+        "line_end": 4,
+        "category": "security",
+        "severity": "high",
+        "message": "`pickle` is imported only to deserialise client cookie data. Store the theme as a plain string or JSON, validated against an allow-list of themes, and drop the `pickle` import.",
+        "suggestion": null,
+        "evidence": null,
+        "controls": []
+      },
+      {
+        "file": "app/web.py",
+        "line_start": 35,
+        "line_end": 35,
+        "category": "rule",
+        "severity": "low",
+        "message": "The new `preferences` handler adds behaviour without a test, and the repository requires every behaviour change to come with one.",
+        "suggestion": null,
+        "evidence": "CONTRIBUTING.md:15",
+        "controls": []
+      }
+    ],
+    "criteria": [],
+    "scope_creep": []
+  },
+  "dropped": [],
+  "model_findings": 4,
+  "seconds": 9.471878199954517,
+  "input_tokens": 4542,
+  "output_tokens": 842,
+  "error": null,
+  "reviewer": "anthropic:default model:default effort",
+  "case_digest": "5e0f0fa01c01c5614e978d46637e1b8949029c74f94acbf7b59a37a3c8f83180",
+  "dropped_findings": 0
+}
