@@ -231,3 +231,48 @@ def test_a_local_model_reviews_with_no_key_at_the_base_url_given(
     )
 
     assert seen == [("openai-compatible", "qwen3:4b", None, None, "http://localhost:11434/v1")]
+
+
+def test_with_a_profile_the_review_writes_the_evidence_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    context = tmp_path / "context.json"
+    context.write_text(json.dumps({**CONTEXT, "profiles": ["iso27001"]}), encoding="utf-8")
+    tagged = HIGH.model_copy(update={"controls": ("8.28",)})
+    _use(monkeypatch, FakeReviewer(ReviewResult(findings=(tagged,))))
+    monkeypatch.setenv("BYLAW_API_KEY", "k")
+    evidence = tmp_path / "evidence.json"
+
+    assert cli.main(["review", "--context", str(context), "--evidence", str(evidence)]) == 0
+
+    record = json.loads(evidence.read_bytes())
+    assert (record["schema_version"], record["head_sha"], record["model_review"]) == (1, "h", True)
+    assert record["profiles"] == [{"name": "iso27001", "standard": "ISO/IEC 27001:2022, Annex A"}]
+    assert record["controls"] == [{"id": "8.28", "title": "Secure coding", "findings": ["app.py:1"]}]
+    assert record["findings"][0]["status"] == "open"
+    assert record["generated_at"].endswith("+00:00")
+
+
+def test_without_a_profile_no_evidence_file_is_written_and_the_run_says_why(
+    context_file: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    evidence = tmp_path / "evidence.json"
+
+    assert cli.main(["review", "--context", str(context_file), "--evidence", str(evidence)]) == 0
+
+    assert not evidence.exists()
+    assert "no compliance profile is on" in capsys.readouterr().err
+
+
+def test_the_evidence_file_is_written_even_when_fail_on_fails_the_run(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    context = tmp_path / "context.json"
+    context.write_text(json.dumps({**CONTEXT, "profiles": ["iso27001"]}), encoding="utf-8")
+    _use(monkeypatch, FakeReviewer(ReviewResult(findings=(HIGH,))))
+    monkeypatch.setenv("BYLAW_API_KEY", "k")
+    evidence = tmp_path / "evidence.json"
+
+    args = ["review", "--context", str(context), "--evidence", str(evidence), "--fail-on", "high"]
+    assert cli.main(args) == 1
+    assert evidence.is_file()
