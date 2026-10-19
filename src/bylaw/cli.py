@@ -244,7 +244,9 @@ def _mcp(args: argparse.Namespace) -> int:
             raise
         _say('bylaw mcp needs the mcp extra: uvx --from "bylaw[mcp]" bylaw mcp')
         return 2
-    roots = [Path(root) for root in args.root] if args.root else [Path.cwd()]
+    # Claude Code sets CLAUDE_PROJECT_DIR in the server's own environment, not where ${...} in args expand.
+    default = os.environ.get("CLAUDE_PROJECT_DIR")
+    roots = [Path(root) for root in args.root] if args.root else [Path(default) if default else Path.cwd()]
     make_server(roots, allow_post=args.allow_post).run("stdio")
     return 0
 

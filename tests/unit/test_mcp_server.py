@@ -114,6 +114,12 @@ def test_a_root_that_is_not_a_directory_is_refused_at_start(tmp_path: Path) -> N
         make_server([tmp_path / "missing"])
 
 
+def test_a_whole_drive_or_the_filesystem_root_is_refused_as_a_root(tmp_path: Path) -> None:
+    # Claude Desktop can start the server in / or C:\, where the default root would cover everything.
+    with pytest.raises(ValueError, match="whole filesystem"):
+        make_server([Path(tmp_path.anchor)])
+
+
 def test_git_that_cannot_start_is_a_tool_error_the_agent_can_read(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

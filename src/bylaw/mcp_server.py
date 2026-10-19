@@ -92,6 +92,9 @@ def make_server(roots: Sequence[Path], *, allow_post: bool = False) -> MCPServer
     for root in allowed:
         if not root.is_dir():
             raise ValueError(f"allowed root {root} is not a directory")
+        if root.parent == root:
+            # A client may start the server in / or C:\; that default would allow every repository.
+            raise ValueError(f"allowed root {root} is the whole filesystem or drive; pass --root DIR")
     # The context each target was last read as, so a result is checked against what its brief showed.
     # ponytail: kept for the life of the process; a server reviews a handful of targets per session.
     built: dict[str, ReviewContext] = {}

@@ -48,8 +48,10 @@ The command prints nothing and waits: an MCP client starts it and talks to it ov
 output. Options:
 
 - `--root DIR` names a directory whose repositories local reviews may read. Repeat it for more than one.
-  Without it, the only root is the directory the client starts the server in, which differs between
-  clients, so the examples below pass it explicitly.
+  Without it, the root is `CLAUDE_PROJECT_DIR` when Claude Code started the server, and otherwise the
+  directory the client started it in. That directory differs between clients, so the examples for other
+  clients pass `--root` explicitly. A whole drive or `/` is refused as a root, because a client that
+  starts the server there would otherwise open every repository on the machine.
 - `--allow-post` adds the `post` tool. Leave it out unless you want the agent to be able to comment on
   pull requests; see [Posting](#posting).
 
@@ -87,14 +89,15 @@ From [Claude Code's MCP documentation](https://code.claude.com/docs/en/mcp): Cla
 such as `--env`, go before `--`, and everything after it is the command that starts the server.
 
 ```
-claude mcp add bylaw --env 'GITHUB_TOKEN=${GITHUB_TOKEN}' -- uvx --from "bylaw[mcp]" bylaw mcp --root '${CLAUDE_PROJECT_DIR:-.}'
+claude mcp add bylaw --env 'GITHUB_TOKEN=${GITHUB_TOKEN}' -- uvx --from "bylaw[mcp]" bylaw mcp
 ```
 
-The single quotes keep your shell from expanding the variables, so Claude Code stores them as written and
-expands them when it starts the server: the token comes from the environment you start Claude Code in
-and never lands in `~/.claude.json`, and `CLAUDE_PROJECT_DIR` is the project Claude Code was opened in.
-The documentation asks for the `:-.` default because Claude Code sets that variable only inside the
-server's environment.
+The single quotes keep your shell from expanding the variable, so Claude Code stores it as written and
+expands it when it starts the server: the token comes from the environment you start Claude Code in and
+never lands in `~/.claude.json`. There is no `--root`: Claude Code sets `CLAUDE_PROJECT_DIR`, the project
+it was opened in, in the server's own environment, and bylaw uses it as the root. Writing
+`${CLAUDE_PROJECT_DIR}` in the arguments would not work, because Claude Code expands arguments from its
+own environment, where that variable is not set.
 
 To share the server with everyone who works on a repository, add it to `.mcp.json` at the project root
 instead (`--scope project` writes the same thing):
@@ -104,7 +107,7 @@ instead (`--scope project` writes the same thing):
   "mcpServers": {
     "bylaw": {
       "command": "uvx",
-      "args": ["--from", "bylaw[mcp]", "bylaw", "mcp", "--root", "${CLAUDE_PROJECT_DIR:-.}"],
+      "args": ["--from", "bylaw[mcp]", "bylaw", "mcp"],
       "env": { "GITHUB_TOKEN": "${GITHUB_TOKEN}" }
     }
   }
